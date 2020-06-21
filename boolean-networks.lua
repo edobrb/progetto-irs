@@ -80,7 +80,7 @@ function BooleanNetwork:initialize(options)
   self.connection_matrix =
   create_random_connection_matrix(options["self_loops"], options["node_count"], options["nodes_input_count"])
   self.node_states = create_array(options["node_count"], l("(_) -> math.random() <= 0.5")) -- fills the network
-  self.input_nodes, self.output_nodes = extract_input_output_nodes(options)
+  self.input_nodes, self.output_nodes = extract_input_output_nodes(options) -- indexes of input and output nodes
   local output_functions = make_output_functions(#self.output_nodes, function_length)
   self.overridden_output_functions = my_if(options["override_output_nodes_bias"], output_functions, nil)
 end

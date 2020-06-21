@@ -65,4 +65,9 @@ function argos.sensor_values_to_booleans(values, threshold, invert_values)
     end):all()
 end
 
+---@param name string
+function argos.param(name)
+    return robot.params[name]
+end
+
 return argos

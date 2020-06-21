@@ -19,31 +19,34 @@ local current_edit_attempt = 1
 local fitness_results = {}
 local saved_network_states = {{}, {}} --contains the history of network states of the first network and the last
 
-local SPEED = 15
+local TICKS_PER_SECOND = 100
+local SPEED = 1.5 * TICKS_PER_SECOND
 local PROXIMITY_THRESHOLD = 0.1
 local RAB_MINIMUM_DISTANCE = 5 -- in cm. Set to zero to ignore the min distance to the prey robot, 5 otherwise
 local NETWORK_TEST_STEPS = 1200
-local EDIT_ATTEMPTS_COUNT = 7200 * 10 / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
-local PRINT_MIDWAY_RESULTS = false
+local EDIT_ATTEMPTS_COUNT = 7200 * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
+local PRINT_MIDWAY_RESULTS = true
 -- values to change for testing:
 local MAX_INPUT_REWIRES = 1
 local MAX_OUTPUT_REWIRES = 0 -- don't do more than 2
 local MAX_BIT_FLIPS = 0
 local MAX_NODE_INPUT_SWAPS = 0
 local MAX_BRACCINI_EDITS = 0
-local RANGE_AND_BEARING_COUNT = 6 -- disable range and bearing sensors by putting this to 0. Enable by setting 6.
+local RANGE_AND_BEARING_COUNT = 0 -- disable range and bearing sensors by putting this to 0. Enable by setting 6.
 local RANDOMIZE_NETWORK = false
 local FOLLOW_OTHER_BOT = true
 local INCREMENTAL_LEARNING = false
 local USE_DUAL_ENCODING = false -- if true: obstacles are encoded as false and false values will turn on the wheels
-local network_options = { ["node_count"] = 25, ["nodes_input_count"] = 3, ["bias"] =
- 								0.1, --script edited
-                          ["network_inputs_count"] = 6 + RANGE_AND_BEARING_COUNT, ["network_outputs_count"] = 2,
+local network_options = { ["node_count"] = 300, ["nodes_input_count"] = 6, ["bias"] =
+ 								0.79, --script edited
+                          ["network_inputs_count"] = 12 + RANGE_AND_BEARING_COUNT, ["network_outputs_count"] = 2,
                           ["self_loops"] = false, ["override_output_nodes_bias"] = true}
 
 function init()
-    math.randomseed(os.time())
     test_network = BooleanNetwork(network_options)
+    seed = math.floor(os.clock() * 10000000)
+    print(seed)
+    math.randomseed(seed)
     best_network = test_network
 end
 
@@ -72,7 +75,7 @@ local function run_and_evaluate_network(network, maximum_simulation_steps, speed
     local proximity_values = argos.get_proximity_values(#network.input_nodes - RANGE_AND_BEARING_COUNT)
     local inputs = argos.sensor_values_to_booleans(proximity_values, proximity_threshold, USE_DUAL_ENCODING)
     local range_and_bearing_values = {} ---@type boolean[]
-    local distance_to_prey
+    local distance_to_prey = 0
     if(RANGE_AND_BEARING_COUNT > 0) then
         range_and_bearing_values, distance_to_prey = argos.get_RAB_values_and_distance(RANGE_AND_BEARING_COUNT)
         inputs = collect(inputs):addAll(range_and_bearing_values):all()
