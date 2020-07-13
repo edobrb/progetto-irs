@@ -30,8 +30,10 @@ local PROXIMITY_THRESHOLD = 0.1
 local MAX_WHEELS_SPEED = 1.5 * TICKS_PER_SECOND
 
 -- BN parameters
-local MAX_INPUT_REWIRES = 1
+local MAX_INPUT_REWIRES = 3
+local INPUT_REWIRES_PROBABILITY = 0.5
 local MAX_OUTPUT_REWIRES = 1
+local OUTPUT_REWIRES_PROBABILITY = 0.1
 local USE_DUAL_ENCODING = false -- if true the obstacles are encoded as false and the wheels will turn on on false value
 local network_options = {   node_count = 100,
                             nodes_input_count = 3,
@@ -69,8 +71,15 @@ end
 ---@param previous_network BooleanNetwork
 local function build_new_network(previous_network)
     local new_network = previous_network
-    new_network = editing.edit_network(new_network, MAX_INPUT_REWIRES, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, true) end)
-    new_network = editing.edit_network(new_network, MAX_OUTPUT_REWIRES, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, false) end)
+
+    local input_rewires = 0
+    local output_rewires = 0
+    while(input_rewires == 0 and output_rewires == 0) do --force to do at least one change
+        input_rewires = count_winner_extractions(MAX_INPUT_REWIRES, INPUT_REWIRES_PROBABILITY)
+        output_rewires = count_winner_extractions(MAX_OUTPUT_REWIRES, OUTPUT_REWIRES_PROBABILITY)
+    end
+    new_network = editing.edit_network(new_network, input_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, true) end)
+    new_network = editing.edit_network(new_network, output_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, false) end)
     return new_network
 end
 

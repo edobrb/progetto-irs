@@ -219,6 +219,14 @@ function random_extract_except(extractions_count, elements, exclusions, allow_re
   return collect(elements):diff(exclusions):random(extractions_count, allow_repetition):all()
 end
 
+function count_winner_extractions(extraction_count, win_probability)
+  local c = 0
+  for i = 1, extraction_count do
+    c = c + my_if(biased_random_boolean(win_probability), 1, 0)
+  end
+  return c
+end
+
 ---@param array any[]
 ---@param object any
 ---@return number
