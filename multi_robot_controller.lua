@@ -1,6 +1,7 @@
 require("utilities")
 require "libs.lua-collections"
 require("boolean-networks")
+local json = require("libs.json")
 
 -- utilities
 local editing = require("boolean-network-editing") -- BN utility editing module
@@ -15,6 +16,7 @@ local best_network, test_network ---@type BooleanNetwork
 local best_network_fitness = -1
 local test_network_fitness = 0
 local current_step = 0
+local global_step = 0
 local current_edit_attempt = 1
 local fitness_results = {} -- contains the fintess values for each edit (#EDIT_ATTEMPTS_COUNT)
 local saved_network_states = {{}, {}} --contains the history of network states of the first network and the last
@@ -23,7 +25,7 @@ local saved_network_states = {{}, {}} --contains the history of network states o
 local TICKS_PER_SECOND = argos.param("TICKS_PER_SECONDS")
 local NETWORK_TEST_STEPS = 400
 local EDIT_ATTEMPTS_COUNT = 7200 * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
-local PRINT_MIDWAY_RESULTS = true
+local PRINT_ANALYTICS = true
 
 -- robot parameters
 local PROXIMITY_THRESHOLD = 0.1
@@ -48,6 +50,7 @@ function init()
     test_network = BooleanNetwork(network_options)
     best_network = test_network
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
+    if(PRINT_ANALYTICS) then print_network(test_network) end
 end
 
 ---@param network_outputs boolean[]
@@ -92,30 +95,56 @@ local function update_saved_states()
 end
 
 function step()
+    global_step = global_step + 1
     if(current_step < NETWORK_TEST_STEPS) then
         current_step = current_step + 1
         update_saved_states()
         test_network_fitness = test_network_fitness + run_and_evaluate_test_network()
+        if(PRINT_ANALYTICS and current_step < NETWORK_TEST_STEPS) then print_network_state(test_network) end
+        if(PRINT_ANALYTICS and current_step >= NETWORK_TEST_STEPS) then print_network(test_network) end
     else
-        if(PRINT_MIDWAY_RESULTS) then print("tested network connection has fitness = " .. test_network_fitness) end
         current_edit_attempt = current_edit_attempt + 1
         table.insert(fitness_results, test_network_fitness)
         if(test_network_fitness > best_network_fitness) then
             best_network = test_network
             best_network_fitness = test_network_fitness
-            if(PRINT_MIDWAY_RESULTS) then print("found better network with fitness = " .. best_network_fitness) end
         end
         test_network = build_new_network(best_network)
         current_step, test_network_fitness = 0, 0
-        if(PRINT_MIDWAY_RESULTS) then print("testing new boolean network connection \n") end
+        if(PRINT_ANALYTICS) then print_network(test_network) end
     end
+
 end
 
 function destroy()
-    if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem
-        print("Best: " .. best_network_fitness .. " size: " .. best_network:get_node_count()  .. " network: " ..
-                one_line_serialize(best_network) .. "results: " .. one_line_serialize(fitness_results) ..
-                " startStates: " .. one_line_serialize(saved_network_states[1]) ..
-                " finalStates: " .. one_line_serialize(saved_network_states[2]))
-    end
+    if(PRINT_ANALYTICS) then print_network(test_network) end
+end
+
+function print_network(netowrk)
+    local table = {
+         id = robot.id, 
+         step = global_step,
+         fitness = test_network_fitness,
+         boolean_network = {
+            functions = netowrk.boolean_functions, 
+            connections = netowrk.connection_matrix,
+            inputs = netowrk.input_nodes,
+            outputs = netowrk.output_nodes,
+            overridden_output_functions = netowrk.overridden_output_functions
+         },
+         states = netowrk.node_states
+        }
+
+    print(json.encode(table))
+end
+
+function print_network_state(netowrk)
+    local table = {
+         id = robot.id, 
+         step = global_step,
+         fitness = test_network_fitness,
+         states = netowrk.node_states
+        }
+
+    print(json.encode(table))
 end
