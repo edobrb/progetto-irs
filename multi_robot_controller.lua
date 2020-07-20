@@ -23,8 +23,9 @@ local saved_network_states = {{}, {}} --contains the history of network states o
 
 -- test parameters
 local TICKS_PER_SECOND = argos.param("TICKS_PER_SECONDS")
+local EXPERIMENT_LENGTH = argos.param("EXPERIMENT_LENGTH")
 local NETWORK_TEST_STEPS = 400
-local EDIT_ATTEMPTS_COUNT = 72 * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
+local EDIT_ATTEMPTS_COUNT = EXPERIMENT_LENGTH * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
 local PRINT_ANALYTICS = true
 
 -- robot parameters
@@ -137,7 +138,7 @@ function print_network(netowrk)
             overridden_output_functions = netowrk.overridden_output_functions
          },
          states = netowrk.node_states,
-         proximity = robot.proximity
+         proximity = argos.get_proximity_values(24)
         }
     local res = json.encode(table)
     print(res)
@@ -149,7 +150,7 @@ function print_network_state(netowrk)
          step = global_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,
-         proximity = robot.proximity
+         proximity = argos.get_proximity_values(24)
         }
     local res = json.encode(table)
     print(res)

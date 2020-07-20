@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
   	<system threads="0" method="balance_quantity" />
-    <experiment length="72" ticks_per_second="100" random_seed="5" />
+    <experiment length="720" ticks_per_second="10" random_seed="5" />
   </framework>
 
   <!-- *************** -->
@@ -30,7 +30,7 @@
         <range_and_bearing implementation="medium" medium="rab" />
       </sensors>
       <!-- No required configuration -->
-      <params script="multi_robot_controller.lua" TICKS_PER_SECONDS=100/>
+      <params script="multi_robot_controller.lua" TICKS_PER_SECONDS=10 EXPERIMENT_LENGTH=720/>
       <!-- Optionally, you can pass a script as a controller parameter: -->
       <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->
     </lua_controller>
