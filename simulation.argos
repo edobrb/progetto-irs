@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
   	<system threads="0" method="balance_quantity" />
-    <experiment length="7200" ticks_per_second="100" random_seed="5" />
+    <experiment length="72" ticks_per_second="100" random_seed="5" />
   </framework>
 
   <!-- *************** -->
@@ -159,7 +159,8 @@
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
-  <visualization>
+  <!--
+    <visualization>
 
 <qt-opengl lua_editor="false">
       <camera>
@@ -170,11 +171,10 @@
     </qt-opengl>
   
 
-    <!-- ************************************************************************ -->
-    <!-- * To activate the Lua editor, just use the 'lua_editor' flag attribute * -->
-    <!-- ************************************************************************ -->
+    
     
 
-  </visualization>
+  </visualization> 
+  -->
 
 </argos-configuration>

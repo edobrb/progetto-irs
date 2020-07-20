@@ -1,17 +1,12 @@
 import java.io.File
 
+import model.{BooleanNetwork, StepInfo}
 import play.api.libs.json._
 
 import scala.sys.process.{Process, ProcessLogger}
 import scala.util.{Failure, Success, Try}
 
-case class BooleanNetwork(functions: Seq[Seq[Boolean]],
-                          connections: Seq[Seq[Int]],
-                          inputs: Seq[Int],
-                          outputs: Seq[Int],
-                          overridden_output_functions: Option[Seq[Seq[Boolean]]])
 
-case class StepInfo(step: Int, id: String, boolean_network: Option[BooleanNetwork], states:Seq[Boolean], fitness:Double)
 
 object Main extends App {
   implicit val bnFormat: OFormat[BooleanNetwork] = Json.format[BooleanNetwork]

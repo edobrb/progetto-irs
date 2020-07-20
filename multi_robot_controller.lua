@@ -24,7 +24,7 @@ local saved_network_states = {{}, {}} --contains the history of network states o
 -- test parameters
 local TICKS_PER_SECOND = argos.param("TICKS_PER_SECONDS")
 local NETWORK_TEST_STEPS = 400
-local EDIT_ATTEMPTS_COUNT = 7200 * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
+local EDIT_ATTEMPTS_COUNT = 72 * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
 local PRINT_ANALYTICS = true
 
 -- robot parameters
@@ -50,7 +50,7 @@ function init()
     test_network = BooleanNetwork(network_options)
     best_network = test_network
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
-    if(PRINT_ANALYTICS) then print_network(test_network) end
+    --print(one_line_serialize(robot))
 end
 
 ---@param network_outputs boolean[]
@@ -95,6 +95,8 @@ local function update_saved_states()
 end
 
 function step()
+    if (global_step == 0 and PRINT_ANALYTICS) then print_network(test_network) end
+
     global_step = global_step + 1
     if(current_step < NETWORK_TEST_STEPS) then
         current_step = current_step + 1
@@ -117,7 +119,9 @@ function step()
 end
 
 function destroy()
-    if(PRINT_ANALYTICS) then print_network(test_network) end
+    if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem
+        if(PRINT_ANALYTICS) then print_network(test_network) end
+    end
 end
 
 function print_network(netowrk)
@@ -132,10 +136,11 @@ function print_network(netowrk)
             outputs = netowrk.output_nodes,
             overridden_output_functions = netowrk.overridden_output_functions
          },
-         states = netowrk.node_states
+         states = netowrk.node_states,
+         proximity = robot.proximity
         }
-
-    print(json.encode(table))
+    local res = json.encode(table)
+    print(res)
 end
 
 function print_network_state(netowrk)
@@ -143,8 +148,9 @@ function print_network_state(netowrk)
          id = robot.id, 
          step = global_step,
          fitness = test_network_fitness,
-         states = netowrk.node_states
+         states = netowrk.node_states,
+         proximity = robot.proximity
         }
-
-    print(json.encode(table))
+    local res = json.encode(table)
+    print(res)
 end
