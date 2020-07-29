@@ -42,7 +42,17 @@ local USE_DUAL_ENCODING = config.bn.use_dual_encoding -- if true the obstacles a
 local NETWORK_OPTIONS = config.bn.options
 
 function init()
-    test_network = BooleanNetwork(NETWORK_OPTIONS)
+    if config.bn.initial ~= nil then 
+        test_network = BooleanNetwork(NETWORK_OPTIONS)
+        test_network.boolean_functions = config.bn.initial.functions
+        test_network.connection_matrix = config.bn.initial.connections
+        test_network.input_nodes = config.bn.initial.inputs
+        test_network.output_nodes = config.bn.initial.outputs
+        test_network.overridden_output_functions = config.bn.initial.overridden_output_functions
+    else 
+        test_network = BooleanNetwork(NETWORK_OPTIONS)
+    end
+
     best_network = test_network
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
     --print(one_line_serialize(robot))

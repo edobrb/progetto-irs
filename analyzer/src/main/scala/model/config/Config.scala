@@ -31,14 +31,16 @@ object Config {
                             max_output_rewires: Int,
                             output_rewires_probability: Double,
                             use_dual_encoding: Boolean,
-                            options: BooleanNetwork.Options)
+                            options: BooleanNetwork.Options,
+                            initial: Option[model.BooleanNetwork.Schema])
 
   object Implicits {
-    implicit val f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
-    implicit val f2: OFormat[Config.Robot] = Json.format[Config.Robot]
-    implicit val f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
-    implicit val f4: OFormat[Config.BooleanNetwork] = Json.format[Config.BooleanNetwork]
-    implicit val f5: OFormat[Config] = Json.format[Config]
+    implicit def f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
+    implicit def f2: OFormat[Config.Robot] = Json.format[Config.Robot]
+    implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
+    implicit def f4: OFormat[Config.BooleanNetwork] = Json.format[Config.BooleanNetwork]
+    implicit def f5: OFormat[model.BooleanNetwork.Schema] = Json.format[model.BooleanNetwork.Schema]
+    implicit def f6: OFormat[Config] = Json.format[Config]
   }
 
   def fromJson(json: String): Config = {

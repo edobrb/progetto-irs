@@ -10,12 +10,13 @@ object Argos {
   def runSimulation(workingDir: String, simulationFile: String): LazyList[String] =
     Process(s"argos3 -c $simulationFile", new File(workingDir)).lazyLines
 
-  def runConfiguredSimulation(workingDir: String, simulationFile: String, config: Config): LazyList[String] = {
+  def runConfiguredSimulation(workingDir: String, simulationFile: String, config: Config, visualization: Boolean): LazyList[String] = {
     val escapedConfig = "\\\'" + config.toJson.replace("\"", "\\\"") + "\\\'"
     Process(Seq("./pargos", simulationFile,
       s"--CONFIG=$escapedConfig",
       s"--TICKS=${config.simulation.ticks_per_seconds}",
-      s"--LENGTH=${config.simulation.experiment_length}"),
+      s"--LENGTH=${config.simulation.experiment_length}",
+      s"--VISUAL=${if (visualization) "visualization" else "none"}"),
       new File(workingDir)).lazyLines
   }
 }

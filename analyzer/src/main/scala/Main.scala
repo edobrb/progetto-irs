@@ -31,11 +31,12 @@ object Main extends App {
     max_output_rewires = 0,
     output_rewires_probability = 1,
     use_dual_encoding = false,
-    options = bnOptions)
+    options = bnOptions,
+    initial = None)
   val config = Config(simulation, robot, bn)
 
   /** Simulation standard output (by lines) **/
-  def output: Iterable[String] = Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config)
+  def output: Iterable[String] = Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization = false)
 
   /** Parse each robot's output for each step **/
   def data: Iterable[StepInfo] = output.map(toStepInfo).collect { case Some(info) => info }

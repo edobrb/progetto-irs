@@ -1,5 +1,9 @@
+import analysis.Functions
+import model.TestRun
 import model.config.Config
 import utils.{Argos, Hash}
+
+import scala.util.Try
 
 
 object Test extends App {
@@ -19,7 +23,7 @@ object Test extends App {
   val bnOptions = Config.BooleanNetwork.Options(
     node_count = 100,
     nodes_input_count = 3,
-    bias = 0.1, //0.1, 0.5, 0.79
+    bias = 0.79, //0.1, 0.5, 0.79
     network_inputs_count = 24,
     network_outputs_count = 2,
     self_loops = false,
@@ -28,9 +32,10 @@ object Test extends App {
     max_input_rewires = 2,
     input_rewires_probability = 1,
     max_output_rewires = 0,
-    output_rewires_probability = 1,
+    output_rewires_probability = 0,
     use_dual_encoding = false,
-    options = bnOptions)
+    options = bnOptions,
+    initial = None)
   val config = Config(simulation, robot, bn)
 
   val configs = Seq(
@@ -39,10 +44,11 @@ object Test extends App {
     config.copy(bn = bn.copy(options = bnOptions.copy(bias = 0.79))))
 
   /** Simulation standard output (by lines) **/
-  def output(config: Config): LazyList[String] = Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config)
+  def output(config: Config): LazyList[String] = Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization = true)
 
   def runExperiment(config: Config, times: Int, offset: Int = 0): Unit = {
-    val name = Hash.sha256(config.toJson)
+    //val name = Hash.sha256(config.toJson)
+    val name = config.bn.options.bias
     1 to times foreach (i => {
       val startTime = System.currentTimeMillis()
       val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * 10
@@ -59,18 +65,31 @@ object Test extends App {
     })
   }
 
+
+/*
   import scala.collection.parallel.CollectionConverters._
-  configs.par.foreach(c => {
-    runExperiment(c, 1)
-  })
+  configs.foreach(c => {
+    runExperiment(c, 4, 100)
+  })*/
 
 
-  /*val asd = utils.File.readGzippedLines("/home/edo/Desktop/progetto-irs/tmp/61a833d4b3401c162acbe806ebe5008499f06a8cf60b524b9a33a9a31ec35e9d-4").map {
+  val asd: Try[(Config, Map[String, Seq[TestRun]])] = utils.File.readGzippedLines("/home/edo/Desktop/progetto-irs/tmp/0.79-2").map {
     case (value, source) =>
       val config = Config.fromJson(value.head)
-      val results = extractTests(value.map(toStepInfo).collect { case Some(info) => info })
+      val results = Functions.extractTests(value.map(Functions.toStepInfo).collect { case Some(info) => info })
       source.close()
       (config, results)
   }
-  println(asd)*/
+  System.gc()
+  asd.foreach {
+    case (config, result) =>
+      val (robotId, tests) = result.maxBy {
+        case (robotId, tests) => tests.map(_.fitnessValues.last).max
+      }
+      val bestTest: TestRun = tests.maxBy(_.fitnessValues.last)
+
+      println(bestTest.states.last._2+ " " + bestTest.bn)
+
+      output(config.copy(bn = bn.copy(initial = Some(bestTest.bn)))).foreach(println)
+  }
 }
