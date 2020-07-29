@@ -1,4 +1,5 @@
 import analysis.Functions._
+import model.TestRun
 import utils.File
 
 import scala.util.{Failure, Success}
@@ -9,10 +10,10 @@ object MainFromFile extends App {
       val data = lines.map(toStepInfo).collect {
         case Some(value) => value
       }
-      val result = extractTests(data)
+      val result: Map[String, Seq[TestRun]] = extractTests(data)
       println(result.size)
-      val max = result.maxBy(_._2.map(_.fitnesses.last).max)
-      val maxT = max._2.maxBy(_.fitnesses.last)
+      val max = result.maxBy(_._2.map(_.fitnessValues.last).max)
+      val maxT = max._2.maxBy(_.fitnessValues.last)
       println(maxT)
       source.close()
 

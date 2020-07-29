@@ -1,0 +1,23 @@
+#!/bin/bash
+if [ ! -f $1 ]; then
+    echo "File not found!"
+	exit 1
+fi
+TMP_FILE1=$(tempfile)
+TMP_FILE2=$(tempfile)
+cp $1 $TMP_FILE1
+for i in "$@"
+do
+case $i in
+    -e=*|--*=*)
+	NAME=$(echo "${i#}" | sed -e "s/--//" | cut -f1 -d"=")
+	VALUE="${i#*=}"
+	sed -e "s/\${$NAME}/$VALUE/" $TMP_FILE1 > $TMP_FILE2 && cp $TMP_FILE2 $TMP_FILE1
+    shift
+    ;;
+esac
+done
+
+cat $TMP_FILE1
+rm $TMP_FILE1
+rm $TMP_FILE2

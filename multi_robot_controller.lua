@@ -1,5 +1,5 @@
 require("utilities")
-require "libs.lua-collections"
+require("libs.lua-collections")
 require("boolean-networks")
 local json = require("libs.json")
 
@@ -22,15 +22,16 @@ local fitness_results = {} -- contains the fintess values for each edit (#EDIT_A
 local saved_network_states = {{}, {}} --contains the history of network states of the first network and the last
 
 -- test parameters
-local TICKS_PER_SECOND = argos.param("TICKS_PER_SECONDS")
-local EXPERIMENT_LENGTH = argos.param("EXPERIMENT_LENGTH")
-local NETWORK_TEST_STEPS = 400
+local config = json.decode(argos.param("CONFIG"))
+local TICKS_PER_SECOND = config.simulation.ticks_per_seconds
+local EXPERIMENT_LENGTH = config.simulation.experiment_length
+local NETWORK_TEST_STEPS = config.simulation.network_test_steps
 local EDIT_ATTEMPTS_COUNT = EXPERIMENT_LENGTH * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
-local PRINT_ANALYTICS = true
+local PRINT_ANALYTICS = config.simulation.print_analytics
 
 -- robot parameters
-local PROXIMITY_THRESHOLD = 0.1
-local MAX_WHEELS_SPEED = 1.5 * TICKS_PER_SECOND
+local PROXIMITY_THRESHOLD = config.robot.proximity_threshold
+local MAX_WHEELS_SPEED = config.robot.max_wheel_speed * TICKS_PER_SECOND
 
 -- BN parameters
 local MAX_INPUT_REWIRES = 3
@@ -38,17 +39,10 @@ local INPUT_REWIRES_PROBABILITY = 0.5
 local MAX_OUTPUT_REWIRES = 1
 local OUTPUT_REWIRES_PROBABILITY = 0.1
 local USE_DUAL_ENCODING = false -- if true the obstacles are encoded as false and the wheels will turn on on false value
-local network_options = {   node_count = 100,
-                            nodes_input_count = 3,
-                            bias = 0.79,
-                            network_inputs_count = 24,
-                            network_outputs_count = 2,
-                            self_loops = false,
-                            override_output_nodes_bias = true
-                        }
+local NETWORK_OPTIONS = config.bn.options
 
 function init()
-    test_network = BooleanNetwork(network_options)
+    test_network = BooleanNetwork(NETWORK_OPTIONS)
     best_network = test_network
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
     --print(one_line_serialize(robot))

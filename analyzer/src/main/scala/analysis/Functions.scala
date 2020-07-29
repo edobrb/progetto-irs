@@ -1,12 +1,12 @@
 package analysis
 
-import model.{BooleanNetwork, StepInfo, Test}
+import model.{BooleanNetwork, StepInfo, TestRun}
 import play.api.libs.json.{JsError, JsSuccess, Json, OFormat}
 
 import scala.util.{Failure, Success, Try}
 
 object Functions {
-  implicit val bnFormat: OFormat[BooleanNetwork] = Json.format[BooleanNetwork]
+  implicit val bnFormat: OFormat[BooleanNetwork.Schema] = Json.format[BooleanNetwork.Schema]
   implicit val siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
   def toStepInfo(jsonStep: String): Option[StepInfo] =
@@ -18,17 +18,17 @@ object Functions {
       case Failure(_) => None
     }
 
-  def extractTests(data: Iterable[StepInfo]): Map[String, Seq[Test]] = data.groupBy(_.id).map {
+  def extractTests(data: Iterable[StepInfo]): Map[String, Seq[TestRun]] = data.groupBy(_.id).map {
     case (id, steps) =>
-      (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[Test]()) {
+      (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[TestRun]()) {
         case (l :+ last, StepInfo(step, id, None, states, fitness, proximity)) =>
           l :+ (last += (states, proximity, fitness))
         case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, proximity)) if bn == last.bn =>
           l :+ (last += (states, proximity, fitness))
         case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, proximity)) if bn != last.bn =>
-          l :+ last :+ Test(bn, Seq(states), Seq(proximity), Seq(fitness))
+          l :+ last :+ TestRun(bn, Seq((states, proximity, fitness)))
         case (Nil, StepInfo(step, id, Some(bn), states, fitness, proximity)) =>
-          Seq(Test(bn, Seq(states), Seq(proximity), Seq(fitness)))
+          Seq(TestRun(bn, Seq((states, proximity, fitness))))
       })
   }
 }
