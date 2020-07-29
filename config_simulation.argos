@@ -39,17 +39,17 @@
   <arena size="6, 6, 1.2" center="0,0,0.5">
     <floor id="f" source="image" path="no_spot.png" />
 
-    <box id="bn" size="0.1, 5, 0.2" movable="false">
-      <body position="2,0,0"  orientation="0,0,0" />
+    <box id="bn" size="0.1, 4, 0.2" movable="false">
+      <body position="1.5,0,0"  orientation="0,0,0" />
     </box>
-    <box id="bs" size="0.1, 5, 0.2" movable="false">
-      <body position="-2,0,0" orientation="0,0,0" />
+    <box id="bs" size="0.1, 4, 0.2" movable="false">
+      <body position="-1.5,0,0" orientation="0,0,0" />
     </box>
-    <box id="be" size="5, 0.1, 0.2" movable="false">
-      <body position="0,-2,0" orientation="0,0,0" />
+    <box id="be" size="4, 0.1, 0.2" movable="false">
+      <body position="0,-1.5,0" orientation="0,0,0" />
     </box>
-    <box id="bw" size="5, 0.1, 0.2" movable="false">
-      <body position="0,2,0" orientation="0,0,0" />
+    <box id="bw" size="4, 0.1, 0.2" movable="false">
+      <body position="0,1.5,0" orientation="0,0,0" />
     </box>
 
     <box id="centerBox" size="1.25, 1.25, 0.2" movable="false">
@@ -65,7 +65,7 @@
           <controller config="lua" />
         </foot-bot>
       </entity> 
-    </distribute> 
+    </distribute>  
 
   </arena>
 

@@ -1,16 +1,14 @@
 package utils
 
-import java.io.{BufferedInputStream, BufferedReader, FileInputStream, FileWriter, InputStreamReader}
+import java.io._
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
-import java.util.zip.GZIPInputStream
+import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
 
 import scala.io.BufferedSource
-import scala.util.Try
-import java.io.BufferedReader
-import java.io.FileInputStream
 import scala.jdk.CollectionConverters._
-import java.util.zip.GZIPInputStream
+import scala.util.Try
+
 object File {
 
   trait Done
@@ -30,6 +28,19 @@ object File {
       Try((source.getLines().to(LazyList), source))
     })
   }
+
+  def writeGzippedLines(filename: String, data: Iterable[String], level:Int = Deflater.BEST_COMPRESSION): Try[Done] = Try {
+    val fos = new FileOutputStream(filename)
+    class MyGZIPOutputStream(out: OutputStream) extends GZIPOutputStream(out) {
+      `def`.setLevel(level)
+    }
+    val gzos = new MyGZIPOutputStream(fos)
+    val w = new PrintWriter(gzos)
+    data.foreach(line => w.write(line + "\n"))
+    w.close()
+    gzos.close()
+    fos.close()
+  }.map(_ => Done)
 
   def readGzippedLines(fileName: String): Try[(Seq[String], BufferedSource)] = {
     Try(scala.io.Source.fromFile(fileName)).flatMap(source => Try {

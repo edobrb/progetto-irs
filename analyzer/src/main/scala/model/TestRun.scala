@@ -10,13 +10,11 @@ import model.Types.{Fitness, ProximityValues}
  * @param bn     the boolean network schema of this test run
  * @param states the sequence of the boolean network states, proximity values, fitness value
  */
-case class TestRun(bn: BooleanNetwork.Schema, states: Seq[(BooleanNetwork.State, ProximityValues, Fitness)]) {
-  def +=(s: BooleanNetwork.State, p: ProximityValues, f: Fitness): TestRun =
-    this.copy(states = states :+ (s, p, f))
+case class TestRun(bn: BooleanNetwork.Schema, states: Seq[(BooleanNetwork.State, Fitness)]) {
+  def +=(s: BooleanNetwork.State, f: Fitness): TestRun =
+    this.copy(states = states :+ (s, f))
 
-  def fitnessValues: Seq[Fitness] = states.map(_._3)
-
-  def proximityValues: Seq[ProximityValues] = states.map(_._2)
+  def fitnessValues: Seq[Fitness] = states.map(_._2)
 
   def bnStates: Seq[BooleanNetwork.State] = states.map(_._1)
 }

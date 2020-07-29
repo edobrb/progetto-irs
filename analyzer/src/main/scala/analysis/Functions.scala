@@ -21,14 +21,14 @@ object Functions {
   def extractTests(data: Iterable[StepInfo]): Map[String, Seq[TestRun]] = data.groupBy(_.id).map {
     case (id, steps) =>
       (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[TestRun]()) {
-        case (l :+ last, StepInfo(step, id, None, states, fitness, proximity)) =>
-          l :+ (last += (states, proximity, fitness))
-        case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, proximity)) if bn == last.bn =>
-          l :+ (last += (states, proximity, fitness))
-        case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, proximity)) if bn != last.bn =>
-          l :+ last :+ TestRun(bn, Seq((states, proximity, fitness)))
-        case (Nil, StepInfo(step, id, Some(bn), states, fitness, proximity)) =>
-          Seq(TestRun(bn, Seq((states, proximity, fitness))))
+        case (l :+ last, StepInfo(step, id, None, states, fitness)) =>
+          l :+ (last += (states, fitness))
+        case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn == last.bn =>
+          l :+ (last += (states, fitness))
+        case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn != last.bn =>
+          l :+ last :+ TestRun(bn, Seq((states, fitness)))
+        case (Nil, StepInfo(step, id, Some(bn), states, fitness)) =>
+          Seq(TestRun(bn, Seq((states, fitness))))
       })
   }
 }

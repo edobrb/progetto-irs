@@ -102,7 +102,7 @@ function step()
     else
         current_edit_attempt = current_edit_attempt + 1
         table.insert(fitness_results, test_network_fitness)
-        if(test_network_fitness > best_network_fitness) then
+        if(test_network_fitness >= best_network_fitness) then
             best_network = test_network
             best_network_fitness = test_network_fitness
         end
@@ -131,8 +131,8 @@ function print_network(netowrk)
             outputs = netowrk.output_nodes,
             overridden_output_functions = netowrk.overridden_output_functions
          },
-         states = netowrk.node_states,
-         proximity = argos.get_proximity_values(24)
+         states = netowrk.node_states
+         --proximity = argos.get_proximity_values(24)
         }
     local res = json.encode(table)
     print(res)
@@ -143,8 +143,8 @@ function print_network_state(netowrk)
          id = robot.id, 
          step = global_step,
          fitness = test_network_fitness,
-         states = netowrk.node_states,
-         proximity = argos.get_proximity_values(24) --include robot position?
+         states = netowrk.node_states
+         --proximity = argos.get_proximity_values(24) --include robot position?
         }
     local res = json.encode(table)
     print(res)

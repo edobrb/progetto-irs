@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
   	<system threads="0" method="balance_quantity" />
-    <experiment length="7200" ticks_per_second="10" random_seed="5" />
+    <experiment length="7200" ticks_per_second="10"/>
   </framework>
 
   <!-- *************** -->
@@ -31,7 +31,7 @@
       </sensors>
       <!-- No required configuration -->
       <params script="multi_robot_controller.lua" 
-        CONFIG='{"simulation":{"ticks_per_seconds":10,"experiment_length":7200,"network_test_steps":400,"print_analytics":true},"robot":{"proximity_threshold":0.1,"max_wheel_speed":1.5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
+        CONFIG='{"simulation":{"ticks_per_seconds":10,"experiment_length":7200,"network_test_steps":400,"print_analytics":true},"robot":{"proximity_threshold":0.1,"max_wheel_speed":5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
       />
       <!-- Optionally, you can pass a script as a controller parameter: -->
       <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->
@@ -73,17 +73,17 @@
   <arena size="6, 6, 1.2" center="0,0,0.5">
     <floor id="f" source="image" path="no_spot.png" />
 
-    <box id="bn" size="0.1, 5, 0.2" movable="false">
-      <body position="2,0,0"  orientation="0,0,0" />
+    <box id="bn" size="0.1, 4, 0.2" movable="false">
+      <body position="1.5,0,0"  orientation="0,0,0" />
     </box>
-    <box id="bs" size="0.1, 5, 0.2" movable="false">
-      <body position="-2,0,0" orientation="0,0,0" />
+    <box id="bs" size="0.1, 4, 0.2" movable="false">
+      <body position="-1.5,0,0" orientation="0,0,0" />
     </box>
-    <box id="be" size="5, 0.1, 0.2" movable="false">
-      <body position="0,-2,0" orientation="0,0,0" />
+    <box id="be" size="4, 0.1, 0.2" movable="false">
+      <body position="0,-1.5,0" orientation="0,0,0" />
     </box>
-    <box id="bw" size="5, 0.1, 0.2" movable="false">
-      <body position="0,2,0" orientation="0,0,0" />
+    <box id="bw" size="4, 0.1, 0.2" movable="false">
+      <body position="0,1.5,0" orientation="0,0,0" />
     </box>
 
     <box id="centerBox" size="1.25, 1.25, 0.2" movable="false">
@@ -91,9 +91,9 @@
     </box>
 
     <distribute>
-      <position method="uniform" min="-1.8,-1.8,0" max="1.8,1.8,0" /> 
+      <position method="uniform" min="-1.5,-1.5,0" max="1.5,1.5,0" /> 
       <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" /> 
-      <entity quantity="10" max_trials="100"> 
+      <entity quantity="10" max_trials="1000"> 
         <foot-bot id="fb" 
                   rab_range = "1">
           <controller config="lua" />

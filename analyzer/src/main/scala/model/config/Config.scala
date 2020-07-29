@@ -33,15 +33,24 @@ object Config {
                             use_dual_encoding: Boolean,
                             options: BooleanNetwork.Options)
 
-}
-
-case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config.BooleanNetwork) {
-  def toJson: String = {
+  object Implicits {
     implicit val f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
     implicit val f2: OFormat[Config.Robot] = Json.format[Config.Robot]
     implicit val f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
     implicit val f4: OFormat[Config.BooleanNetwork] = Json.format[Config.BooleanNetwork]
     implicit val f5: OFormat[Config] = Json.format[Config]
+  }
+
+  def fromJson(json: String): Config = {
+    import Implicits._
+    Json.fromJson[Config](Json.parse(json)).get
+  }
+}
+
+
+case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config.BooleanNetwork) {
+  def toJson: String = {
+    import Config.Implicits._
     Json.toJson(this).toString()
   }
 }

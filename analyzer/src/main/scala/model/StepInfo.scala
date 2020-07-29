@@ -10,11 +10,9 @@ import model.Types.{Fitness, ProximityValues}
  * @param boolean_network optionally, the boolean network schema of the robot
  * @param states the state of the boolean network
  * @param fitness the actual fitness computed by the robot
- * @param proximity the proximity data of the robot's sensors
  */
 case class StepInfo(step: Int,
                     id: String,
                     boolean_network: Option[BooleanNetwork.Schema],
                     states: BooleanNetwork.State,
-                    fitness: Fitness,
-                    proximity: ProximityValues)
+                    fitness: Fitness)
