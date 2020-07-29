@@ -1,13 +1,14 @@
-import java.io.File
-
 import analysis.Functions._
 import model.config.Config
-
-import scala.sys.process.Process
+import utils.Argos
 
 object Main extends App {
 
-  val simulation = Config.Simulation( //seed, robot number
+  val WORKING_DIR = "/home/edo/Desktop/progetto-irs"
+  val SIMULATION_FILE = "config_simulation.argos"
+
+  /** Simulation configuration (will reflect on the .argos file and robots parameters) **/
+  val simulation = Config.Simulation(
     ticks_per_seconds = 10,
     experiment_length = 720,
     network_test_steps = 400,
@@ -15,7 +16,7 @@ object Main extends App {
   val robot = Config.Robot(
     proximity_threshold = 0.1,
     max_wheel_speed = 1.5)
-  val bnOptions =  Config.BooleanNetwork.Options(
+  val bnOptions = Config.BooleanNetwork.Options(
     node_count = 100,
     nodes_input_count = 3,
     bias = 0.79,
@@ -24,22 +25,25 @@ object Main extends App {
     self_loops = false,
     override_output_nodes_bias = true
   )
-  val bn = Config.BooleanNetwork(options = bnOptions)
+  val bn = Config.BooleanNetwork(
+    max_input_rewires = 3,
+    input_rewires_probability = 0.5,
+    max_output_rewires = 1,
+    output_rewires_probability = 0.1,
+    use_dual_encoding = false,
+    options = bnOptions)
   val config = Config(simulation, robot, bn)
 
+  /** Simulation run **/
+  val output = Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config)
 
-  def runSimulation(workingDir: String, simulationFile: String): LazyList[String] =
-    Process(s"argos3 -c $simulationFile", new File(workingDir)).lazyLines
+  /** Parsing each robot's output for each step (mapped in a sequence of StepInfo) **/
+  val result = extractTests(output.map(toStepInfo).collect { case Some(info) => info })
 
-  def runSimulation2(workingDir: String, simulationFile: String, config: Config): LazyList[String] = {
-
-    Process(s"./pargos $simulationFile --CONFIG=${\"}\\'${config.toJson.replaceAll("\"","\\\"")}\\'\" --TICKS=${config.simulation.ticks_per_seconds} --LENGTH=${config.simulation.experiment_length}",
-      new File(workingDir)).lazyLines
-  }
-
-  val lines = runSimulation2(workingDir = "/home/edo/Desktop/progetto-irs", simulationFile = "config_simulation.argos", config)
-  val result = extractTests(lines.map(toStepInfo).collect { case Some(info) => info })
-
-  println(config.toJson)
+  //TODO: save and analyze the results
   println(result.size)
+
+  val max = result.maxBy(_._2.map(_.fitnessValues.last).max)
+  val maxT = max._2.maxBy(_.fitnessValues.last)
+  println(maxT)
 }

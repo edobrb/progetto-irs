@@ -18,7 +18,6 @@
     <!-- * This is the Lua controller to associate to robots * -->
     <!-- ***************************************************** -->
     <lua_controller id="lua">
-      <!-- Normal actuator/sensor configuration follows -->
       <actuators>
         <differential_steering implementation="default" noise_level="0.03" />
         <range_and_bearing implementation="default" />
@@ -29,41 +28,8 @@
         <footbot_motor_ground implementation="rot_z_only" />
         <range_and_bearing implementation="medium" medium="rab" />
       </sensors>
-      <!-- No required configuration -->
-      <params script="multi_robot_controller.lua" 
-        CONFIG=${CONFIG}
-      />
-      <!-- Optionally, you can pass a script as a controller parameter: -->
-      <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->
+      <params script="multi_robot_controller.lua" CONFIG=${CONFIG}/>
     </lua_controller>
-
-<!--
-    <lua_controller id="lua_random">
-     
-      <actuators>
-        <differential_steering implementation="default" />
-        <range_and_bearing implementation="default" />
-      </actuators>
-      <sensors>
-        <range_and_bearing implementation="medium" medium="rab" />
-      </sensors>
-      <params script="robot_controller_random.lua" />
-    </lua_controller>
-    -->
-
-    <!-- ***********************
-	<lua_controller id="lua_random_keep_away">
-      <actuators>
-        <differential_steering implementation="default" />
-        <range_and_bearing implementation="default" />
-      </actuators>
-      <sensors>
-        <range_and_bearing implementation="medium" medium="rab" />
-      </sensors>
-      <params script="robot_controller_random_keep_away.lua" />
-    </lua_controller>
-     -->
-
 
   </controllers>
 
@@ -101,46 +67,6 @@
       </entity> 
     </distribute> 
 
-<!--
-    <distribute>
-      <position method="uniform" min="-1.8,-1.8,0" max="1.8,1.8,0" /> 
-      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" /> 
-      <entity quantity="1" max_trials="100"> 
-        <foot-bot id="fb2" 
-                  rab_range = "1">
-          <controller config="lua_random" />
-        </foot-bot>
-      </entity>
-
-    </distribute> 
--->
-    <!-- ******************
-
-    <distribute>
-      <position method="uniform" min="-1.8,0,0" max="1.8,1.8,0" /> 
-      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" /> 
-      <entity quantity="1" max_trials="100"> 
-        <foot-bot id="fb2" 
-                  rab_range = "2">
-          <controller config="lua_random_keep_away" />
-        </foot-bot>
-      </entity>
-
-    </distribute> 
-
-    <distribute>
-      <position method="uniform" min="-1.8,-1.8,0" max="1.8,0,0" /> 
-      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" /> 
-      <entity quantity="1" max_trials="100"> 
-        <foot-bot id="fb3" 
-                  rab_range = "2">
-          <controller config="lua_random_keep_away" />
-        </foot-bot>
-      </entity>
-
-    </distribute> 
-     -->
-
   </arena>
 
   <!-- ******************* -->
@@ -157,26 +83,5 @@
     <range_and_bearing id="rab" index="grid" />
     <led id="leds" />
   </media>
-
-  <!-- ****************** -->
-  <!-- * Visualization * -->
-  <!-- ****************** -->
-  
-    <visualization>
-
-<qt-opengl lua_editor="false">
-      <camera>
-        <placement idx="0" position="-0.00569879,0.01,4.86243" look_at="-0.00569879,0.01,3.86243" lens_focal_length="20" />
-        <placement idx="1" position="-2,0,2" look_at="0,0,0" lens_focal_length="20" />
-        <placement idx="2" position="0.884183,0.359128,0.490269" look_at="0.924486,-0.486744,-0.0415919" lens_focal_length="20" />
-      </camera>
-    </qt-opengl>
-  
-
-    
-    
-
-  </visualization> 
-  
 
 </argos-configuration>

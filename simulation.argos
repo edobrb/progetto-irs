@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
   	<system threads="0" method="balance_quantity" />
-    <experiment length="720" ticks_per_second="10" random_seed="5" />
+    <experiment length="7200" ticks_per_second="10" random_seed="5" />
   </framework>
 
   <!-- *************** -->
@@ -31,18 +31,7 @@
       </sensors>
       <!-- No required configuration -->
       <params script="multi_robot_controller.lua" 
-        TICKS_PER_SECONDS=10 
-        EXPERIMENT_LENGTH=720
-        NETWORK_TEST_STEPS=400
-
-
-        NODE_COUNT=100
-        NODE_INPUT_COUNT=3
-        BIAS=0.79
-        NETWORK_INPUTS_COUNT=24
-        NETWORK_OUTPUTS_COUNT=2
-        SELF_LOOPS="false"
-        CONFIG='{"simulation":{"ticks_per_seconds":10,"experiment_length":720,"network_test_steps":400,"print_analytics":true},"robot":{"proximity_threshold":0.1,"max_wheel_speed":1.5},"bn":{"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
+        CONFIG='{"simulation":{"ticks_per_seconds":10,"experiment_length":7200,"network_test_steps":400,"print_analytics":true},"robot":{"proximity_threshold":0.1,"max_wheel_speed":1.5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
       />
       <!-- Optionally, you can pass a script as a controller parameter: -->
       <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->

@@ -34,11 +34,11 @@ local PROXIMITY_THRESHOLD = config.robot.proximity_threshold
 local MAX_WHEELS_SPEED = config.robot.max_wheel_speed * TICKS_PER_SECOND
 
 -- BN parameters
-local MAX_INPUT_REWIRES = 3
-local INPUT_REWIRES_PROBABILITY = 0.5
-local MAX_OUTPUT_REWIRES = 1
-local OUTPUT_REWIRES_PROBABILITY = 0.1
-local USE_DUAL_ENCODING = false -- if true the obstacles are encoded as false and the wheels will turn on on false value
+local MAX_INPUT_REWIRES = config.bn.max_input_rewires
+local INPUT_REWIRES_PROBABILITY = config.bn.input_rewires_probability
+local MAX_OUTPUT_REWIRES = config.bn.max_output_rewires
+local OUTPUT_REWIRES_PROBABILITY = config.bn.output_rewires_probability
+local USE_DUAL_ENCODING = config.bn.use_dual_encoding -- if true the obstacles are encoded as false and the wheels will turn on on false value
 local NETWORK_OPTIONS = config.bn.options
 
 function init()
@@ -114,7 +114,7 @@ function step()
 end
 
 function destroy()
-    if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem
+    if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem (called too soon when argos fail to place the robot, destroy and retry to replace)
         if(PRINT_ANALYTICS) then print_network(test_network) end
     end
 end
@@ -144,7 +144,7 @@ function print_network_state(netowrk)
          step = global_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,
-         proximity = argos.get_proximity_values(24)
+         proximity = argos.get_proximity_values(24) --include robot position?
         }
     local res = json.encode(table)
     print(res)

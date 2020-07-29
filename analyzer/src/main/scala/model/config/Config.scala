@@ -5,7 +5,7 @@ import play.api.libs.json.{Json, OFormat}
 
 object Config {
 
-  case class Simulation(ticks_per_seconds: Int,
+  case class Simulation(ticks_per_seconds: Int, //TODO: seed, robot number
                         experiment_length: Int,
                         network_test_steps: Int,
                         print_analytics: Boolean)
@@ -26,12 +26,17 @@ object Config {
 
   }
 
-  case class BooleanNetwork(options: BooleanNetwork.Options)
+  case class BooleanNetwork(max_input_rewires: Int,
+                            input_rewires_probability: Double,
+                            max_output_rewires: Int,
+                            output_rewires_probability: Double,
+                            use_dual_encoding: Boolean,
+                            options: BooleanNetwork.Options)
 
 }
 
 case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config.BooleanNetwork) {
-  def toJson:String = {
+  def toJson: String = {
     implicit val f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
     implicit val f2: OFormat[Config.Robot] = Json.format[Config.Robot]
     implicit val f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
