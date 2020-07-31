@@ -7,7 +7,7 @@ import play.api.libs.json.{Json, OFormat}
 import utils.Benchmark
 
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object Loader extends App {
 
@@ -18,7 +18,7 @@ object Loader extends App {
 
   implicit def dataFormat: OFormat[Data] = Json.format[Data]
 
-  val res: Seq[Data] = filenames.flatMap(filename => {
+  filenames.foreach(filename => {
     print(s"Loading $filename ... ")
     utils.File.readGzippedLines2(filename) {
       content: Seq[String] =>
@@ -31,7 +31,7 @@ object Loader extends App {
     } match {
       case Failure(exception) => println(s"$filename throw an exception: ${exception.getMessage}"); Seq()
       case Success((config: Config, result: Map[RobotId, Seq[TestRun]])) =>
-        result.map {
+        val experimentData = result.map {
           case (robotId, tests) =>
             val fitnessCurve = tests.scanLeft(0.0) {
               case (fitness, test) if test.fitnessValues.last > fitness => test.fitnessValues.last
@@ -39,8 +39,10 @@ object Loader extends App {
             }.drop(1)
             Data(filename, config, robotId, fitnessCurve, tests.map(_.bn))
         }
+        System.gc()
+        val r = Runtime.getRuntime
+        println("Memory usage: " + (r.totalMemory - r.freeMemory) + " of " + r.maxMemory)
+        utils.File.write(filename + ".json", Json.prettyPrint(Json.toJson(experimentData)))
     }
   })
-
-  utils.File.write(Experiments.DATA_FOLDER + "/result.json", Json.prettyPrint(Json.toJson(res)))
 }
