@@ -34,7 +34,7 @@ object Config {
                             options: BooleanNetwork.Options,
                             initial: Option[model.BooleanNetwork.Schema])
 
-  object Implicits {
+  object JsonFormats {
     implicit def f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
     implicit def f2: OFormat[Config.Robot] = Json.format[Config.Robot]
     implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
@@ -44,7 +44,7 @@ object Config {
   }
 
   def fromJson(json: String): Config = {
-    import Implicits._
+    import JsonFormats._
     Json.fromJson[Config](Json.parse(json)).get
   }
 }
@@ -52,7 +52,9 @@ object Config {
 
 case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config.BooleanNetwork) {
   def toJson: String = {
-    import Config.Implicits._
+    import Config.JsonFormats._
     Json.toJson(this).toString()
   }
+
+  def changeBias(newBias:Double): Config = copy(bn = bn.copy(options = bn.options.copy(bias = newBias)))
 }

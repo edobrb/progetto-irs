@@ -1,6 +1,6 @@
 package model
 
-import model.Types.{Fitness, ProximityValues}
+import model.Types.{Fitness, ProximityValues, RobotId}
 
 /**
  * The basic information that every robot of the simulation generates every step.
@@ -12,7 +12,7 @@ import model.Types.{Fitness, ProximityValues}
  * @param fitness the actual fitness computed by the robot
  */
 case class StepInfo(step: Int,
-                    id: String,
+                    id: RobotId,
                     boolean_network: Option[BooleanNetwork.Schema],
                     states: BooleanNetwork.State,
                     fitness: Fitness)

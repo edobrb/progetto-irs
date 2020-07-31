@@ -29,7 +29,7 @@ object File {
     })
   }
 
-  def writeGzippedLines(filename: String, data: Iterable[String], level:Int = Deflater.BEST_COMPRESSION): Try[Done] = Try {
+  def writeGzippedLines(filename: String, data: Iterable[String], level: Int = Deflater.BEST_COMPRESSION): Try[Done] = Try {
     val fos = new FileOutputStream(filename)
     class MyGZIPOutputStream(out: OutputStream) extends GZIPOutputStream(out) {
       `def`.setLevel(level)
@@ -51,6 +51,15 @@ object File {
       val res = buffered.lines().iterator().asScala.to(LazyList)
       (res, source)
     })
+  }
+
+  def readGzippedLines2[T](fileName: String)(f: Seq[String] => T): Try[T] = {
+    readGzippedLines(fileName).map {
+      case (value, source) =>
+        val res = f(value)
+        source.close()
+        res
+    }
   }
 
   def exists(fileName: String): Boolean = java.nio.file.Files.exists(Paths.get(fileName))

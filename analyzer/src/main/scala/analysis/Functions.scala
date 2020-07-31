@@ -1,5 +1,6 @@
 package analysis
 
+import model.Types.RobotId
 import model.{BooleanNetwork, StepInfo, TestRun}
 import play.api.libs.json.{JsError, JsSuccess, Json, OFormat}
 
@@ -18,7 +19,7 @@ object Functions {
       case Failure(_) => None
     }
 
-  def extractTests(data: Iterable[StepInfo]): Map[String, Seq[TestRun]] = data.groupBy(_.id).map {
+  def extractTests(data: Iterable[StepInfo]): Map[RobotId, Seq[TestRun]] = data.groupBy(_.id).map {
     case (id, steps) =>
       (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[TestRun]()) {
         case (l :+ last, StepInfo(step, id, None, states, fitness)) =>

@@ -1,42 +1,46 @@
-import java.util.concurrent.ForkJoinPool
-
 import analysis.Functions
-import model.TestRun
+import model.Types.RobotId
 import model.config.Config
+import model.config.Config.JsonFormats._
+import model.{BooleanNetwork, TestRun}
+import play.api.libs.json.{Json, OFormat}
+import utils.Benchmark
 
-import scala.collection.parallel.CollectionConverters._
-import scala.collection.parallel.ForkJoinTaskSupport
+import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
 object Loader extends App {
 
-  val DATA_FOLDER = "/home/edo/Desktop/progetto-irs/tmp"
+  //val filenames = Experiments.configs.keys.flatMap(f => (1 to 30).map(Experiments.DATA_FOLDER + "/" + f + "-" + _))
+  val filenames = Seq("0.1", "0.5", "0.79").flatMap(f => (1 to 30).map(Experiments.DATA_FOLDER + "/" + f + "-" + _))
 
-  val filenames = Seq("0.1", "0.5", "0.79").flatMap(f => (1 to 30).map(DATA_FOLDER + "/" + f + "-" + _)).par
-  filenames.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(1))
-  val res = filenames.flatMap(filename => {
-    println(s"Loading $filename ...")
-    val data: Try[(Config, Map[String, Seq[TestRun]])] = utils.File.readGzippedLines(filename).map {
-      case (value, source) =>
-        val config = Config.fromJson(value.head)
-        val results = Functions.extractTests(value.map(Functions.toStepInfo).collect { case Some(info) => info })
-        source.close()
-        (config, results)
-    }
+  case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], bns: Seq[BooleanNetwork.Schema])
 
-    data match {
-      case Failure(exception) => println(s"$filename throw an exception: ${exception.getMessage}"); Seq()
-      case Success((config, result)) =>
-        val (robotId, tests) = result.maxBy {
-          case (robotId, tests) => tests.map(_.fitnessValues.last).max
+  implicit def dataFormat: OFormat[Data] = Json.format[Data]
+
+  val res: Seq[Data] = filenames.flatMap(filename => {
+    print(s"Loading $filename ... ")
+    utils.File.readGzippedLines2(filename) {
+      content: Seq[String] =>
+        val config: Config = Config.fromJson(content.head)
+        val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
+          Functions.extractTests(content.map(Functions.toStepInfo).collect { case Some(info) => info })
         }
-        val bestTest: TestRun = tests.maxBy(_.fitnessValues.last)
-        println(bestTest.states.last._2 + " " + bestTest.bn)
-        Seq((filename, robotId, bestTest, config))
+        println(s"done. (${time.toSeconds} s)")
+        (config, results)
+    } match {
+      case Failure(exception) => println(s"$filename throw an exception: ${exception.getMessage}"); Seq()
+      case Success((config: Config, result: Map[RobotId, Seq[TestRun]])) =>
+        result.map {
+          case (robotId, tests) =>
+            val fitnessCurve = tests.scanLeft(0.0) {
+              case (fitness, test) if test.fitnessValues.last > fitness => test.fitnessValues.last
+              case (fitness, _) => fitness
+            }.drop(1)
+            Data(filename, config, robotId, fitnessCurve, tests.map(_.bn))
+        }
     }
   })
 
-  val top = res.maxBy(_._3.states.last._2)
-  println(top)
-  //Test.output(Test.config.copy(bn = Test.bn.copy(initial = Some(top._3.bn))), visualization = true).foreach(println)
+  utils.File.write(Experiments.DATA_FOLDER + "/result.json", Json.prettyPrint(Json.toJson(res)))
 }
