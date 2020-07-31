@@ -12,6 +12,8 @@ object Experiments extends App {
 
   def DATA_FOLDER = "/home/edo/Desktop/progetto-irs/tmp"
 
+  def EXPERIMENT_REPETITION = 30
+
   /** Simulation configuration (will reflect on the .argos file and robots parameters) **/
   def simulation = Config.Simulation(
     ticks_per_seconds = 10,
@@ -50,9 +52,13 @@ object Experiments extends App {
     c => ("b0.79", c.changeBias(0.79)),
   )
 
-  def rewiresVariation: Seq[Config => (String, Config)] = Seq(
-    c => ("mor1", c.copy(bn = c.bn.copy(max_output_rewires = 1))),
-    c => ("mor0", c.copy(bn = c.bn.copy(max_output_rewires = 0))),
+  def outputRewiresVariation: Seq[Config => (String, Config)] = Seq(
+    c => ("or1", c.copy(bn = c.bn.copy(max_output_rewires = 1))),
+    //c => ("or0", c.copy(bn = c.bn.copy(max_output_rewires = 0))),
+  )
+  def inputRewiresVariation: Seq[Config => (String, Config)] = Seq(
+    c => ("ir2", c.copy(bn = c.bn.copy(max_input_rewires = 2))),
+    //c => ("ir1", c.copy(bn = c.bn.copy(max_input_rewires = 1))),
   )
 
   @scala.annotation.tailrec
@@ -70,14 +76,15 @@ object Experiments extends App {
   }
 
   /** All configurations based on defaultConfig and configurations variations **/
-  def configs: Map[String, Config] = combineConfigVariations(Map("default" -> defaultConfig), Seq(biasVariation))
+  def configs: Map[String, Config] = combineConfigVariations(Map("default" -> defaultConfig),
+    Seq(biasVariation, outputRewiresVariation, inputRewiresVariation))
 
   /** Simulation standard output (by lines) **/
   def runSimulation(config: Config, visualization: Boolean = false): LazyList[String] =
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
-  def runExperiment(name: String, config: Config, times: Int, offset: Int = 0): Unit = {
-    1 to times foreach (t => {
+  def runExperiments(name: String, config: Config, offset: Int = 0): Unit = {
+    1 to EXPERIMENT_REPETITION foreach (t => {
       val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * 10
       Benchmark.time {
         println(s"Running test $t with bias ${config.bn.options.bias}")
@@ -96,6 +103,6 @@ object Experiments extends App {
 
 
   configs.par.foreach {
-    case (name, config) => runExperiment(name, config, 30, 0)
+    case (name, config) => runExperiments(name, config, 0)
   }
 }

@@ -7,6 +7,6 @@ object Benchmark {
   def time[T](f: => T):(T,FiniteDuration) = {
     val start = System.currentTimeMillis()
     val res = f
-    (res, (System.currentTimeMillis() - start) millis)
+    (res, (System.currentTimeMillis() - start).millis)
   }
 }

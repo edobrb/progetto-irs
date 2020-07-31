@@ -3,6 +3,7 @@ import model.TestRun
 import model.config.Config.JsonFormats._
 import org.knowm.xchart.{QuickChart, XYChart}
 import play.api.libs.json.{Json, OFormat}
+import scala.collection.parallel.CollectionConverters._
 
 object Analyzer extends App {
 
@@ -10,11 +11,12 @@ object Analyzer extends App {
 
   val filenames = Seq("0.1", "0.5", "0.79").flatMap(f => (1 to 30).map(Experiments.DATA_FOLDER + "/" + f + "-" + _ + ".json"))
 
-  val experimentsResults: Seq[Data] = filenames.flatMap { filename =>
+  val experimentsResults: Seq[Data] = filenames.par.flatMap { filename =>
     utils.File.read(filename).map { str =>
-      Json.fromJson[Seq[Data]](Json.parse(str)).getOrElse(Nil)
+      println("Parsing "+filename)
+      Json.fromJson[Seq[Data]](Json.parse(str)).getOrElse(Nil).map(_.copy(bns = Nil))
     }.getOrElse(Nil)
-  }
+  }.toList
 
   def showAveragedFitnessCharts() =
     experimentsResults.groupBy(_.config.bn.options.bias).map {
