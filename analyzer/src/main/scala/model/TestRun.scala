@@ -11,7 +11,7 @@ import model.Types.{Fitness, ProximityValues}
  * @param states the sequence of the boolean network states, proximity values, fitness value
  */
 case class TestRun(bn: BooleanNetwork.Schema, states: Seq[(BooleanNetwork.State, Fitness)]) {
-  def +=(s: BooleanNetwork.State, f: Fitness): TestRun =
+  def add(s: BooleanNetwork.State, f: Fitness): TestRun =
     this.copy(states = states :+ (s, f))
 
   def fitnessValues: Seq[Fitness] = states.map(_._2)

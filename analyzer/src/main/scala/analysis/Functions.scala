@@ -22,9 +22,9 @@ object Functions {
     case (id, steps) =>
       (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[TestRun]()) {
         case (l :+ last, StepInfo(step, id, None, states, fitness)) =>
-          l :+ (last += (states, fitness))
+          l :+ (last add (states, fitness))
         case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn == last.bn =>
-          l :+ (last += (states, fitness))
+          l :+ (last add (states, fitness))
         case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn != last.bn =>
           l :+ last :+ TestRun(bn, Seq((states, fitness)))
         case (Nil, StepInfo(step, id, Some(bn), states, fitness)) =>
