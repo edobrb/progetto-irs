@@ -1,8 +1,12 @@
+import java.util.concurrent.ForkJoinPool
+
 import model.config.Config
 import model.config.Config.JsonFormats._
 import utils.{Argos, Benchmark}
 
 import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.ForkJoinTaskSupport
+import scala.util.Random
 
 object Experiments extends App {
 
@@ -10,9 +14,11 @@ object Experiments extends App {
 
   def SIMULATION_FILE = "config_simulation.argos"
 
-  def DATA_FOLDER = "/home/edo/Desktop/progetto-irs/tmp"
+  def DATA_FOLDER = "/mnt/hgfs/data"
 
-  def EXPERIMENT_REPETITION = 30
+  def EXPERIMENT_REPETITION = 31
+
+  def EXPERIMENT_REPETITION_OFFSET = 0
 
   /** Simulation configuration (will reflect on the .argos file and robots parameters) **/
   def simulation = Config.Simulation(
@@ -38,7 +44,7 @@ object Experiments extends App {
     max_input_rewires = 2,
     input_rewires_probability = 1,
     max_output_rewires = 0,
-    output_rewires_probability = 0,
+    output_rewires_probability = 1,
     use_dual_encoding = false,
     options = bnOptions,
     initial = None)
@@ -54,8 +60,9 @@ object Experiments extends App {
 
   def outputRewiresVariation: Seq[Config => (String, Config)] = Seq(
     c => ("or1", c.copy(bn = c.bn.copy(max_output_rewires = 1))),
-    //c => ("or0", c.copy(bn = c.bn.copy(max_output_rewires = 0))),
+    c => ("or0", c.copy(bn = c.bn.copy(max_output_rewires = 0))),
   )
+
   def inputRewiresVariation: Seq[Config => (String, Config)] = Seq(
     c => ("ir2", c.copy(bn = c.bn.copy(max_input_rewires = 2))),
     //c => ("ir1", c.copy(bn = c.bn.copy(max_input_rewires = 1))),
@@ -79,30 +86,37 @@ object Experiments extends App {
   def configs: Map[String, Config] = combineConfigVariations(Map("default" -> defaultConfig),
     Seq(biasVariation, outputRewiresVariation, inputRewiresVariation))
 
+  /** Filenames of experiments and the relative config **/
+  def experiments: Map[String, Config] = configs.flatMap {
+    case (experimentName, config) =>
+      ((1 + EXPERIMENT_REPETITION_OFFSET) to EXPERIMENT_REPETITION).map(i => (experimentName + "-" + i, config))
+  }
+
   /** Simulation standard output (by lines) **/
   def runSimulation(config: Config, visualization: Boolean = false): LazyList[String] =
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
-  def runExperiments(name: String, config: Config, offset: Int = 0): Unit = {
-    1 to EXPERIMENT_REPETITION foreach (t => {
-      val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * 10
-      Benchmark.time {
-        println(s"Running test $t with bias ${config.bn.options.bias}")
-        val out = LazyList(config.toJson) ++ runSimulation(config).zipWithIndex.map {
-          case (str, i) if i % 1000 == 0 =>
-            println(s"Running test $t with bias ${config.bn.options.bias}: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
-            str
-          case (str, _) => str
+  def runExperiments(): Unit = {
+    val parFilenames = experiments.par
+    parFilenames.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(3))
+    parFilenames.foreach {
+      case (experimentName, config) =>
+        Thread.sleep(Random.nextInt(100))
+        val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * 10
+        Benchmark.time {
+          println(s"Starting experiment $experimentName")
+          val out = LazyList(config.toJson) ++ runSimulation(config).zipWithIndex.map {
+            case (str, i) if i % 10000 == 0 =>
+              println(s"Running experiment $experimentName: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
+              str
+            case (str, _) => str
+          }
+          utils.File.writeGzippedLines(DATA_FOLDER + "/" + experimentName, out)
+        } match {
+          case (_, time) => println(s"Done experiment $experimentName (${time.toSeconds} s)")
         }
-        utils.File.writeGzippedLines(DATA_FOLDER + "/" + name + "-" + (t + offset), out)
-      } match {
-        case (_, time) => println(s"Done test $t with bias ${config.bn.options.bias} (${time.toSeconds} s)")
-      }
-    })
+    }
   }
 
-
-  configs.par.foreach {
-    case (name, config) => runExperiments(name, config, 0)
-  }
+  runExperiments()
 }

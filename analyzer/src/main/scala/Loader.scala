@@ -1,3 +1,5 @@
+import java.util.concurrent.ForkJoinPool
+
 import analysis.Functions
 import model.Types.RobotId
 import model.config.Config
@@ -8,18 +10,20 @@ import utils.Benchmark
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
-
+import scala.collection.parallel.CollectionConverters._
+import scala.collection.parallel.ForkJoinTaskSupport
 object Loader extends App {
 
-  //val filenames = Experiments.configs.keys.flatMap(f => (1 to 30).map(Experiments.DATA_FOLDER + "/" + f + "-" + _))
-  val filenames = Seq("0.1", "0.5", "0.79").flatMap(f => (1 to 30).map(Experiments.DATA_FOLDER + "/" + f + "-" + _))
+  def filenames: Iterable[String] = Experiments.experiments.keys.map(Experiments.DATA_FOLDER + "/" + _)
 
   case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], bns: Seq[BooleanNetwork.Schema])
 
   implicit def dataFormat: OFormat[Data] = Json.format[Data]
 
-  filenames.foreach(filename => {
-    print(s"Loading $filename ... ")
+  val parFiles = filenames.par
+  parFiles.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(2))
+  parFiles.foreach(filename => {
+    println(s"Loading $filename ... ")
     utils.File.readGzippedLines2(filename) {
       content: Seq[String] =>
         val config: Config = Config.fromJson(content.head)
@@ -36,7 +40,7 @@ object Loader extends App {
             val fitnessCurve = tests.scanLeft(0.0) {
               case (fitness, test) if test.fitnessValues.last > fitness => test.fitnessValues.last
               case (fitness, _) => fitness
-            }.drop(1)
+            }.drop(1) //remove the initial 0.0
             Data(filename, config, robotId, fitnessCurve, tests.map(_.bn))
         }
         System.gc()
