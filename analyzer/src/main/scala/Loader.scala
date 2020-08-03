@@ -8,15 +8,16 @@ import model.{BooleanNetwork, TestRun}
 import play.api.libs.json.{Json, OFormat}
 import utils.Benchmark
 
-import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
 import scala.collection.parallel.CollectionConverters._
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.concurrent.duration.FiniteDuration
+import scala.util.{Failure, Success}
+
 object Loader extends App {
 
   def filenames: Iterable[String] = Experiments.experiments.keys.map(Experiments.DATA_FOLDER + "/" + _)
 
-  case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], bns: Seq[BooleanNetwork.Schema])
+  case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], fitness_values: Seq[Double], bestBn: BooleanNetwork.Schema)
 
   implicit def dataFormat: OFormat[Data] = Json.format[Data]
 
@@ -41,7 +42,7 @@ object Loader extends App {
               case (fitness, test) if test.fitnessValues.last > fitness => test.fitnessValues.last
               case (fitness, _) => fitness
             }.drop(1) //remove the initial 0.0
-            Data(filename, config, robotId, fitnessCurve, tests.map(_.bn))
+            Data(filename, config, robotId, fitnessCurve, tests.map(_.fitnessValues.last), tests.maxBy(_.fitnessValues.last).bn)
         }
         System.gc()
         val r = Runtime.getRuntime

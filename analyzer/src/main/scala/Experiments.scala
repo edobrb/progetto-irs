@@ -16,7 +16,7 @@ object Experiments extends App {
 
   def DATA_FOLDER = "/mnt/hgfs/data"
 
-  def EXPERIMENT_REPETITION = 31
+  def EXPERIMENT_REPETITION = 30
 
   def EXPERIMENT_REPETITION_OFFSET = 0
 
@@ -65,7 +65,11 @@ object Experiments extends App {
 
   def inputRewiresVariation: Seq[Config => (String, Config)] = Seq(
     c => ("ir2", c.copy(bn = c.bn.copy(max_input_rewires = 2))),
-    //c => ("ir1", c.copy(bn = c.bn.copy(max_input_rewires = 1))),
+  )
+
+  def selfLoopVariation: Seq[Config => (String, Config)] = Seq(
+    c => ("sl", c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true)))),
+    c => ("", c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))),
   )
 
   @scala.annotation.tailrec
@@ -75,7 +79,8 @@ object Experiments extends App {
       case variation :: tail =>
         val newConfigs = configs.flatMap {
           case (name, config) => variation.map(_.apply(config)).map {
-            case (str, config) => (name + "-" + str, config)
+            case ("", newConfig) => (name, newConfig)
+            case (variationName, newConfig) => (name + "-" + variationName, newConfig)
           }
         }
         combineConfigVariations(newConfigs, tail)
@@ -84,7 +89,7 @@ object Experiments extends App {
 
   /** All configurations based on defaultConfig and configurations variations **/
   def configs: Map[String, Config] = combineConfigVariations(Map("default" -> defaultConfig),
-    Seq(biasVariation, outputRewiresVariation, inputRewiresVariation))
+    Seq(biasVariation, outputRewiresVariation, inputRewiresVariation, selfLoopVariation))
 
   /** Filenames of experiments and the relative config **/
   def experiments: Map[String, Config] = configs.flatMap {
@@ -98,7 +103,7 @@ object Experiments extends App {
 
   def runExperiments(): Unit = {
     val parFilenames = experiments.par
-    parFilenames.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(3))
+    parFilenames.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(8))
     parFilenames.foreach {
       case (experimentName, config) =>
         Thread.sleep(Random.nextInt(100))
@@ -118,5 +123,6 @@ object Experiments extends App {
     }
   }
 
+  println(s"Running ${experiments.size} experiments...")
   runExperiments()
 }
