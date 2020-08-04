@@ -17,8 +17,8 @@ object Loader extends App {
 
   case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], fitness_values: Seq[Double], bestBn: BooleanNetwork.Schema)
 
-  implicit val dataFormat: OFormat[Data] = Json.format[Data]
-  implicit val siFormat: OFormat[StepInfo] = Json.format[StepInfo]
+  implicit def dataFormat: OFormat[Data] = Json.format[Data]
+  implicit def siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
   def toStepInfo(jsonStep: String): Option[StepInfo] =
     Try(Json.parse(jsonStep)) match {
