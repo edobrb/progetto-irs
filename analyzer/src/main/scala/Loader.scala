@@ -1,15 +1,15 @@
-import analysis.Functions
 import model.Types.RobotId
 import model.config.Config
 import model.config.Config.JsonFormats._
-import model.{BooleanNetwork, TestRun}
-import play.api.libs.json.{Json, OFormat}
+import model.{BooleanNetwork, StepInfo, TestRun}
+import play.api.libs.json.{JsError, JsSuccess, Json, OFormat}
 import utils.Benchmark
 import utils.RichParIterable._
+import utils.{Argos, Benchmark}
 
 import scala.collection.parallel.CollectionConverters._
 import scala.concurrent.duration.FiniteDuration
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object Loader extends App {
 
@@ -17,15 +17,40 @@ object Loader extends App {
 
   case class Data(filename: String, config: Config, robot_id: String, fitness_curve: Seq[Double], fitness_values: Seq[Double], bestBn: BooleanNetwork.Schema)
 
-  implicit def dataFormat: OFormat[Data] = Json.format[Data]
+  implicit val dataFormat: OFormat[Data] = Json.format[Data]
+  implicit val siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
-  filenames.toList.par.parallelism(2).foreach(filename => {
+  def toStepInfo(jsonStep: String): Option[StepInfo] =
+    Try(Json.parse(jsonStep)) match {
+      case Success(json) => Json.fromJson[StepInfo](json) match {
+        case JsSuccess(info, _) => Some(info)
+        case JsError(_) => None
+      }
+      case Failure(_) => None
+    }
+
+  def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
+    data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
+      case (id, steps) =>
+        (id, steps.toSeq.sortBy(_.step).foldLeft(Seq[TestRun]()) {
+          case (l :+ last, StepInfo(step, id, None, states, fitness)) =>
+            l :+ (last add(states, fitness))
+          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn == last.bn =>
+            l :+ (last add(states, fitness))
+          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn != last.bn =>
+            l :+ last :+ TestRun(bn, Seq((states, fitness)))
+          case (Nil, StepInfo(step, id, Some(bn), states, fitness)) =>
+            Seq(TestRun(bn, Seq((states, fitness))))
+        })
+    }
+
+  filenames.toList.par.parallelism(4).foreach(filename => {
     println(s"Loading $filename ... ")
     utils.File.readGzippedLines2(filename) {
       content: Iterator[String] =>
         val config: Config = Config.fromJson(content.next())
         val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-          Functions.extractTests(content.map(Functions.toStepInfo).collect { case Some(info) => info }.to(LazyList))
+          extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
         }
         println(s"done. (${time.toSeconds} s)")
         (config, results)

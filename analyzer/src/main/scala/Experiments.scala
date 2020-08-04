@@ -102,6 +102,8 @@ object Experiments extends App {
       case Params(7200, 10, 0.79, 2, 1, true) => "default-b0.79-or1-ir2-sl"
 
       case Params(14400, 20, 0.79, 2, 1, false) => "default2-b0.79-or1-ir2"
+
+      case Params(20000, 10, 0.79, 2, 1, false) => "default3-b0.79-or1-ir2"
     }) -> c
   }
 
@@ -115,8 +117,8 @@ object Experiments extends App {
       ((1 + EXPERIMENT_REPETITION_OFFSET) to EXPERIMENT_REPETITION).map(i => (experimentName + "-" + i, config))
   }
 
-  /*def experiments: Map[String, Config] = (1 to 50).map(i => {
-    val (name, config) = configName(defaultConfig.copy(simulation = defaultConfig.simulation.copy(experiment_length = 14400, override_robot_count = Some(20)),
+  /*def experiments: Map[String, Config] = (1 to 20).map(i => {
+    val (name, config) = configName(defaultConfig.copy(simulation = defaultConfig.simulation.copy(experiment_length = 20000, override_robot_count = Some(10)),
       bn = defaultConfig.bn.copy(max_output_rewires = 1, options = defaultConfig.bn.options.copy(bias = 0.79, self_loops = false))))
     (name + "-" + i, config)
   }).toMap*/
@@ -126,21 +128,26 @@ object Experiments extends App {
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
   def runExperiments(): Unit = {
-    experiments.toList.par.parallelism(4).foreach {
+    experiments.toList.par.parallelism(7).foreach {
       case (experimentName, config) =>
-        Thread.sleep(Random.nextInt(100))
-        val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * config.simulation.robot_count
-        Benchmark.time {
-          println(s"Starting experiment $experimentName")
-          val out = (config.toJson +: runSimulation(config)).zipWithIndex.map {
-            case (str, i) if i % 1000 == 0 =>
-              println(s"Running experiment $experimentName: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
-              str
-            case (str, _) => str
+        val filename = DATA_FOLDER + "/" + experimentName
+        if (utils.File.exists(filename)) {
+          Thread.sleep(Random.nextInt(100))
+          val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * config.simulation.robot_count
+          Benchmark.time {
+            println(s"Starting experiment $experimentName")
+            val out = (config.toJson +: runSimulation(config)).zipWithIndex.map {
+              case (str, i) if i % 1000 == 0 =>
+                println(s"Running experiment $experimentName: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
+                str
+              case (str, _) => str
+            }
+            utils.File.writeGzippedLines(filename, out)
+          } match {
+            case (_, time) => println(s"Done experiment $experimentName (${time.toSeconds} s)")
           }
-          utils.File.writeGzippedLines(DATA_FOLDER + "/" + experimentName, out)
-        } match {
-          case (_, time) => println(s"Done experiment $experimentName (${time.toSeconds} s)")
+        } else {
+          println("Skipping " + experimentName)
         }
     }
   }

@@ -1,23 +1,21 @@
 import Loader.{Data, dataFormat}
 import model.TestRun
 import model.config.Config
-import model.config.Config.JsonFormats._
+
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.style.BoxStyler.BoxplotCalCulationMethod
 import org.knowm.xchart.{SwingWrapper, _}
 import play.api.libs.json.{Json, OFormat}
 
 object Analyzer extends App {
-
-  implicit def testRunFormat: OFormat[TestRun] = Json.format[TestRun]
-
+  
   def RESULT_FOLDER = Experiments.DATA_FOLDER + "/results"
 
   def filenames: Iterable[String] = Loader.filenames.map(_ + ".json")
 
   lazy val rawData: Iterable[Data] = filenames.flatMap { filename =>
     utils.File.read(filename).map { str =>
-      println("Parsing " + filename)
+      println(s"Parsing $filename (${str.length} chars)")
       Json.fromJson[Seq[Data]](Json.parse(str)).getOrElse(Nil) //.map(_.copy(bns = Nil))
     }.getOrElse(Nil)
   }
