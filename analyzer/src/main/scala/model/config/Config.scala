@@ -5,10 +5,13 @@ import play.api.libs.json.{Json, OFormat}
 
 object Config {
 
-  case class Simulation(ticks_per_seconds: Int, //TODO: seed, robot number
+  case class Simulation(ticks_per_seconds: Int, //TODO: seed
                         experiment_length: Int,
                         network_test_steps: Int,
-                        print_analytics: Boolean)
+                        override_robot_count: Option[Int],
+                        print_analytics: Boolean) {
+    def robot_count: Int = override_robot_count.getOrElse(10)
+  }
 
   case class Robot(proximity_threshold: Double,
                    max_wheel_speed: Double)
@@ -36,10 +39,15 @@ object Config {
 
   object JsonFormats {
     implicit def f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
+
     implicit def f2: OFormat[Config.Robot] = Json.format[Config.Robot]
+
     implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
+
     implicit def f4: OFormat[Config.BooleanNetwork] = Json.format[Config.BooleanNetwork]
+
     implicit def f5: OFormat[model.BooleanNetwork.Schema] = Json.format[model.BooleanNetwork.Schema]
+
     implicit def f6: OFormat[Config] = Json.format[Config]
   }
 
@@ -55,6 +63,4 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
     import Config.JsonFormats._
     Json.toJson(this).toString()
   }
-
-  def changeBias(newBias:Double): Config = copy(bn = bn.copy(options = bn.options.copy(bias = newBias)))
 }

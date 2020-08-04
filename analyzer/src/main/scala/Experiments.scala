@@ -1,11 +1,10 @@
-import java.util.concurrent.ForkJoinPool
-
 import model.config.Config
 import model.config.Config.JsonFormats._
+import utils.RichIterator._
+import utils.RichParIterable._
 import utils.{Argos, Benchmark}
 
 import scala.collection.parallel.CollectionConverters._
-import scala.collection.parallel.ForkJoinTaskSupport
 import scala.util.Random
 
 object Experiments extends App {
@@ -25,6 +24,7 @@ object Experiments extends App {
     ticks_per_seconds = 10,
     experiment_length = 7200,
     network_test_steps = 400,
+    override_robot_count = None,
     print_analytics = true)
 
   def robot = Config.Robot(
@@ -34,7 +34,7 @@ object Experiments extends App {
   def bnOptions = Config.BooleanNetwork.Options(
     node_count = 100,
     nodes_input_count = 3,
-    bias = 0.79, //0.1, 0.5, 0.79
+    bias = 0.79,
     network_inputs_count = 24,
     network_outputs_count = 2,
     self_loops = false,
@@ -52,44 +52,62 @@ object Experiments extends App {
   def defaultConfig: Config = Config(simulation, robot, bn)
 
   /** Configuration variations **/
-  def biasVariation: Seq[Config => (String, Config)] = Seq(
-    c => ("b0.1", c.changeBias(0.1)),
-    c => ("b0.5", c.changeBias(0.5)),
-    c => ("b0.79", c.changeBias(0.79)),
+  def biasVariation: Seq[Config => Config] = Seq(
+    c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
+    c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
+    c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79))),
   )
 
-  def outputRewiresVariation: Seq[Config => (String, Config)] = Seq(
-    c => ("or1", c.copy(bn = c.bn.copy(max_output_rewires = 1))),
-    c => ("or0", c.copy(bn = c.bn.copy(max_output_rewires = 0))),
+  def outputRewiresVariation: Seq[Config => Config] = Seq(
+    c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
+    c => c.copy(bn = c.bn.copy(max_output_rewires = 0)),
   )
 
-  def inputRewiresVariation: Seq[Config => (String, Config)] = Seq(
-    c => ("ir2", c.copy(bn = c.bn.copy(max_input_rewires = 2))),
-  )
-
-  def selfLoopVariation: Seq[Config => (String, Config)] = Seq(
-    c => ("sl", c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true)))),
-    c => ("", c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))),
+  def selfLoopVariation: Seq[Config => Config] = Seq(
+    c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
+    c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false))),
   )
 
   @scala.annotation.tailrec
-  def combineConfigVariations(configs: Map[String, Config], variations: Seq[Seq[Config => (String, Config)]]): Map[String, Config] = {
+  def combineConfigVariations(configs: Seq[Config], variations: Seq[Seq[Config => Config]]): Seq[Config] = {
     variations match {
       case Nil => configs
       case variation :: tail =>
-        val newConfigs = configs.flatMap {
-          case (name, config) => variation.map(_.apply(config)).map {
-            case ("", newConfig) => (name, newConfig)
-            case (variationName, newConfig) => (name + "-" + variationName, newConfig)
-          }
-        }
+        val newConfigs = configs.flatMap(config => variation.map(_.apply(config)))
         combineConfigVariations(newConfigs, tail)
     }
   }
 
+  /** Function that assign names to configs **/
+  def configName(c: Config): (String, Config) = {
+    object Params {
+      def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean)] =
+        Some((arg.simulation.experiment_length, arg.simulation.robot_count, arg.bn.options.bias, arg.bn.max_input_rewires, arg.bn.max_output_rewires, arg.bn.options.self_loops))
+    }
+    (c match {
+      case Params(7200, 10, 0.1, 2, 0, false) => "default-b0.1-or0-ir2"
+      case Params(7200, 10, 0.5, 2, 0, false) => "default-b0.5-or0-ir2"
+      case Params(7200, 10, 0.79, 2, 0, false) => "default-b0.79-or0-ir2"
+
+      case Params(7200, 10, 0.1, 2, 1, false) => "default-b0.1-or1-ir2"
+      case Params(7200, 10, 0.5, 2, 1, false) => "default-b0.5-or1-ir2"
+      case Params(7200, 10, 0.79, 2, 1, false) => "default-b0.79-or1-ir2"
+
+      case Params(7200, 10, 0.1, 2, 0, true) => "default-b0.1-or0-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 0, true) => "default-b0.5-or0-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 0, true) => "default-b0.79-or0-ir2-sl"
+
+      case Params(7200, 10, 0.1, 2, 1, true) => "default-b0.1-or1-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 1, true) => "default-b0.5-or1-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 1, true) => "default-b0.79-or1-ir2-sl"
+
+      case Params(14400, 20, 0.79, 2, 1, false) => "default2-b0.79-or1-ir2"
+    }) -> c
+  }
+
   /** All configurations based on defaultConfig and configurations variations **/
-  def configs: Map[String, Config] = combineConfigVariations(Map("default" -> defaultConfig),
-    Seq(biasVariation, outputRewiresVariation, inputRewiresVariation, selfLoopVariation))
+  def configs: Map[String, Config] = combineConfigVariations(Seq(defaultConfig),
+    Seq(biasVariation, outputRewiresVariation, selfLoopVariation)).map(configName).toMap
 
   /** Filenames of experiments and the relative config **/
   def experiments: Map[String, Config] = configs.flatMap {
@@ -97,21 +115,25 @@ object Experiments extends App {
       ((1 + EXPERIMENT_REPETITION_OFFSET) to EXPERIMENT_REPETITION).map(i => (experimentName + "-" + i, config))
   }
 
+  /*def experiments: Map[String, Config] = (1 to 50).map(i => {
+    val (name, config) = configName(defaultConfig.copy(simulation = defaultConfig.simulation.copy(experiment_length = 14400, override_robot_count = Some(20)),
+      bn = defaultConfig.bn.copy(max_output_rewires = 1, options = defaultConfig.bn.options.copy(bias = 0.79, self_loops = false))))
+    (name + "-" + i, config)
+  }).toMap*/
+
   /** Simulation standard output (by lines) **/
-  def runSimulation(config: Config, visualization: Boolean = false): LazyList[String] =
+  def runSimulation(config: Config, visualization: Boolean = false): Iterator[String] =
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
   def runExperiments(): Unit = {
-    val parFilenames = experiments.par
-    parFilenames.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(8))
-    parFilenames.foreach {
+    experiments.toList.par.parallelism(4).foreach {
       case (experimentName, config) =>
         Thread.sleep(Random.nextInt(100))
-        val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * 10
+        val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * config.simulation.robot_count
         Benchmark.time {
           println(s"Starting experiment $experimentName")
-          val out = LazyList(config.toJson) ++ runSimulation(config).zipWithIndex.map {
-            case (str, i) if i % 10000 == 0 =>
+          val out = (config.toJson +: runSimulation(config)).zipWithIndex.map {
+            case (str, i) if i % 1000 == 0 =>
               println(s"Running experiment $experimentName: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
               str
             case (str, _) => str

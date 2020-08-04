@@ -29,7 +29,7 @@ object File {
     })
   }
 
-  def writeGzippedLines(filename: String, data: Iterable[String], level: Int = Deflater.BEST_COMPRESSION): Try[Done] = Try {
+  def writeGzippedLines(filename: String, data: Iterator[String], level: Int = Deflater.BEST_COMPRESSION): Try[Done] = Try {
     val fos = new FileOutputStream(filename)
     class MyGZIPOutputStream(out: OutputStream) extends GZIPOutputStream(out) {
       `def`.setLevel(level)
@@ -42,18 +42,18 @@ object File {
     fos.close()
   }.map(_ => Done)
 
-  def readGzippedLines(fileName: String): Try[(Seq[String], BufferedSource)] = {
+  def readGzippedLines(fileName: String): Try[(Iterator[String], BufferedSource)] = {
     Try(scala.io.Source.fromFile(fileName)).flatMap(source => Try {
       val fileStream = new FileInputStream(fileName)
       val gzipStream = new GZIPInputStream(fileStream)
       val decoder = new InputStreamReader(gzipStream)
       val buffered = new BufferedReader(decoder)
-      val res = buffered.lines().iterator().asScala.to(LazyList)
+      val res = buffered.lines().iterator().asScala
       (res, source)
     })
   }
 
-  def readGzippedLines2[T](fileName: String)(f: Seq[String] => T): Try[T] = {
+  def readGzippedLines2[T](fileName: String)(f: Iterator[String] => T): Try[T] = {
     readGzippedLines(fileName).map {
       case (value, source) =>
         val res = f(value)

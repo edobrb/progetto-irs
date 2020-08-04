@@ -1,5 +1,3 @@
-import java.util.concurrent.ForkJoinPool
-
 import analysis.Functions
 import model.Types.RobotId
 import model.config.Config
@@ -7,9 +5,9 @@ import model.config.Config.JsonFormats._
 import model.{BooleanNetwork, TestRun}
 import play.api.libs.json.{Json, OFormat}
 import utils.Benchmark
+import utils.RichParIterable._
 
 import scala.collection.parallel.CollectionConverters._
-import scala.collection.parallel.ForkJoinTaskSupport
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
@@ -21,15 +19,13 @@ object Loader extends App {
 
   implicit def dataFormat: OFormat[Data] = Json.format[Data]
 
-  val parFiles = filenames.par
-  parFiles.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(2))
-  parFiles.foreach(filename => {
+  filenames.toList.par.parallelism(2).foreach(filename => {
     println(s"Loading $filename ... ")
     utils.File.readGzippedLines2(filename) {
-      content: Seq[String] =>
-        val config: Config = Config.fromJson(content.head)
+      content: Iterator[String] =>
+        val config: Config = Config.fromJson(content.next())
         val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-          Functions.extractTests(content.map(Functions.toStepInfo).collect { case Some(info) => info })
+          Functions.extractTests(content.map(Functions.toStepInfo).collect { case Some(info) => info }.to(LazyList))
         }
         println(s"done. (${time.toSeconds} s)")
         (config, results)
