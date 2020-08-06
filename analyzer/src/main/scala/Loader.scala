@@ -44,7 +44,7 @@ object Loader extends App {
         })
     }
 
-  filenames.toList.par.parallelism(4).foreach(filename => {
+  filenames/*.toList.par.parallelism(4)*/.foreach(filename => {
     println(s"Loading $filename ... ")
     utils.File.readGzippedLines2(filename) {
       content: Iterator[String] =>

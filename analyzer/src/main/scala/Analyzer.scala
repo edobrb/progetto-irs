@@ -1,14 +1,14 @@
 import Loader.{Data, dataFormat}
-import model.TestRun
 import model.config.Config
-
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.style.BoxStyler.BoxplotCalCulationMethod
 import org.knowm.xchart.{SwingWrapper, _}
-import play.api.libs.json.{Json, OFormat}
+import play.api.libs.json.{JsError, JsSuccess, Json}
+
+import scala.util.{Failure, Success}
 
 object Analyzer extends App {
-  
+
   def RESULT_FOLDER = Experiments.DATA_FOLDER + "/results"
 
   def filenames: Iterable[String] = Loader.filenames.map(_ + ".json")
@@ -16,8 +16,14 @@ object Analyzer extends App {
   lazy val rawData: Iterable[Data] = filenames.flatMap { filename =>
     utils.File.read(filename).map { str =>
       println(s"Parsing $filename (${str.length} chars)")
-      Json.fromJson[Seq[Data]](Json.parse(str)).getOrElse(Nil) //.map(_.copy(bns = Nil))
-    }.getOrElse(Nil)
+      Json.fromJson[Seq[Data]](Json.parse(str)) match {
+        case JsSuccess(value, path) => value
+        case JsError(errors) => println(s"Error while parsing $filename: $errors"); Nil
+      } //.map(_.copy(bns = Nil))
+    } match {
+      case Failure(exception) => println(s"Error while loading $filename: $exception"); Nil
+      case Success(value) => value
+    }
   }
 
   def experimentsResults: Seq[(Config, Iterable[Data])] = rawData.groupBy(_.config).toList.sortBy {
@@ -71,5 +77,7 @@ object Analyzer extends App {
   val bestConfig = bestRobot.config
 
   println("Best robot in file: " + bestRobot.filename)
-  Experiments.runSimulation(bestConfig.copy(bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn))), visualization = true).foreach(println)
+  Experiments.runSimulation(
+    bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200),
+    bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn))), visualization = true).foreach(println)
 }

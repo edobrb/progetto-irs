@@ -1,10 +1,10 @@
+import java.util.concurrent.{Executors, Future}
+
 import model.config.Config
 import model.config.Config.JsonFormats._
 import utils.RichIterator._
-import utils.RichParIterable._
 import utils.{Argos, Benchmark}
 
-import scala.collection.parallel.CollectionConverters._
 import scala.util.Random
 
 object Experiments extends App {
@@ -15,9 +15,9 @@ object Experiments extends App {
 
   def DATA_FOLDER = "/mnt/hgfs/data"
 
-  def EXPERIMENT_REPETITION = 30
+  def EXPERIMENT_REPETITION = 100
 
-  def EXPERIMENT_REPETITION_OFFSET = 0
+  def EXPERIMENT_REPETITION_OFFSET = 30
 
   /** Simulation configuration (will reflect on the .argos file and robots parameters) **/
   def simulation = Config.Simulation(
@@ -103,7 +103,9 @@ object Experiments extends App {
 
       case Params(14400, 20, 0.79, 2, 1, false) => "default2-b0.79-or1-ir2"
 
-      case Params(20000, 10, 0.79, 2, 1, false) => "default3-b0.79-or1-ir2"
+      case Params(10000, 10, 0.79, 2, 1, false) => "default3-b0.79-or1-ir2"
+
+      case Params(40000, 10, 0.79, 2, 1, false) => "default4-b0.79-or1-ir2"
     }) -> c
   }
 
@@ -117,9 +119,9 @@ object Experiments extends App {
       ((1 + EXPERIMENT_REPETITION_OFFSET) to EXPERIMENT_REPETITION).map(i => (experimentName + "-" + i, config))
   }
 
-  /*def experiments: Map[String, Config] = (1 to 20).map(i => {
-    val (name, config) = configName(defaultConfig.copy(simulation = defaultConfig.simulation.copy(experiment_length = 20000, override_robot_count = Some(10)),
-      bn = defaultConfig.bn.copy(max_output_rewires = 1, options = defaultConfig.bn.options.copy(bias = 0.79, self_loops = false))))
+  /*def experiments: Map[String, Config] = (1 to 7).map(i => {
+    val (name, config) = configName(defaultConfig.copy(simulation = defaultConfig.simulation.copy(experiment_length = 40000, override_robot_count = None),
+      bn = defaultConfig.bn.copy(max_output_rewires = 1, options = defaultConfig.bn.options.copy(bias = 0.79, self_loops = false, node_count = 256, nodes_input_count = 5))))
     (name + "-" + i, config)
   }).toMap*/
 
@@ -128,28 +130,36 @@ object Experiments extends App {
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
   def runExperiments(): Unit = {
-    experiments.toList.par.parallelism(7).foreach {
+    val executor = Executors.newFixedThreadPool(7)
+
+    val futures: Seq[Future[_]] = experiments.toList.sortBy(_._1).map {
       case (experimentName, config) =>
-        val filename = DATA_FOLDER + "/" + experimentName
-        if (utils.File.exists(filename)) {
-          Thread.sleep(Random.nextInt(100))
-          val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * config.simulation.robot_count
-          Benchmark.time {
-            println(s"Starting experiment $experimentName")
-            val out = (config.toJson +: runSimulation(config)).zipWithIndex.map {
-              case (str, i) if i % 1000 == 0 =>
+        executor.submit(new Runnable {
+          override def run(): Unit = {
+            val filename = DATA_FOLDER + "/" + experimentName
+            if (!utils.File.exists(filename)) {
+              Thread.sleep(Random.nextInt(100))
+              val expectedLines = config.simulation.experiment_length * config.simulation.ticks_per_seconds * config.simulation.robot_count
+              Benchmark.time {
+                println(s"Started experiment $experimentName ...")
+                val out = (config.toJson +: runSimulation(config)) /*.zipWithIndex.map {
+              case (str, i) if i % 100000 == 0 =>
                 println(s"Running experiment $experimentName: $i / $expectedLines => ${i * 100.0 / expectedLines}%")
                 str
               case (str, _) => str
+            }*/
+                utils.File.writeGzippedLines(filename, out)
+              } match {
+                case (lines, time) => println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines)")
+              }
+            } else {
+              println("Skipping " + experimentName)
             }
-            utils.File.writeGzippedLines(filename, out)
-          } match {
-            case (_, time) => println(s"Done experiment $experimentName (${time.toSeconds} s)")
           }
-        } else {
-          println("Skipping " + experimentName)
-        }
+        })
     }
+    futures.foreach(_.get())
+    executor.shutdown()
   }
 
   println(s"Running ${experiments.size} experiments...")
