@@ -17,7 +17,7 @@ object Experiments extends App {
 
   def EXPERIMENT_REPETITION = 100
 
-  def EXPERIMENT_REPETITION_OFFSET = 30
+  def EXPERIMENT_REPETITION_OFFSET = 0
 
   /** Simulation configuration (will reflect on the .argos file and robots parameters) **/
   def simulation = Config.Simulation(
