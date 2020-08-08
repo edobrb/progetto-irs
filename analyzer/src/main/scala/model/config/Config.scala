@@ -63,4 +63,19 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
     import Config.JsonFormats._
     Json.toJson(this).toString()
   }
+
+  def combine(variations: Seq[Seq[Config => Config]]): Seq[Config] = {
+    /** Generates configurations starting with a seq of basic configuration and a sequence of configuration variations. **/
+    @scala.annotation.tailrec
+    def combineConfigVariations(configs: Seq[Config], variations: Seq[Seq[Config => Config]]): Seq[Config] = {
+      variations match {
+        case Nil => configs
+        case variation :: tail =>
+          val newConfigs = configs.flatMap(config => variation.map(_.apply(config)))
+          combineConfigVariations(newConfigs, tail)
+      }
+    }
+
+    combineConfigVariations(Seq(this), variations)
+  }
 }
