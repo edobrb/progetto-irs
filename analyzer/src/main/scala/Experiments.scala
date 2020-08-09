@@ -136,7 +136,7 @@ object Experiments extends App {
 
   /** Running experiments **/
   println(s"Running ${experiments.size} experiments...")
-  experiments.toList.sortBy(_._1).parForeach(threads = 7, {
+  experiments.toList.sortBy(_._1).parForeach(threads = 4, {
     case (experimentName, config) =>
       val filename = DATA_FOLDER + "/" + experimentName
       if (!utils.File.exists(filename)) {

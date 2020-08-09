@@ -13,9 +13,9 @@ object Loader extends App {
 
   def INPUT_FILENAMES: Iterable[String] = Experiments.experiments.keys.map(Experiments.DATA_FOLDER + "/" + _)
 
-  def OUTPUT_FILENAMES: Iterable[String] = INPUT_FILENAMES.map(_ + ".json")
+  def OUTPUT_FILENAMES: Iterable[String] = FILENAMES.map(_._2)
 
-  def FILENAMES: Iterable[(String, String)] = INPUT_FILENAMES.zip(OUTPUT_FILENAMES)
+  def FILENAMES: Iterable[(String, String)] = INPUT_FILENAMES.map(v => (v, v + ".json"))
 
   /** Formats for json conversions **/
   implicit def dataFormat: OFormat[RobotData] = Json.format[RobotData]
@@ -50,8 +50,8 @@ object Loader extends App {
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file **/
-  FILENAMES.toList.sortBy(_._1).parForeach(threads = 7, {
-    case (input_filename, output_filename) => {
+  FILENAMES.toList.sortBy(_._1).parForeach(threads = 4, {
+    case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
       println(s"Loading $input_filename ... ")
       utils.File.readGzippedLines2(input_filename) {
         content: Iterator[String] =>
@@ -68,8 +68,8 @@ object Loader extends App {
             case (robotId, tests) =>
               RobotData(input_filename, config, robotId, tests.map(_.fitnessValues.last), tests.maxBy(_.fitnessValues.last).bn)
           }
-          utils.File.write(output_filename + ".json", Json.prettyPrint(Json.toJson(robotsData)))
+          utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       }
-    }
+    case (input_filename, _) => println("Skipping " + input_filename)
   })
 }
