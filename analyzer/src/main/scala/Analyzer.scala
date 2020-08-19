@@ -85,7 +85,9 @@ object Analyzer extends App {
   val bestRobot = rawData.maxBy(_.fitnessCurve.last)
   val bestConfig = bestRobot.config
   println("Best robot in file: " + bestRobot.filename)
-  Experiments.runSimulation(
-    bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200, print_analytics = false),
-      bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn))), visualization = true).foreach(println)
+
+  val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200, print_analytics = false),
+    bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))
+  println(config)
+  Experiments.runSimulation(config, visualization = true).foreach(println)
 }

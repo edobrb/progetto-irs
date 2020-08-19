@@ -70,6 +70,7 @@ object Loader extends App {
           }
           utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       }
-    case (input_filename, _) => println("Skipping " + input_filename)
+    case (input_filename, output_filename) if utils.File.exists(output_filename) => println("Skipping " + input_filename)
+    case (input_filename, _) => println("Not found " + input_filename)
   })
 }

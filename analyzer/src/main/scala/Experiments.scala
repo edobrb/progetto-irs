@@ -174,7 +174,7 @@ object Experiments extends App {
 
       def stayOnHalfVariation: Seq[Config => Config] = Seq(
         // c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
-        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
+        //c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
         c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
       )
 
@@ -189,7 +189,8 @@ object Experiments extends App {
     }
 
     /** Configuration repetitions for statistical accuracy. **/
-    configs.flatMap { case (experimentName, config) => (1 to 10).map(i => (experimentName + "-" + i, config)) }
+    configs.flatMap { case (experimentName, config) => (1 to 21
+      ).map(i => (experimentName + "-" + i, config)) }
   }
 
   def experiments2: Map[String, Config] = (1 to 100).map(i => {

@@ -43,47 +43,52 @@ local USE_DUAL_ENCODING = config.bn.use_dual_encoding -- if true the obstacles a
 local NETWORK_OPTIONS = config.bn.options
 
 function init()
-    if config.bn.initial ~= nil then 
-        if STAY_ON_HALF and FEED_POSITION then
-            NETWORK_OPTIONS.network_inputs_count = NETWORK_OPTIONS.network_inputs_count + 1
-        end
-        test_network = BooleanNetwork(NETWORK_OPTIONS)
+    math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
+
+    if STAY_ON_HALF and FEED_POSITION then
+        NETWORK_OPTIONS.network_inputs_count = NETWORK_OPTIONS.network_inputs_count + 1
+    end
+    test_network = BooleanNetwork(NETWORK_OPTIONS)
+
+    if config.bn.initial ~= nil then
         test_network.boolean_functions = config.bn.initial.functions
         test_network.connection_matrix = config.bn.initial.connections
         test_network.input_nodes = config.bn.initial.inputs
         test_network.output_nodes = config.bn.initial.outputs
         test_network.overridden_output_functions = config.bn.initial.overridden_output_functions
-    else 
-        if STAY_ON_HALF and FEED_POSITION then
-            NETWORK_OPTIONS.network_inputs_count = NETWORK_OPTIONS.network_inputs_count + 1
-        end
-        test_network = BooleanNetwork(NETWORK_OPTIONS)
     end
 
     best_network = test_network
-    math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
-
+    
     if STAY_ON_HALF then
         stay_upper = argos.is_upper()
-        robot.leds.set_all_colors(my_if(stay_upper, "green", "red")) 
+        robot.leds.set_all_colors(my_if(stay_upper, "yellow", "green"))
     end
 end
 
 ---@param network_outputs boolean[]
 ---@param proximity_values number[]
 local function fitness_function(network_outputs, proximity_values)
-    local left_wheel, right_wheel = bool_to_int(network_outputs[1]), bool_to_int(network_outputs[2])
-    local obstacle_avoidance_fitness = (1 - collect(proximity_values):max()) * (1 - math.sqrt(math.abs(left_wheel - right_wheel))) * (left_wheel + right_wheel) / 2
-    return obstacle_avoidance_fitness * (100 / NETWORK_TEST_STEPS) * my_if((STAY_ON_HALF == false) or (stay_upper == argos.is_upper()), 1, 0)
+    if STAY_ON_HALF and stay_upper ~= argos.is_upper() then
+        return 0
+    else
+        local left_wheel, right_wheel = bool_to_int(network_outputs[1]), bool_to_int(network_outputs[2])
+        local obstacle_avoidance_fitness = (1 - collect(proximity_values):max()) * (1 - math.sqrt(math.abs(left_wheel - right_wheel))) * (left_wheel + right_wheel) / 2
+        return obstacle_avoidance_fitness * (100 / NETWORK_TEST_STEPS)
+    end
 end
 
 ---@param network BooleanNetwork
 local function run_and_evaluate_test_network()
-    local proximity_values = argos.get_proximity_values(NETWORK_OPTIONS.network_inputs_count)
-    local network_inputs = argos.sensor_values_to_booleans(proximity_values, PROXIMITY_THRESHOLD, USE_DUAL_ENCODING)
-    test_network:force_input_values(network_inputs, 0)
+    local proximity_input_nodes_count = #test_network.input_nodes
     if STAY_ON_HALF and FEED_POSITION then
-        test_network:force_input_values({stay_upper == argos.is_upper()}, NETWORK_OPTIONS.network_inputs_count)
+        proximity_input_nodes_count = proximity_input_nodes_count - 1
+    end
+    local proximity_values = argos.get_proximity_values(proximity_input_nodes_count)
+    local network_inputs = argos.sensor_values_to_booleans(proximity_values, PROXIMITY_THRESHOLD, USE_DUAL_ENCODING)
+    test_network:force_input_values(network_inputs)
+    if STAY_ON_HALF and FEED_POSITION then
+        test_network:force_input_value(stay_upper == argos.is_upper(), #test_network.input_nodes)
     end
     local network_outputs = collect(test_network:update_and_get_outputs()):mapValues(function (value) return ternary(USE_DUAL_ENCODING, not value, value) end):all()
     argos.move_robot_by_booleans(network_outputs, MAX_WHEELS_SPEED)
