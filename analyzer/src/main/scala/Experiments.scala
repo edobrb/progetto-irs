@@ -26,7 +26,8 @@ object Experiments extends App {
     def robot = Config.Robot(
       proximity_threshold = 0.1,
       max_wheel_speed = 5,
-      stay_on_half = false)
+      stay_on_half = false,
+      feed_position = false)
 
     def bnOptions = Config.BooleanNetwork.Options(
       node_count = 100,
@@ -52,7 +53,7 @@ object Experiments extends App {
   /** Function that map configuration to name **/
   def configName(config: Config): (String, Config) = {
     object Params {
-      def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean, Int, Boolean)] =
+      def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean, Int, Boolean, Boolean)] =
         Some((arg.simulation.experiment_length,
           arg.simulation.robot_count,
           arg.bn.options.bias,
@@ -60,41 +61,92 @@ object Experiments extends App {
           arg.bn.max_output_rewires,
           arg.bn.options.self_loops,
           arg.bn.options.network_inputs_count,
-        arg.robot.stay_on_half))
+          arg.robot.stay_on_half,
+          arg.robot.stay_on_half && arg.robot.feed_position))
     }
     (config match {
-      case Params(7200, 10, 0.1, 2, 0, false, 24, false) => "default-b0.1-or0-ir2"
-      case Params(7200, 10, 0.5, 2, 0, false, 24, false) => "default-b0.5-or0-ir2"
-      case Params(7200, 10, 0.79, 2, 0, false, 24, false) => "default-b0.79-or0-ir2"
-      case Params(7200, 10, 0.1, 2, 1, false, 24, false) => "default-b0.1-or1-ir2"
-      case Params(7200, 10, 0.5, 2, 1, false, 24, false) => "default-b0.5-or1-ir2"
-      case Params(7200, 10, 0.79, 2, 1, false, 24, false) => "default-b0.79-or1-ir2"
-      case Params(7200, 10, 0.1, 2, 0, true, 24, false) => "default-b0.1-or0-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 0, true, 24, false) => "default-b0.5-or0-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 0, true, 24, false) => "default-b0.79-or0-ir2-sl"
-      case Params(7200, 10, 0.1, 2, 1, true, 24, false) => "default-b0.1-or1-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 1, true, 24, false) => "default-b0.5-or1-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 1, true, 24, false) => "default-b0.79-or1-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 0, false, 24, false, false) => "default-b0.1-or0-ir2"
+      case Params(7200, 10, 0.5, 2, 0, false, 24, false, false) => "default-b0.5-or0-ir2"
+      case Params(7200, 10, 0.79, 2, 0, false, 24, false, false) => "default-b0.79-or0-ir2"
+      case Params(7200, 10, 0.1, 2, 1, false, 24, false, false) => "default-b0.1-or1-ir2"
+      case Params(7200, 10, 0.5, 2, 1, false, 24, false, false) => "default-b0.5-or1-ir2"
+      case Params(7200, 10, 0.79, 2, 1, false, 24, false, false) => "default-b0.79-or1-ir2"
+      case Params(7200, 10, 0.1, 2, 0, true, 24, false, false) => "default-b0.1-or0-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 0, true, 24, false, false) => "default-b0.5-or0-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 0, true, 24, false, false) => "default-b0.79-or0-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 1, true, 24, false, false) => "default-b0.1-or1-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 1, true, 24, false, false) => "default-b0.5-or1-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 1, true, 24, false, false) => "default-b0.79-or1-ir2-sl"
 
-      case Params(7200, 10, 0.1, 2, 0, false, 24, true) => "half-b0.1-or0-ir2"
-      case Params(7200, 10, 0.5, 2, 0, false, 24, true) => "half-b0.5-or0-ir2"
-      case Params(7200, 10, 0.79, 2, 0, false, 24, true) => "half-b0.79-or0-ir2"
-      case Params(7200, 10, 0.1, 2, 1, false, 24, true) => "half-b0.1-or1-ir2"
-      case Params(7200, 10, 0.5, 2, 1, false, 24, true) => "half-b0.5-or1-ir2"
-      case Params(7200, 10, 0.79, 2, 1, false, 24, true) => "half-b0.79-or1-ir2"
-      case Params(7200, 10, 0.1, 2, 0, true, 24, true) => "half-b0.1-or0-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 0, true, 24, true) => "half-b0.5-or0-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 0, true, 24, true) => "half-b0.79-or0-ir2-sl"
-      case Params(7200, 10, 0.1, 2, 1, true, 24, true) => "half-b0.1-or1-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 1, true, 24, true) => "half-b0.5-or1-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 1, true, 24, true) => "half-b0.79-or1-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 0, false, 24, true, false) => "half-b0.1-or0-ir2"
+      case Params(7200, 10, 0.5, 2, 0, false, 24, true, false) => "half-b0.5-or0-ir2"
+      case Params(7200, 10, 0.79, 2, 0, false, 24, true, false) => "half-b0.79-or0-ir2"
+      case Params(7200, 10, 0.1, 2, 1, false, 24, true, false) => "half-b0.1-or1-ir2"
+      case Params(7200, 10, 0.5, 2, 1, false, 24, true, false) => "half-b0.5-or1-ir2"
+      case Params(7200, 10, 0.79, 2, 1, false, 24, true, false) => "half-b0.79-or1-ir2"
+      case Params(7200, 10, 0.1, 2, 0, true, 24, true, false) => "half-b0.1-or0-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 0, true, 24, true, false) => "half-b0.5-or0-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 0, true, 24, true, false) => "half-b0.79-or0-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 1, true, 24, true, false) => "half-b0.1-or1-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 1, true, 24, true, false) => "half-b0.5-or1-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 1, true, 24, true, false) => "half-b0.79-or1-ir2-sl"
 
-      //case Params(14400, 20, 0.79, 2, 1, false, 24) => "default2-b0.79-or1-ir2"
-      //case Params(10000, 10, 0.79, 2, 1, false, 24) => "default3-b0.79-or1-ir2"
-      //case Params(40000, 10, 0.79, 2, 1, false, 24) => "default4-b0.79-or1-ir2"
+      case Params(7200, 10, 0.1, 2, 0, false, 8, false, false) => "default-b0.1-or0-ir2-nic8"
+      case Params(7200, 10, 0.5, 2, 0, false, 8, false, false) => "default-b0.5-or0-ir2-nic8"
+      case Params(7200, 10, 0.79, 2, 0, false, 8, false, false) => "default-b0.79-or0-ir2-nic8"
+      case Params(7200, 10, 0.1, 2, 1, false, 8, false, false) => "default-b0.1-or1-ir2-nic8"
+      case Params(7200, 10, 0.5, 2, 1, false, 8, false, false) => "default-b0.5-or1-ir2-nic8"
+      case Params(7200, 10, 0.79, 2, 1, false, 8, false, false) => "default-b0.79-or1-ir2-nic8"
+      case Params(7200, 10, 0.1, 2, 0, true, 8, false, false) => "default-b0.1-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.5, 2, 0, true, 8, false, false) => "default-b0.5-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.79, 2, 0, true, 8, false, false) => "default-b0.79-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.1, 2, 1, true, 8, false, false) => "default-b0.1-or1-ir2-sl-nic8"
+      case Params(7200, 10, 0.5, 2, 1, true, 8, false, false) => "default-b0.5-or1-ir2-sl-nic8"
+      case Params(7200, 10, 0.79, 2, 1, true, 8, false, false) => "default-b0.79-or1-ir2-sl-nic8"
 
-      case Params(7200, 10, 0.79, 2, 1, false, 8, false) => "default5-b0.79-or1-ir2"
-      case Params(7200, 10, 0.79, 1, 1, false, 4, false) => "default6-b0.79-or1-ir1"
+      case Params(7200, 10, 0.1, 2, 0, false, 8, true, false) => "half-b0.1-or0-ir2-nic8"
+      case Params(7200, 10, 0.5, 2, 0, false, 8, true, false) => "half-b0.5-or0-ir2-nic8"
+      case Params(7200, 10, 0.79, 2, 0, false, 8, true, false) => "half-b0.79-or0-ir2-nic8"
+      case Params(7200, 10, 0.1, 2, 1, false, 8, true, false) => "half-b0.1-or1-ir2-nic8"
+      case Params(7200, 10, 0.5, 2, 1, false, 8, true, false) => "half-b0.5-or1-ir2-nic8"
+      case Params(7200, 10, 0.79, 2, 1, false, 8, true, false) => "half-b0.79-or1-ir2-nic8"
+      case Params(7200, 10, 0.1, 2, 0, true, 8, true, false) => "half-b0.1-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.5, 2, 0, true, 8, true, false) => "half-b0.5-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.79, 2, 0, true, 8, true, false) => "half-b0.79-or0-ir2-sl-nic8"
+      case Params(7200, 10, 0.1, 2, 1, true, 8, true, false) => "half-b0.1-or1-ir2-sl-nic8"
+      case Params(7200, 10, 0.5, 2, 1, true, 8, true, false) => "half-b0.5-or1-ir2-sl-nic8"
+      case Params(7200, 10, 0.79, 2, 1, true, 8, true, false) => "half-b0.79-or1-ir2-sl-nic8"
+
+
+      case Params(7200, 10, 0.1, 2, 0, false, 24, true, true) => "half-b0.1-or0-ir2-feed"
+      case Params(7200, 10, 0.5, 2, 0, false, 24, true, true) => "half-b0.5-or0-ir2-feed"
+      case Params(7200, 10, 0.79, 2, 0, false, 24, true, true) => "half-b0.79-or0-ir2-feed"
+      case Params(7200, 10, 0.1, 2, 1, false, 24, true, true) => "half-b0.1-or1-ir2-feed"
+      case Params(7200, 10, 0.5, 2, 1, false, 24, true, true) => "half-b0.5-or1-ir2-feed"
+      case Params(7200, 10, 0.79, 2, 1, false, 24, true, true) => "half-b0.79-or1-ir2-feed"
+      case Params(7200, 10, 0.1, 2, 0, true, 24, true, true) => "half-b0.1-or0-ir2-sl-feed"
+      case Params(7200, 10, 0.5, 2, 0, true, 24, true, true) => "half-b0.5-or0-ir2-sl-feed"
+      case Params(7200, 10, 0.79, 2, 0, true, 24, true, true) => "half-b0.79-or0-ir2-sl-feed"
+      case Params(7200, 10, 0.1, 2, 1, true, 24, true, true) => "half-b0.1-or1-ir2-sl-feed"
+      case Params(7200, 10, 0.5, 2, 1, true, 24, true, true) => "half-b0.5-or1-ir2-sl-feed"
+      case Params(7200, 10, 0.79, 2, 1, true, 24, true, true) => "half-b0.79-or1-ir2-sl-feed"
+
+      case Params(7200, 10, 0.1, 2, 0, false, 8, true, true) => "half-b0.1-or0-ir2-nic8-feed"
+      case Params(7200, 10, 0.5, 2, 0, false, 8, true, true) => "half-b0.5-or0-ir2-nic8-feed"
+      case Params(7200, 10, 0.79, 2, 0, false, 8, true, true) => "half-b0.79-or0-ir2-nic8-feed"
+      case Params(7200, 10, 0.1, 2, 1, false, 8, true, true) => "half-b0.1-or1-ir2-nic8-feed"
+      case Params(7200, 10, 0.5, 2, 1, false, 8, true, true) => "half-b0.5-or1-ir2-nic8-feed"
+      case Params(7200, 10, 0.79, 2, 1, false, 8, true, true) => "half-b0.79-or1-ir2-nic8-feed"
+      case Params(7200, 10, 0.1, 2, 0, true, 8, true, true) => "half-b0.1-or0-ir2-sl-nic8-feed"
+      case Params(7200, 10, 0.5, 2, 0, true, 8, true, true) => "half-b0.5-or0-ir2-sl-nic8-feed"
+      case Params(7200, 10, 0.79, 2, 0, true, 8, true, true) => "half-b0.79-or0-ir2-sl-nic8-feed"
+      case Params(7200, 10, 0.1, 2, 1, true, 8, true, true) => "half-b0.1-or1-ir2-sl-nic8-feed"
+      case Params(7200, 10, 0.5, 2, 1, true, 8, true, true) => "half-b0.5-or1-ir2-sl-nic8-feed"
+      case Params(7200, 10, 0.79, 2, 1, true, 8, true, true) => "half-b0.79-or1-ir2-sl-nic8-feed"
+
+
+      case Params(7200, 10, 0.79, 2, 1, false, 8, false, false) => "default5-b0.79-or1-ir2"
+      case Params(7200, 10, 0.79, 1, 1, false, 4, false, false) => "default6-b0.79-or1-ir1"
     }) -> config
   }
 
@@ -121,16 +173,23 @@ object Experiments extends App {
       )
 
       def stayOnHalfVariation: Seq[Config => Config] = Seq(
-       // c => c.copy(robot = c.robot.copy(stay_on_half = false)),
-        c => c.copy(robot = c.robot.copy(stay_on_half = true))
+        // c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
+        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
+        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
       )
 
-      val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation)
+
+      def networkInputCountVariation: Seq[Config => Config] = Seq(
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
+        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
+      )
+
+      val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
       DEFAULT_CONFIG.combine(variations).map(configName).toMap
     }
 
     /** Configuration repetitions for statistical accuracy. **/
-    configs.flatMap { case (experimentName, config) => (1 to 100).map(i => (experimentName + "-" + i, config)) }
+    configs.flatMap { case (experimentName, config) => (1 to 10).map(i => (experimentName + "-" + i, config)) }
   }
 
   def experiments2: Map[String, Config] = (1 to 100).map(i => {
@@ -156,7 +215,7 @@ object Experiments extends App {
 
   /** Running experiments **/
   println(s"Running ${experiments.size} experiments...")
-  experiments.toList.sortBy(_._1).parForeach(threads = 4, {
+  experiments.toList.sortBy(_._1).parForeach(threads = 7, {
     case (experimentName, config) =>
       val filename = DATA_FOLDER + "/" + experimentName
       if (!utils.File.exists(filename)) {

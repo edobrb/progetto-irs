@@ -86,12 +86,13 @@ function BooleanNetwork:initialize(options)
 end
 
 ---@param inputs boolean[]
-function BooleanNetwork:force_input_values(inputs)
+function BooleanNetwork:force_input_values(inputs, offset)
   local inputs_count = #inputs
   for network_input_index = 1, inputs_count do
-    self.node_states[self.input_nodes[network_input_index]] = inputs[network_input_index]
+    self.node_states[self.input_nodes[network_input_index + offset]] = inputs[network_input_index]
   end
 end
+
 
 --- Updates the provided node, given the index of the node and the network. It returns the updated node value.
 ---@param network BooleanNetwork

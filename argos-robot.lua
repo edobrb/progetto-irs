@@ -70,4 +70,8 @@ function argos.param(name)
     return robot.params[name]
 end
 
+function argos.is_upper()
+    return robot.positioning.position.x > 0
+end
+
 return argos

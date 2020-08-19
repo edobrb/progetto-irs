@@ -33,15 +33,19 @@ object Analyzer extends App {
       val outputRewires = config.bn.max_output_rewires
       val selfLoops = config.bn.options.self_loops
       val nic = config.bn.options.network_inputs_count
-      nic * 10000 + bias * 1000 + outputRewires * 50 + (if (selfLoops) 1 else 0)
+      val fp = if(config.robot.feed_position) 1 else 0
+      val soh = if(config.robot.stay_on_half) 1 else 0
+      soh * 10000000 + fp * 1000000 + nic * 10000 + bias * 1000 + outputRewires * 10 + (if (selfLoops) 1 else 0)
   }
 
   def nameSeries(config: Config): String = {
     val bias = config.bn.options.bias
-    val nic = config.bn.options.network_inputs_count
     val outputRewires = config.bn.max_output_rewires
     val selfLoops = config.bn.options.self_loops
-    s"B=$bias,OR=$outputRewires${if (selfLoops) ",SL" else ""}"
+    val nic = config.bn.options.network_inputs_count
+    val fp = config.robot.feed_position
+    val soh = config.robot.stay_on_half
+    s"B=$bias,OR=$outputRewires${if (selfLoops) ",SL" else ""},NIC=$nic${if (soh) ",H" else ""}${if (fp) ",FP" else ""}"
   }
 
   def showAveragedFitnessCharts(): Unit = {
@@ -82,6 +86,6 @@ object Analyzer extends App {
   val bestConfig = bestRobot.config
   println("Best robot in file: " + bestRobot.filename)
   Experiments.runSimulation(
-    bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200),
+    bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200, print_analytics = false),
       bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn))), visualization = true).foreach(println)
 }

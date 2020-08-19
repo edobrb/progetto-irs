@@ -16,7 +16,8 @@ object Config {
 
   case class Robot(proximity_threshold: Double,
                    max_wheel_speed: Double,
-                   stay_on_half:Boolean)
+                   stay_on_half:Boolean,
+                   feed_position:Boolean)
 
 
   object BooleanNetwork {
@@ -47,9 +48,11 @@ object Config {
     implicit def f2: OFormat[Config.Robot] = new OFormat[Config.Robot] {
       override def reads(json: JsValue): JsResult[Robot] = json match {
         case JsObject(obj) =>
-          (obj.get("proximity_threshold"), obj.get("max_wheel_speed"), obj.get("stay_on_half")) match {
-            case (Some(JsNumber(pt)), Some(JsNumber(mws)), None) => JsSuccess(Robot(pt.toDouble, mws.toDouble, stay_on_half = false))
-            case (Some(JsNumber(pt)), Some(JsNumber(mws)), Some(JsBoolean(soh))) => JsSuccess(Robot(pt.toDouble, mws.toDouble, soh))
+          (obj.get("proximity_threshold"), obj.get("max_wheel_speed"), obj.get("stay_on_half"), obj.get("feed_position")) match {
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), None, None) => JsSuccess(Robot(pt.toDouble, mws.toDouble, stay_on_half = false, feed_position = false))
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), Some(JsBoolean(soh)), None) => JsSuccess(Robot(pt.toDouble, mws.toDouble, soh, feed_position = false))
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), None, Some(JsBoolean(fp))) => JsSuccess(Robot(pt.toDouble, mws.toDouble, stay_on_half = false, fp))
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), Some(JsBoolean(soh)), Some(JsBoolean(fp))) => JsSuccess(Robot(pt.toDouble, mws.toDouble, soh, fp))
             case _ => JsError()
           }
         case _ => JsError()
@@ -58,7 +61,8 @@ object Config {
       override def writes(o: Robot): JsObject = JsObject(Seq(
         "proximity_threshold" -> JsNumber(o.proximity_threshold),
         "max_wheel_speed" -> JsNumber(o.max_wheel_speed),
-        "stay_on_half" -> JsBoolean(o.stay_on_half)))
+        "stay_on_half" -> JsBoolean(o.stay_on_half),
+        "feed_position" -> JsBoolean(o.feed_position)))
     }
 
     implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
