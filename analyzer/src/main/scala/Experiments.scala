@@ -25,7 +25,8 @@ object Experiments extends App {
 
     def robot = Config.Robot(
       proximity_threshold = 0.1,
-      max_wheel_speed = 5)
+      max_wheel_speed = 5,
+      stay_on_half = false)
 
     def bnOptions = Config.BooleanNetwork.Options(
       node_count = 100,
@@ -51,38 +52,49 @@ object Experiments extends App {
   /** Function that map configuration to name **/
   def configName(config: Config): (String, Config) = {
     object Params {
-      def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean, Int)] =
+      def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean, Int, Boolean)] =
         Some((arg.simulation.experiment_length,
           arg.simulation.robot_count,
           arg.bn.options.bias,
           arg.bn.max_input_rewires,
           arg.bn.max_output_rewires,
           arg.bn.options.self_loops,
-          arg.bn.options.network_inputs_count))
+          arg.bn.options.network_inputs_count,
+        arg.robot.stay_on_half))
     }
     (config match {
-      case Params(7200, 10, 0.1, 2, 0, false, 24) => "default-b0.1-or0-ir2"
-      case Params(7200, 10, 0.5, 2, 0, false, 24) => "default-b0.5-or0-ir2"
-      case Params(7200, 10, 0.79, 2, 0, false, 24) => "default-b0.79-or0-ir2"
+      case Params(7200, 10, 0.1, 2, 0, false, 24, false) => "default-b0.1-or0-ir2"
+      case Params(7200, 10, 0.5, 2, 0, false, 24, false) => "default-b0.5-or0-ir2"
+      case Params(7200, 10, 0.79, 2, 0, false, 24, false) => "default-b0.79-or0-ir2"
+      case Params(7200, 10, 0.1, 2, 1, false, 24, false) => "default-b0.1-or1-ir2"
+      case Params(7200, 10, 0.5, 2, 1, false, 24, false) => "default-b0.5-or1-ir2"
+      case Params(7200, 10, 0.79, 2, 1, false, 24, false) => "default-b0.79-or1-ir2"
+      case Params(7200, 10, 0.1, 2, 0, true, 24, false) => "default-b0.1-or0-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 0, true, 24, false) => "default-b0.5-or0-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 0, true, 24, false) => "default-b0.79-or0-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 1, true, 24, false) => "default-b0.1-or1-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 1, true, 24, false) => "default-b0.5-or1-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 1, true, 24, false) => "default-b0.79-or1-ir2-sl"
 
-      case Params(7200, 10, 0.1, 2, 1, false, 24) => "default-b0.1-or1-ir2"
-      case Params(7200, 10, 0.5, 2, 1, false, 24) => "default-b0.5-or1-ir2"
-      case Params(7200, 10, 0.79, 2, 1, false, 24) => "default-b0.79-or1-ir2"
-
-      case Params(7200, 10, 0.1, 2, 0, true, 24) => "default-b0.1-or0-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 0, true, 24) => "default-b0.5-or0-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 0, true, 24) => "default-b0.79-or0-ir2-sl"
-
-      case Params(7200, 10, 0.1, 2, 1, true, 24) => "default-b0.1-or1-ir2-sl"
-      case Params(7200, 10, 0.5, 2, 1, true, 24) => "default-b0.5-or1-ir2-sl"
-      case Params(7200, 10, 0.79, 2, 1, true, 24) => "default-b0.79-or1-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 0, false, 24, true) => "half-b0.1-or0-ir2"
+      case Params(7200, 10, 0.5, 2, 0, false, 24, true) => "half-b0.5-or0-ir2"
+      case Params(7200, 10, 0.79, 2, 0, false, 24, true) => "half-b0.79-or0-ir2"
+      case Params(7200, 10, 0.1, 2, 1, false, 24, true) => "half-b0.1-or1-ir2"
+      case Params(7200, 10, 0.5, 2, 1, false, 24, true) => "half-b0.5-or1-ir2"
+      case Params(7200, 10, 0.79, 2, 1, false, 24, true) => "half-b0.79-or1-ir2"
+      case Params(7200, 10, 0.1, 2, 0, true, 24, true) => "half-b0.1-or0-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 0, true, 24, true) => "half-b0.5-or0-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 0, true, 24, true) => "half-b0.79-or0-ir2-sl"
+      case Params(7200, 10, 0.1, 2, 1, true, 24, true) => "half-b0.1-or1-ir2-sl"
+      case Params(7200, 10, 0.5, 2, 1, true, 24, true) => "half-b0.5-or1-ir2-sl"
+      case Params(7200, 10, 0.79, 2, 1, true, 24, true) => "half-b0.79-or1-ir2-sl"
 
       //case Params(14400, 20, 0.79, 2, 1, false, 24) => "default2-b0.79-or1-ir2"
       //case Params(10000, 10, 0.79, 2, 1, false, 24) => "default3-b0.79-or1-ir2"
       //case Params(40000, 10, 0.79, 2, 1, false, 24) => "default4-b0.79-or1-ir2"
 
-      case Params(7200, 10, 0.79, 2, 1, false, 8) => "default5-b0.79-or1-ir2"
-      case Params(7200, 10, 0.79, 1, 1, false, 4) => "default6-b0.79-or1-ir1"
+      case Params(7200, 10, 0.79, 2, 1, false, 8, false) => "default5-b0.79-or1-ir2"
+      case Params(7200, 10, 0.79, 1, 1, false, 4, false) => "default6-b0.79-or1-ir1"
     }) -> config
   }
 
@@ -93,19 +105,27 @@ object Experiments extends App {
     def configs: Map[String, Config] = {
       /** Configuration variations **/
       def biasVariation: Seq[Config => Config] = Seq(
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79))))
+        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
+        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79)))
+      )
 
       def outputRewiresVariation: Seq[Config => Config] = Seq(
         c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
-        c => c.copy(bn = c.bn.copy(max_output_rewires = 0)))
+        //c => c.copy(bn = c.bn.copy(max_output_rewires = 0))
+      )
 
       def selfLoopVariation: Seq[Config => Config] = Seq(
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false))))
+        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
+      )
 
-      val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation)
+      def stayOnHalfVariation: Seq[Config => Config] = Seq(
+       // c => c.copy(robot = c.robot.copy(stay_on_half = false)),
+        c => c.copy(robot = c.robot.copy(stay_on_half = true))
+      )
+
+      val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation)
       DEFAULT_CONFIG.combine(variations).map(configName).toMap
     }
 

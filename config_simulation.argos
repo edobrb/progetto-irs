@@ -20,13 +20,14 @@
     <lua_controller id="lua">
       <actuators>
         <differential_steering implementation="default" noise_level="0.03" />
-        <range_and_bearing implementation="default" />
+        <!-- <range_and_bearing implementation="default" /> -->
 	      <leds implementation="default" medium="leds" />
       </actuators>
       <sensors>
         <footbot_proximity implementation="default" show_rays="true" noise_level="0.03" />
         <footbot_motor_ground implementation="rot_z_only" />
-        <range_and_bearing implementation="medium" medium="rab" />
+        <positioning implementation="default" />
+       <!-- <range_and_bearing implementation="medium" medium="rab" /> -->
       </sensors>
       <params script="multi_robot_controller.lua" CONFIG=${CONFIG}/>
     </lua_controller>

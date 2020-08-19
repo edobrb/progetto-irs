@@ -32,7 +32,8 @@ object Analyzer extends App {
       val bias = config.bn.options.bias
       val outputRewires = config.bn.max_output_rewires
       val selfLoops = config.bn.options.self_loops
-      bias * 1000 + outputRewires * 50 + (if (selfLoops) 1 else 0)
+      val nic = config.bn.options.network_inputs_count
+      nic * 10000 + bias * 1000 + outputRewires * 50 + (if (selfLoops) 1 else 0)
   }
 
   def nameSeries(config: Config): String = {
@@ -40,7 +41,7 @@ object Analyzer extends App {
     val nic = config.bn.options.network_inputs_count
     val outputRewires = config.bn.max_output_rewires
     val selfLoops = config.bn.options.self_loops
-    s"B$bias,OR$outputRewires${if (selfLoops) ",SL" else ""},NIC$nic"
+    s"B=$bias,OR=$outputRewires${if (selfLoops) ",SL" else ""}"
   }
 
   def showAveragedFitnessCharts(): Unit = {
@@ -60,7 +61,7 @@ object Analyzer extends App {
 
   def showBoxPlot(): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("steps").yAxisTitle("fitness")
-      .title(s"Final fitness of each robot").width(1920).height(1080).build()
+      .title(s"Final fitness of each robot").width(2500).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
     chart.getStyler.setToolTipsEnabled(true)
     experimentsResults.foreach {

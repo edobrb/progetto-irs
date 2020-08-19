@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
   	<system threads="0" method="balance_quantity" />
-    <experiment length="7200" ticks_per_second="10"/>
+    <experiment length="7200" ticks_per_second="100"/>
   </framework>
 
   <!-- *************** -->
@@ -21,17 +21,18 @@
       <!-- Normal actuator/sensor configuration follows -->
       <actuators>
         <differential_steering implementation="default" noise_level="0.03" />
-        <range_and_bearing implementation="default" />
+        <!-- <range_and_bearing implementation="default" /> -->
 	      <leds implementation="default" medium="leds" />
       </actuators>
       <sensors>
         <footbot_proximity implementation="default" show_rays="true" noise_level="0.03" />
         <footbot_motor_ground implementation="rot_z_only" />
-        <range_and_bearing implementation="medium" medium="rab" />
+        <positioning implementation="default" />
+        <!-- <range_and_bearing implementation="medium" medium="rab" /> -->
       </sensors>
       <!-- No required configuration -->
       <params script="multi_robot_controller.lua" 
-        CONFIG='{"simulation":{"ticks_per_seconds":10,"experiment_length":7200,"network_test_steps":400,"print_analytics":true},"robot":{"proximity_threshold":0.1,"max_wheel_speed":5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
+        CONFIG='{"simulation":{"ticks_per_seconds":100,"experiment_length":7200,"network_test_steps":400,"print_analytics":false},"robot":{"stay_on_half":true,"proximity_threshold":0.1,"max_wheel_speed":5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'
       />
       <!-- Optionally, you can pass a script as a controller parameter: -->
       <!-- params script="../../src/testing/experiment/test_gripper.lua" / -->

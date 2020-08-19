@@ -32,6 +32,8 @@ local PRINT_ANALYTICS = config.simulation.print_analytics
 -- robot parameters
 local PROXIMITY_THRESHOLD = config.robot.proximity_threshold
 local MAX_WHEELS_SPEED = config.robot.max_wheel_speed * TICKS_PER_SECOND
+local STAY_ON_HALF = config.robot.stay_on_half
+local stay_upper = true
 
 -- BN parameters
 local MAX_INPUT_REWIRES = config.bn.max_input_rewires
@@ -55,15 +57,22 @@ function init()
 
     best_network = test_network
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
-    --print(one_line_serialize(robot))
+
+    if STAY_ON_HALF then
+        stay_upper = robot.positioning.position.x > 0
+        robot.leds.set_all_colors(my_if(stay_upper, "green", "red")) 
+    end
 end
 
+local function is_upper()
+    return robot.positioning.position.x > 0
+end
 ---@param network_outputs boolean[]
 ---@param proximity_values number[]
 local function fitness_function(network_outputs, proximity_values)
     local left_wheel, right_wheel = bool_to_int(network_outputs[1]), bool_to_int(network_outputs[2])
     local obstacle_avoidance_fitness = (1 - collect(proximity_values):max()) * (1 - math.sqrt(math.abs(left_wheel - right_wheel))) * (left_wheel + right_wheel) / 2
-    return obstacle_avoidance_fitness * (100 / NETWORK_TEST_STEPS)
+    return obstacle_avoidance_fitness * (100 / NETWORK_TEST_STEPS) * my_if((STAY_ON_HALF == false) or (stay_upper == is_upper()), 1, 0)
 end
 
 ---@param network BooleanNetwork

@@ -1,7 +1,8 @@
 package model.config
 
 import play.api.libs.json.{Json, OFormat}
-
+import play.api.libs.json._       // JSON library
+import play.api.libs.json.Reads._
 
 object Config {
 
@@ -14,7 +15,8 @@ object Config {
   }
 
   case class Robot(proximity_threshold: Double,
-                   max_wheel_speed: Double)
+                   max_wheel_speed: Double,
+                   stay_on_half:Boolean)
 
 
   object BooleanNetwork {
@@ -38,9 +40,26 @@ object Config {
                             initial: Option[model.BooleanNetwork.Schema])
 
   object JsonFormats {
+
+
     implicit def f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
 
-    implicit def f2: OFormat[Config.Robot] = Json.format[Config.Robot]
+    implicit def f2: OFormat[Config.Robot] = new OFormat[Config.Robot] {
+      override def reads(json: JsValue): JsResult[Robot] = json match {
+        case JsObject(obj) =>
+          (obj.get("proximity_threshold"), obj.get("max_wheel_speed"), obj.get("stay_on_half")) match {
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), None) => JsSuccess(Robot(pt.toDouble, mws.toDouble, stay_on_half = false))
+            case (Some(JsNumber(pt)), Some(JsNumber(mws)), Some(JsBoolean(soh))) => JsSuccess(Robot(pt.toDouble, mws.toDouble, soh))
+            case _ => JsError()
+          }
+        case _ => JsError()
+      }
+
+      override def writes(o: Robot): JsObject = JsObject(Seq(
+        "proximity_threshold" -> JsNumber(o.proximity_threshold),
+        "max_wheel_speed" -> JsNumber(o.max_wheel_speed),
+        "stay_on_half" -> JsBoolean(o.stay_on_half)))
+    }
 
     implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
 
