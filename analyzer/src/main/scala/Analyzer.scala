@@ -33,8 +33,8 @@ object Analyzer extends App {
       val outputRewires = config.bn.max_output_rewires
       val selfLoops = config.bn.options.self_loops
       val nic = config.bn.options.network_inputs_count
-      val fp = if(config.robot.feed_position) 1 else 0
-      val soh = if(config.robot.stay_on_half) 1 else 0
+      val fp = if (config.robot.feed_position) 1 else 0
+      val soh = if (config.robot.stay_on_half) 1 else 0
       soh * 10000000 + fp * 1000000 + nic * 10000 + bias * 1000 + outputRewires * 10 + (if (selfLoops) 1 else 0)
   }
 
@@ -84,7 +84,7 @@ object Analyzer extends App {
   /** Run a simulation where each robot has the best boolean network. **/
   val bestRobot = rawData.maxBy(_.fitnessCurve.last)
   val bestConfig = bestRobot.config
-  println("Best robot in file: " + bestRobot.filename)
+  println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
 
   val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 7200, print_analytics = false),
     bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))

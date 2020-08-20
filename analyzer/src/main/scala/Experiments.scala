@@ -157,31 +157,31 @@ object Experiments extends App {
     def configs: Map[String, Config] = {
       /** Configuration variations **/
       def biasVariation: Seq[Config => Config] = Seq(
-        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
-        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79)))
       )
 
       def outputRewiresVariation: Seq[Config => Config] = Seq(
         c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
-        //c => c.copy(bn = c.bn.copy(max_output_rewires = 0))
+        c => c.copy(bn = c.bn.copy(max_output_rewires = 0))
       )
 
       def selfLoopVariation: Seq[Config => Config] = Seq(
-        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
       )
 
       def stayOnHalfVariation: Seq[Config => Config] = Seq(
         // c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
-        //c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
-        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
+        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
+        //c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
       )
 
 
       def networkInputCountVariation: Seq[Config => Config] = Seq(
-        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
-        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
+        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
       )
 
       val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
@@ -189,7 +189,7 @@ object Experiments extends App {
     }
 
     /** Configuration repetitions for statistical accuracy. **/
-    configs.flatMap { case (experimentName, config) => (1 to 21
+    configs.flatMap { case (experimentName, config) => (1 to 30
       ).map(i => (experimentName + "-" + i, config)) }
   }
 

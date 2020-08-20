@@ -131,7 +131,10 @@ end
 
 function destroy()
     if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem (called too soon when argos fail to place the robot, destroy and retry to replace)
-        if(PRINT_ANALYTICS) then print_network(test_network) end
+        if(PRINT_ANALYTICS) then
+            print_network(test_network)
+            io.flush()
+        end
     end
 end
 
@@ -153,6 +156,7 @@ function print_network(netowrk)
         }
     local res = json.encode(table)
     print(res)
+    io.flush()
 end
 
 function print_network_state(netowrk)
@@ -161,9 +165,9 @@ function print_network_state(netowrk)
          step = global_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,
-         --proximity = argos.get_proximity_values(24) --include robot position?
          position = {robot.positioning.position.x, robot.positioning.position.y}
         }
     local res = json.encode(table)
     print(res)
+    io.flush()
 end

@@ -56,8 +56,14 @@ object Loader extends App {
       utils.File.readGzippedLines2(input_filename) {
         content: Iterator[String] =>
           val config: Config = Config.fromJson(content.next())
+          val expectedTestsCount = config.simulation.experiment_length * config.simulation.ticks_per_seconds / config.simulation.network_test_steps
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-            extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
+            val tests = extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
+            //check if the number of tests is equal to the expected value
+            if(!tests.forall(_._2.size == expectedTestsCount)) {
+              println(s"Check failed for file $input_filename")
+            }
+            tests
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)
