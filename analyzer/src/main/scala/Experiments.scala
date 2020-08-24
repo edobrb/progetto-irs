@@ -12,7 +12,7 @@ object Experiments extends App {
 
   def SIMULATION_FILE = "config_simulation.argos"
 
-  def DATA_FOLDER = "/mnt/hgfs/data"
+  def DATA_FOLDER = "E:/data"
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) **/
   def DEFAULT_CONFIG: Config = {
@@ -152,7 +152,7 @@ object Experiments extends App {
 
 
   /** Filenames of experiments and the relative config **/
-  def experiments1: Map[String, Config] = {
+  def experiments: Map[String, Config] = {
 
     def configs: Map[String, Config] = {
       /** Configuration variations **/
@@ -172,15 +172,16 @@ object Experiments extends App {
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
       )
 
+
       def stayOnHalfVariation: Seq[Config => Config] = Seq(
-        // c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
+        c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
         c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
-        //c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
+        c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
       )
 
 
       def networkInputCountVariation: Seq[Config => Config] = Seq(
-        //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
+        c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
       )
 
@@ -189,26 +190,10 @@ object Experiments extends App {
     }
 
     /** Configuration repetitions for statistical accuracy. **/
-    configs.flatMap { case (experimentName, config) => (1 to 30
-      ).map(i => (experimentName + "-" + i, config)) }
+    configs.flatMap { case (experimentName, config) => (1 to 100
+      ).map(i => (experimentName + "-" + i, config))
+    }
   }
-
-  def experiments2: Map[String, Config] = (1 to 100).map(i => {
-    val (name, config) = configName(DEFAULT_CONFIG.copy(simulation = DEFAULT_CONFIG.simulation.copy(experiment_length = 7200, override_robot_count = None),
-      bn = DEFAULT_CONFIG.bn.copy(max_output_rewires = 1,
-        options = DEFAULT_CONFIG.bn.options.copy(bias = 0.79, self_loops = false, node_count = 100, nodes_input_count = 3, network_inputs_count = 8))))
-    (name + "-" + i, config)
-  }).toMap
-
-  def experiments3: Map[String, Config] = (1 to 100).map(i => {
-    val (name, config) = configName(DEFAULT_CONFIG.copy(simulation = DEFAULT_CONFIG.simulation.copy(experiment_length = 7200, override_robot_count = None),
-      bn = DEFAULT_CONFIG.bn.copy(max_output_rewires = 1, max_input_rewires = 1,
-        options = DEFAULT_CONFIG.bn.options.copy(bias = 0.79, self_loops = false, node_count = 100, nodes_input_count = 3, network_inputs_count = 4))))
-    (name + "-" + i, config)
-  }).toMap
-
-  /** Experiments selector **/
-  def experiments: Map[String, Config] = experiments1 /*++ experiments2 ++ experiments3*/
 
   /** Simulation standard output (by lines) **/
   def runSimulation(config: Config, visualization: Boolean = false): Iterator[String] =

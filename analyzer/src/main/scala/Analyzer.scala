@@ -27,7 +27,7 @@ object Analyzer extends App {
   }
 
   /** Groups the raw data by configuration. **/
-  def experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy {
+  lazy val experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy {
     case (config, _) =>
       val bias = config.bn.options.bias
       val outputRewires = config.bn.max_output_rewires

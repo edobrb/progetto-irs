@@ -1,11 +1,10 @@
 import model.Types.RobotId
 import model.config.Config
-import model.config.Config.JsonFormats._
 import model.{RobotData, StepInfo, TestRun}
-import play.api.libs.json.{JsError, JsSuccess, Json, OFormat}
+import play.api.libs.json._
 import utils.Benchmark
 import utils.Parallel._
-
+import Config.JsonFormats._
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 
@@ -22,7 +21,7 @@ object Loader extends App {
 
   implicit def siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
-  /** Map a experiment output's line to it's information (StepInfo) **/
+  /** Map a experiment output's line to it's representation object (StepInfo) **/
   def toStepInfo(jsonStep: String): Option[StepInfo] =
     Try(Json.parse(jsonStep)) match {
       case Success(json) => Json.fromJson[StepInfo](json) match {
@@ -37,14 +36,14 @@ object Loader extends App {
     data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
       case (id, steps) =>
         (id, steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
-          case (l :+ last, StepInfo(step, id, None, states, fitness)) =>
-            l :+ (last add(states, fitness))
-          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn == last.bn =>
-            l :+ (last add(states, fitness))
-          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness)) if bn != last.bn =>
-            l :+ last :+ TestRun(bn, Seq((states, fitness)))
-          case (Nil, StepInfo(step, id, Some(bn), states, fitness)) =>
-            Seq(TestRun(bn, Seq((states, fitness))))
+          case (l :+ last, StepInfo(step, id, None, states, fitness, position)) =>
+            l :+ (last add(states, fitness, position))
+          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn == last.bn =>
+            l :+ (last add(states, fitness, position))
+          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn != last.bn =>
+            l :+ last :+ TestRun(bn, states, fitness, position)
+          case (Nil, StepInfo(step, id, Some(bn), states, fitness, position)) =>
+            Seq(TestRun(bn, states, fitness, position))
         })
     }
 
@@ -56,14 +55,8 @@ object Loader extends App {
       utils.File.readGzippedLines2(input_filename) {
         content: Iterator[String] =>
           val config: Config = Config.fromJson(content.next())
-          val expectedTestsCount = config.simulation.experiment_length * config.simulation.ticks_per_seconds / config.simulation.network_test_steps
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-            val tests = extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
-            //check if the number of tests is equal to the expected value
-            if(!tests.forall(_._2.size == expectedTestsCount)) {
-              println(s"Check failed for file $input_filename")
-            }
-            tests
+            extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)
@@ -72,7 +65,7 @@ object Loader extends App {
         case Success((config: Config, result: Map[RobotId, Seq[TestRun]])) =>
           val robotsData = result.map {
             case (robotId, tests) =>
-              RobotData(input_filename, config, robotId, tests.map(_.fitnessValues.last), tests.maxBy(_.fitnessValues.last).bn)
+              RobotData(input_filename, config, robotId, tests.map(_.fitnessValues.last)/*, tests.flatMap(_.positions)*/, tests.maxBy(_.fitnessValues.last).bn)
           }
           utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       }
