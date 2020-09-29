@@ -48,7 +48,7 @@ object Analyzer extends App {
     s"B=$bias,OR=$outputRewires${if (selfLoops) ",SL" else ""},NIC=$nic${if (soh) ",H" else ""}${if (fp) ",FP" else ""}"
   }
 
-  def showAveragedFitnessCharts(): Unit = {
+  def showAveragedFitnessCharts(chartName:String, experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("tests").yAxisTitle("Average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
     experimentsResults.foreach {
@@ -59,11 +59,11 @@ object Analyzer extends App {
         }.map(_ / values.size)
         chart.addSeries(nameSeries(config), totalFitnessCurve.toArray)
     }
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/fitness_curve.png", BitmapFormat.PNG, 100)
+    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
     new SwingWrapper(chart).displayChart
   }
 
-  def showBoxPlot(): Unit = {
+  def showBoxPlot(chartName:String,experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("steps").yAxisTitle("fitness")
       .title(s"Final fitness of each robot").width(2500).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
@@ -73,13 +73,22 @@ object Analyzer extends App {
         val result = values.map(_.fitnessCurve.last)
         chart.addSeries(nameSeries(config), result.toArray)
     }
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/best_fitness.png", BitmapFormat.PNG, 100)
+    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
     new SwingWrapper(chart).displayChart
   }
 
   /** Plots charts. **/
-  showAveragedFitnessCharts()
-  showBoxPlot()
+  experimentsResults.groupBy {
+    case (config, _) => (config.robot.stay_on_half, config.robot.feed_position, config.bn.options.network_inputs_count)
+  } foreach {
+    case ((sh, fp, nic), results) =>
+      showAveragedFitnessCharts(s"${if(sh) "half-" else ""}${if(fp) "feed-" else ""}nic=${nic}-avg-fitness-curve", results)
+      showBoxPlot(s"${if(sh) "half-" else ""}${if(fp) "feed-" else ""}nic=${nic}-fitness-boxplot", results)
+  }
+
+  val comparison = experimentsResults.filter(v => !v._1.robot.stay_on_half && !v._1.bn.options.self_loops && v._1.bn.max_output_rewires == 1)
+  showAveragedFitnessCharts(s"comparison-avg-fitness-curve", comparison)
+  showBoxPlot(s"comparison-fitness-boxplot", comparison)
 
   /** Run a simulation where each robot has the best boolean network. **/
   val bestRobot = rawData.maxBy(_.fitnessCurve.last)

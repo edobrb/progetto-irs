@@ -12,7 +12,7 @@ object Experiments extends App {
 
   def SIMULATION_FILE = "config_simulation.argos"
 
-  def DATA_FOLDER = "E:/data"
+  def DATA_FOLDER = "/mnt/hgfs/data"
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) **/
   def DEFAULT_CONFIG: Config = {
@@ -151,11 +151,11 @@ object Experiments extends App {
   }
 
 
-  /** Filenames of experiments and the relative config **/
+  /** Filenames of experiments and the relative config */
   def experiments: Map[String, Config] = {
 
     def configs: Map[String, Config] = {
-      /** Configuration variations **/
+      /** Configuration variations */
       def biasVariation: Seq[Config => Config] = Seq(
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
@@ -172,13 +172,11 @@ object Experiments extends App {
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
       )
 
-
       def stayOnHalfVariation: Seq[Config => Config] = Seq(
         c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
         c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
         c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
       )
-
 
       def networkInputCountVariation: Seq[Config => Config] = Seq(
         c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
