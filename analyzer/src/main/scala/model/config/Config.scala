@@ -1,8 +1,6 @@
 package model.config
 
-import play.api.libs.json.{Json, OFormat}
-import play.api.libs.json._       // JSON library
-import play.api.libs.json.Reads._
+import play.api.libs.json.{Json, OFormat, _}
 
 object Config {
 
@@ -16,8 +14,8 @@ object Config {
 
   case class Robot(proximity_threshold: Double,
                    max_wheel_speed: Double,
-                   stay_on_half:Boolean,
-                   feed_position:Boolean)
+                   stay_on_half: Boolean,
+                   feed_position: Boolean)
 
 
   object BooleanNetwork {
@@ -88,7 +86,7 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
   }
 
   def combine(variations: Seq[Seq[Config => Config]]): Seq[Config] = {
-    /** Generates configurations starting with a seq of basic configuration and a sequence of configuration variations. **/
+    /** Generates configurations starting with a seq of basic configuration and a sequence of configuration variations. * */
     @scala.annotation.tailrec
     def combineConfigVariations(configs: Seq[Config], variations: Seq[Seq[Config => Config]]): Seq[Config] = {
       variations match {
@@ -101,4 +99,10 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
 
     combineConfigVariations(Seq(this), variations)
   }
+
+  /** Map configuration to the respective filename */
+  def filename: String =
+    s"el=${simulation.experiment_length}-rc=${simulation.robot_count}-bs=${bn.options.bias}-" +
+      s"mir=${bn.max_input_rewires}-mor=${bn.max_output_rewires}-sl=${bn.options.self_loops}-" +
+      s"nic=${bn.options.network_inputs_count}-hv=${robot.stay_on_half}-fp=${robot.stay_on_half && robot.feed_position}"
 }

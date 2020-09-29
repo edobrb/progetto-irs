@@ -10,23 +10,25 @@ import scala.util.{Failure, Success}
 
 object Analyzer extends App {
 
-  def RESULT_FOLDER: String = Experiments.DATA_FOLDER + "/results"
+  implicit val arguments: Array[String] = args
 
-  /** Load data of all experiments. **/
+  def RESULT_FOLDER(implicit args: Array[String]): String = Settings.DATA_FOLDER(args) + "/results"
+
+  /** Load data of all experiments. */
   lazy val rawData: Iterable[RobotData] = Loader.OUTPUT_FILENAMES.flatMap { filename =>
     utils.File.read(filename).map { str =>
       println(s"Parsing $filename (${str.length} chars)")
       Json.fromJson[Seq[RobotData]](Json.parse(str)) match {
         case JsSuccess(value, path) => value
         case JsError(errors) => println(s"Error while parsing $filename: $errors"); Nil
-      } //.map(_.copy(bns = Nil))
+      }
     } match {
       case Failure(exception) => println(s"Error while loading $filename: $exception"); Nil
       case Success(value) => value
     }
   }
 
-  /** Groups the raw data by configuration. **/
+  /** Groups the raw data by configuration. */
   lazy val experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy {
     case (config, _) =>
       val bias = config.bn.options.bias
@@ -48,7 +50,7 @@ object Analyzer extends App {
     s"B=$bias,OR=$outputRewires${if (selfLoops) ",SL" else ""},NIC=$nic${if (soh) ",H" else ""}${if (fp) ",FP" else ""}"
   }
 
-  def showAveragedFitnessCharts(chartName:String, experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
+  def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("tests").yAxisTitle("Average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
     experimentsResults.foreach {
@@ -63,7 +65,7 @@ object Analyzer extends App {
     new SwingWrapper(chart).displayChart
   }
 
-  def showBoxPlot(chartName:String,experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
+  def showBoxPlot(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])]): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("steps").yAxisTitle("fitness")
       .title(s"Final fitness of each robot").width(2500).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
@@ -77,20 +79,20 @@ object Analyzer extends App {
     new SwingWrapper(chart).displayChart
   }
 
-  /** Plots charts. **/
+  /** Plots charts. */
   experimentsResults.groupBy {
     case (config, _) => (config.robot.stay_on_half, config.robot.feed_position, config.bn.options.network_inputs_count)
   } foreach {
     case ((sh, fp, nic), results) =>
-      showAveragedFitnessCharts(s"${if(sh) "half-" else ""}${if(fp) "feed-" else ""}nic=${nic}-avg-fitness-curve", results)
-      showBoxPlot(s"${if(sh) "half-" else ""}${if(fp) "feed-" else ""}nic=${nic}-fitness-boxplot", results)
+      showAveragedFitnessCharts(s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}nic=${nic}-avg-fitness-curve", results)
+      showBoxPlot(s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}nic=${nic}-fitness-boxplot", results)
   }
 
   val comparison = experimentsResults.filter(v => !v._1.robot.stay_on_half && !v._1.bn.options.self_loops && v._1.bn.max_output_rewires == 1)
   showAveragedFitnessCharts(s"comparison-avg-fitness-curve", comparison)
   showBoxPlot(s"comparison-fitness-boxplot", comparison)
 
-  /** Run a simulation where each robot has the best boolean network. **/
+  /** Run a simulation where each robot has the best boolean network. */
   val bestRobot = rawData.maxBy(_.fitnessCurve.last)
   val bestConfig = bestRobot.config
   println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
@@ -99,4 +101,5 @@ object Analyzer extends App {
     bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))
   println(config)
   Experiments.runSimulation(config, visualization = true).foreach(println)
+
 }
