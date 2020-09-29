@@ -8,13 +8,16 @@ import scala.util.Random
 
 object Experiments extends App {
 
-  def WORKING_DIR = "/home/edo/Desktop/progetto-irs"
+  def argOrException(index: Int, argName: String): String =
+    if (args.length > index) args(index) else throw new Exception(s"Argument $index should be $argName")
 
-  def SIMULATION_FILE = "config_simulation.argos"
+  def WORKING_DIR = argOrException(0, "WORKING_DIR (lua)")
 
-  def DATA_FOLDER = "/mnt/hgfs/data"
+  def SIMULATION_FILE = argOrException(1, "SIMULATION_FILE (.argos)")
 
-  /** Default simulation configuration (will reflect on the .argos file and robots parameters) **/
+  def DATA_FOLDER = argOrException(2, "DATA_FOLDER")
+
+  /** Default simulation configuration (will reflect on the .argos file and robots parameters) * */
   def DEFAULT_CONFIG: Config = {
     def simulation = Config.Simulation(
       ticks_per_seconds = 10,
@@ -50,7 +53,7 @@ object Experiments extends App {
     Config(simulation, robot, bn)
   }
 
-  /** Function that map configuration to name **/
+  /** Function that map configuration to name * */
   def configName(config: Config): (String, Config) = {
     object Params {
       def unapply(arg: Config): Option[(Int, Int, Double, Int, Int, Boolean, Int, Boolean, Boolean)] =
@@ -187,17 +190,17 @@ object Experiments extends App {
       DEFAULT_CONFIG.combine(variations).map(configName).toMap
     }
 
-    /** Configuration repetitions for statistical accuracy. **/
+    /** Configuration repetitions for statistical accuracy. * */
     configs.flatMap { case (experimentName, config) => (1 to 100
       ).map(i => (experimentName + "-" + i, config))
     }
   }
 
-  /** Simulation standard output (by lines) **/
+  /** Simulation standard output (by lines) * */
   def runSimulation(config: Config, visualization: Boolean = false): Iterator[String] =
     Argos.runConfiguredSimulation(WORKING_DIR, SIMULATION_FILE, config, visualization)
 
-  /** Running experiments **/
+  /** Running experiments * */
   println(s"Running ${experiments.size} experiments...")
   experiments.toList.sortBy(_._1).parForeach(threads = 7, {
     case (experimentName, config) =>
