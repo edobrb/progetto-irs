@@ -2,12 +2,51 @@
 
 Questo progetto è il risultato del lavoro svolto per il corso di Sistemi Intelligenti e Robotici presente nel corso di laurea magistrare di Scienze e Ingegneria Informatica di Cesena.
 
-## Descrizione del progetto e obiettivi
+## Indice
+1. [Descrizione del progetto](#Descrizione-del-progetto)
+    - [Taks](#Task)
+    - [Simulazione fisica](#Simulazione-fisica)
+    - [Obiettivi](#Obiettivi) 
+2. [Lavoro svolto](#Lavoro-svolto)
+3. [Risultati](#Risultati)
+4. [Riproduzione dei risultati](#Riproduzione-dei-risultati)
+
+## Descrizione del progetto
 
 L'obiettivo di questo progetto è quello di analizzare una tecnica di adattamento online in un contesto multi-robotico.
 
-![](https://i.imgur.com/ilKsUR1.png)
+Si vuole dotare ogni robot di un *core computazionale* immutabile, in grado di fornire la capacità di compiere operazioni complesse ma non conosciute a priori. L'adattamento dei robot consiste nel capire come meglio utilizzare questo *core* al fine di massimizzare una certa funzione di *fitness*. Tale funzione modella il task che il robot deve compiere.
 
+Il robot si adatta evolvendo e quindi modificando gli allacciamenti tra i propri sensori/attuatori e al *core*. Monitorando l'andamento della *fitness* determina se una particolare configurazione è migliore o peggiore della precedente.
+
+//In natura?
+
+### Task
+In questo progetto il *core computazionale* è una rete booleana di moderate dimensioni (non oltre 100 nodi e con $k=3$). La funzione di fitness dei robot invece modella il task del moto rettilineo uniforme con evitamento degli ostacoli, viene definita in questo modo:
+
+$(1 - \theta) * (1 - \sqrt{|l - r|}) * (l + r)$
+
+Dove:
+ - $\theta$ è il valore di prossimità massimo letto dai sensori presenti sul robot. $\theta \in [0, 1]$ minore è $\theta$ più si è lontani da eventuali ostacoli.
+ - $l$ indica la potenza erogata al motore sinistro, $l \in [0, 1]$ con 0 il motore è spento.
+ - $r$ indica la potenza erogata al motore destro, $r \in [0, 1]$ con 0 il motore è spento.
+
+In Figura 1 è mostrata la rappresentazione dell'interazione fra sensori - rete booleana - attuatori
+![](https://i.imgur.com/ilKsUR1.png)
+*Figura 1: gli attuatori dei robot sono collegati in maniere non fissa ad alcuni nodi della rete booleana. Questi nodi verranno sovrascritti con il valore (binarizzato) del sensore ad ogni step di simulazione. Lo stato della rete booleana avanza aggiornando i valori di ogni nodo ad ogni step. Gli attuatori sono connessi in modo non fisso ad alcuni nodi. Gli attuatori hanno dunque un comportamento on/off. In questo caso i motori vengono accesi a piena potenza o spenti.*
+
+### Simulazione fisica
+Dal punto di vista fisico ogni robot è simulato attraverso il modello del *foot-bot*. Ogni robot è dotato di:
+ - **differential steering**: attuatore che permette di controllare i motori delle due ruote.
+ - **footbot proximity**: sensori che permettono di individuare oggetti intorno al robot.
+ - **positioning**: sensore virtuale che permette di conoscere l'esatta posizione del robot all'interno dell'arena.
+ 
+L'ambiente invece è definita come un'arena quadrata con al centro un ostacolo. La superfice è piana e priva di colorazione.
+L'arena e i robot si presentano in questo modo:
+![](https://i.imgur.com/JoYvIJq.png)
+
+
+### Obiettivi
 Il progetto ha i seguenti obiettivi:
  - determinare quali reti booleane offrano migliori possibilità di adattamento del robot. Veranno provate una serie di reti booleane (caotiche, ordinate, critiche).
  - determinare quali variazioni interne portino ad un più veloce e/o migliore adattamento del robot.
@@ -49,7 +88,7 @@ Il task principale di ogni robot è quello di muoversi il più velocemente possi
  - Non vi è un comportamento complessivo perchè evolvono in modo indipendente?
 
 
-## Appendice A: riprodurre gli esperimenti
+## Riproduzione dei risultati
 
 I requisiti per eseguire nuovamente gli esperimenti sono:
  - [Argos3](https://www.argos-sim.info/) (v3.0.0)
