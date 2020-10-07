@@ -11,6 +11,8 @@ object Settings {
 
   def DATA_FOLDER(implicit args: Array[String]): String = argOrException(2, "DATA_FOLDER")(args)
 
+  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = args.applyOrElse[Int, String](3, _ => "4").toInt
+
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Config = {
     def simulation = Config.Simulation(
@@ -78,7 +80,7 @@ object Settings {
 
     val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
     DEFAULT_CONFIG.combine(variations)
-  }
+  }.take(1)
 
   /** Filenames of experiments and the relative config */
   def experiments: Map[String, Config] = {

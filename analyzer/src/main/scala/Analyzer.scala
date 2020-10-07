@@ -88,9 +88,9 @@ object Analyzer extends App {
       showBoxPlot(s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}nic=${nic}-fitness-boxplot", results)
   }
 
-  val comparison = experimentsResults.filter(v => !v._1.robot.stay_on_half && !v._1.bn.options.self_loops && v._1.bn.max_output_rewires == 1)
+  /*val comparison = experimentsResults.filter(v => !v._1.robot.stay_on_half && !v._1.bn.options.self_loops && v._1.bn.max_output_rewires == 1)
   showAveragedFitnessCharts(s"comparison-avg-fitness-curve", comparison)
-  showBoxPlot(s"comparison-fitness-boxplot", comparison)
+  showBoxPlot(s"comparison-fitness-boxplot", comparison)*/
 
   /** Run a simulation where each robot has the best boolean network. */
   val bestRobot = rawData.maxBy(_.fitnessCurve.last)

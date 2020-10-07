@@ -52,7 +52,7 @@ object Loader extends App {
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
-  FILENAMES.toList.sortBy(_._1).parForeach(threads = 4, {
+  FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
     case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
       println(s"Loading $input_filename ... ")
       utils.File.readGzippedLines2(input_filename) {

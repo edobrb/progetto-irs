@@ -11,12 +11,12 @@ object Experiments extends App {
   implicit val arguments: Array[String] = args
 
   /** Simulation standard output (by lines) */
-  def runSimulation(config: Config, visualization: Boolean = false): Iterator[String] =
-    Argos.runConfiguredSimulation(Settings.WORKING_DIR, Settings.SIMULATION_FILE, config, visualization)
+  def runSimulation(config: Config, visualization: Boolean = false)(implicit args: Array[String]): Iterator[String] =
+    Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), Settings.SIMULATION_FILE(args), config, visualization)
 
   /** Running experiments */
   println(s"Running ${Settings.experiments.size} experiments...")
-  Settings.experiments.toList.sortBy(_._1).parForeach(threads = 7, {
+  Settings.experiments.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
     case (experimentName, config) =>
       val filename = Settings.DATA_FOLDER + "/" + experimentName
       if (!utils.File.exists(filename)) {
