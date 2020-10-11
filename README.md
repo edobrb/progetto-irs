@@ -307,36 +307,89 @@ Di seguito vi è riproposta la tabella di parametri testati nelle simulazioni:
 |0.5|1|false|8|true with feed|
 |0.79||||true without feed|
 
-### Bias
-per prima cosa si indaga su quale effetto abbia il parametro bias sulle performance ottenute. Il seguente grafico raffigura l'andamento media della fitness. I gruppi sono per bias (0.1, 0.5, 0.79) e sono utilizzati i dati di tutti i 7200 esperimenti. Come si può notare le reti caotiche (bias 0.5) sono quelle che mediamente ottengono peggiori prestazioni e che migliorano con più lentezza. Le reti ordinate invece (bias 0.1) ottengono modeste prestazioni medie, avento anche il miglioramento più veloce nei primi 30 test. Le reti critiche (bias 0.79) sono quelle che ottengono prestazioni media migliori.
-![](https://i.imgur.com/geXnGXi.png)
+Si analizzano i risultati usando principalmente due tipo di grafici: un boxplot contenente la miglior fitness raggiunta da ogni robot in una simulazione, un grafico della curva di fitness media. Quest'ultima viene calcolata prendendo per ogni robot la sua curva di fitness per poi farne una media; la curva di fitness è il valore massimo della fitness che un robot è riuscito a raggiungere per ogni test, dunque è una curva sempre crescente.
 
-Dal seguente box si determina che tuttavia alcune singole prestazioni molto buone sono ottenute anche da robot con reti ordinate, mentre nella media le reti critiche offrono sempre una miglior prestazione.
-![](https://i.imgur.com/H9YIMfd.png)
+Per prima cosa si analizzano i risultati raggruppandoli sulle singole variazioni che si sono applicate alla configurazione. Dunque per ogni parametro vengono raggrupapti le 7200 simulazioni per un singolo parametro e poi elaborati le due misurazioni.
+
+### Bias
+Il primo parametro preso in esame è il bias. Come si può notare le reti ordinate (bias 0.1) sono quelle che mediamente ottengono peggiori prestazioni e che migliorano con più lentezza. Le reti caotiche invece (bias 0.5) ottengono modeste prestazioni medie, avento anche il miglioramento più veloce nell'arco dei primi 30 test. Le reti critiche (bias 0.79) sono quelle che ottengono prestazioni nella media migliori e che con una simulazione più lunga porterebbero a risultati finali probabilmente migliori.
+
+Dal seguente boxplot si determina che tuttavia alcune singole prestazioni molto performanti sono ottenute anche da robot con reti ordinate e caotiche, mentre nella media le reti critiche offrono sempre una miglior prestazione. Ciò tuttavia non esclude che con una simulazione molto più lunga le reti caotiche ed oridinate raggiungano molto prima il loro limite di prestazione, mentre quelle critiche potrebbero raggiungere livelli ben più elevati.
+
+
+![](https://brb.dynu.net/image/bias-fitness-curve.png) | ![](https://brb.dynu.net/image/bias-boxplot.png)
+:-:|:-:
+
+Questi risultati sono in linea con le aspettative in quanto le reti caotiche sono caratterizzare da un comportamento caotico che nel contesto di questo progetto ???
 
 ### Output rewires
 
+La variazione di almeno un nodo di output alla fine di ogni test porta a grandi benifici in termini di prestazioni ottenute. Nel seguente grafico infatti è mostrato l'andamento della fitness media nel caso in cui non si effettui mai un cambiamento ai nodi di output e il caso in cui ad ogni test si cambi un nodo di output.
+
+Anche il boxplot della massima fitness di ogni robot mostra che mediamente fare rewires dei nodi di output porta a migliori prestazioni. Tuttavia ciò non ha escluso ai controller senza rewire di raggiungere elevate prestazioni. Cioè probabilmente è causato che tali controller sono stati inizializzati con una buona scelta per i nodi di output.
+
+![](https://brb.dynu.net/image/or-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)
+:-:|:-:
+
+Questo risultato rientra nelle aspettative in quanto facendo rewires anche ai nodi di output il controller ha molte più configurazioni possibili da esplorare, e nel caso in cui si ritrovi inizializzato a nodi di output inefficaci questi non saranno vincolanti fino al termine della simulazione.
+
+
+
 ### Node input count
+
+Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza le performance e la rapidità con cui le si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto con una rete di soli 100 nodi usarne 24 come nodi di input implica che buona parte di quei 24 nodi debbano avere un effetto utile sui due nodi di output al fine  muoversi nella maniera più idonea. Diminuendo il nuero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Inoltre diminuisce lo spazio di combinazioni da esplorare sulla configurazione dei nodi di input ![](https://i.imgur.com/0jJjO6x.png) e ciò garantisce una più elevata convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
+
+![](https://brb.dynu.net/image/nic-fitness-curve.png) | ![](https://brb.dynu.net/image/nic-boxplot.png)
+:-:|:-:
+
+### Self loops
+
+Dai seguenti risultati non è possibile determinare se il parametro *self_loops* abbia qualche influenza sulle prestazioni raggiunte.
+![](https://brb.dynu.net/image/self-loops-fitness-curve.png) | ![](https://brb.dynu.net/image/self-loops-boxplot.png)
+:-:|:-:
+
+### Variazioni
+
+Dai seguenti grafici è possibile notare come la variante della metà arena determini un peggioramento in termini di fitness ottenuta dei robot. Questo è un risultato aspettato in quanto in certi momenti i robot si trovano in zone dove la fitness è per definizione 0. Un fenomeno inaspettato è quello che le due varianti con e senza feed hanno prodotto il medesimo risultato in termini di fitness. Ci si aspettava che i controller che sapevano se si trovavano sulla metà corretta (dunque un nodo di input in più) otennessero miglior risultati rispetto ai controller che dovevano basarsi solo sul feedback del valore della fitness al termine del test. 
+
+Tuttavia i risultati mostrano che i controller riescono ad utilizzare in qualche modo il feedback fornito dalla funzione di fitness. Se non fosse stato così i controller della variante "metà arena" avrebbero dovuto ottenere mediamente la metà della fitness ottenuta dalla variante "intera arena". I risultati invece mostrano che mediamente i robot si muovono in linea retta maggiormente nella metà corretta.
+![](https://brb.dynu.net/image/variation-fitness-curve.png) | ![](https://brb.dynu.net/image/variation-boxplot.png)
+:-:|:-:
+
+Non si esclude tuttavia la possibilità della presenza presenza di un bug all'interno del progetto che può aver portato a risultati scoretti. In linea generale i risultati sono come da previsione, nei casi contrari è bene verificare la correttezza delle simulazioni per evitare di fare ipotesi azzardate.
+
+
+
 
 ### Dettaglio
 Ora sono esposti alcuni grafici con configurazioni singole, senza quindi raggruppare configurazioni differenti sotto parametri comuni.
 
+|Variante| | |
+|:--:|:--:|:--:|
+|Intera arena|![](https://brb.dynu.net/image/overall-fitness-curve.png)|![](https://brb.dynu.net/image/overall-boxplot.png)|
+|Metà arena|![](https://brb.dynu.net/image/half-overall-fitness-curve.png)|![](https://brb.dynu.net/image/half-overall-boxplot.png)|
+|Metà arena - feed|![](https://brb.dynu.net/image/half-feed-overall-fitness-curve.png)|![](https://brb.dynu.net/image/half-feed-overall-boxplot.png)|
 
- - risultati base
-     - bias 0.79 migliore
-     - meno input meglio è -> pochi nodi non tutti sono utili, non ci serve una granularità di 24
-     - self loop -> non chiaro se meglio o peggio
-     - se si rewira anche l'output convergenza più veloce, rischio di fissare il robot ad 2 output inefficaci
-     - robot migliori cosa fanno?
- - risultati variante metà
-     - le considerazioni fatte sopra valgono anche per queste varianti
-     - fitness inferiore -> normale
-     - pericolo di come è stato implementato -> se va nella zona a 0 fitness magari ci rimane e non evolve -> (comporta sono una più lenta convergenza?)
-     - differenze feed/no feed -> no feed stranamente va cmq bene
-     - i robot migliori presentano un comportamento avanti, ruota 180, avanti -> se si incastrano fra due muri otterrano una buona fitness
- - possibilità che ci sia un bug
- - misura di complessità gzip?
- - Non vi è un comportamento complessivo perchè evolvono in modo indipendente? nel senso che non vi è un concetto di epoca nella quale nell'epoca successiva si copiano le migliori reti booleane ma invece ognuno si tiene la sua.
+
+
+
+
+### Comportamenti emersi
+
+
+
+Visivamente sono state rilanciate alcune simulazioni composte da 10 robot aventi la miglior rete booleana ottenuta durante un insieme di test.
+
+Da questa prova è stato riscontrato che nella variante "intera arena" (con bias=0.79) il miglior controller fa emergere una sorta di comportamento complessivo: tutti i robot finiscono per muoversi in senso antiorario intorno all'ostacolo al centro dell'arena. Questo comportamento fa si che vi sono minori collisioni fra robot e quindi la fitness finale sarà complessivamente più elevata. Questo comportamento può essere categorizzato come cooperativo in quanto tutti i robot ne traggono beneficio.
+Il comportamento visivamente è il seguente:
+
+![](https://brb.dynu.net/image/exemple1.gif)
+
+
+Nella variante "metà arena" invece non è visibilmente emerso nessun comportamento complessivo. 
+
+Il comportamento cooperativo descritto nel primo caso probabilmente non è nato durante la simulazione originaria ma bensì soltato durante la simulazione dove tutti i 10 robot hanno la stessa rete booleana. Infatti, è difficile che nasca una qualche sorta di interazione fra robot durante le simulazioni perchè tutti i 10 robot non hanno modo di interagire se non attraverso la loro presenza / non presenza intorno ad altri robot. Inoltre, i robot all'interno di una simulazione sono caratterizzati da reti booleane dello stesso tipo ma di istanza totalmente diversa, causando comportamenti totalmente differenti e ciò sfavorisce ulteriormente la nascita di comportamenti cooperativi.
+
 
 
 ## Riproduzione dei risultati
@@ -405,3 +458,9 @@ Ad ogni configurazione base viene applicata una combinazione di variazioni con u
 I nomi dei file generati rispecchiano alcuni parametri della ...
 
 
+
+ - risultati variante metà
+
+     - pericolo di come è stato implementato -> se va nella zona a 0 fitness magari ci rimane e non evolve -> (comporta sono una più lenta convergenza?)
+
+     - i robot migliori presentano un comportamento avanti, ruota 180, avanti -> se si incastrano fra due muri otterrano una buona fitness
