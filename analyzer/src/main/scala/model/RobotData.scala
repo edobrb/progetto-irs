@@ -13,7 +13,7 @@ import model.config.Config
  * @param bestBn         the best boolean network (based on fitness) of this robot in this experiment
  */
 //* @param positions      the position of the robot over steps
-case class RobotData(filename: String, config: Config, robot_id: String, fitness_values: Seq[Double]/*, positions:Seq[Position]*/, bestBn: BooleanNetwork.Schema) {
+case class RobotData(filename: String, config: Config, robot_id: String, fitness_values: Seq[Double]/*, positions:Seq[Position]*/, bestBn: BooleanNetwork.Schema) { //TODO: JSON bestBn name convention is wrong
   def fitnessCurve: Seq[Double] = {
     fitness_values.scanLeft(0.0) {
       case (fitness, v) if v > fitness => v

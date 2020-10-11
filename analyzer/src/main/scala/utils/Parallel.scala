@@ -1,6 +1,6 @@
 package utils
 
-import java.util.concurrent.{Executors, Future}
+import java.util.concurrent.{Callable, Executors, Future}
 
 object Parallel {
 
@@ -12,6 +12,20 @@ object Parallel {
       }))
       futures.foreach(_.get())
       executor.shutdown()
+    }
+    def parMap[R](threads: Int, f: T => R): Iterable[R] = {
+      val executor = Executors.newFixedThreadPool(threads)
+      val futures: Iterable[Future[R]] = iterable.map(v => executor.submit(() => f(v)))
+      val result = futures.map(_.get())
+      executor.shutdown()
+      result
+    }
+    def parFlatmap[R](threads: Int, f: T => Iterable[R]): Iterable[R] = {
+      val executor = Executors.newFixedThreadPool(threads)
+      val futures: Iterable[Future[Iterable[R]]] = iterable.map(v => executor.submit(() => f(v)))
+      val result = futures.map(_.get())
+      executor.shutdown()
+      result.flatten
     }
   }
 

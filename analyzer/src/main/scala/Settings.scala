@@ -80,7 +80,7 @@ object Settings {
 
     val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
     DEFAULT_CONFIG.combine(variations)
-  }.take(1)
+  }
 
   /** Filenames of experiments and the relative config */
   def experiments: Map[String, Config] = {
