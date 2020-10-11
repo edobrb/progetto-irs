@@ -25,25 +25,25 @@ Il robot cerca di sfruttare al meglio la propria capacità computazionale per ma
 ### Task
 La funzione di fitness dei robot modella il task del moto rettilineo uniforme con evitamento degli ostacoli, viene definita in questo modo:
 
-![](https://i.imgur.com/BrqgC6I.png)
+![formula](https://render.githubusercontent.com/render/math?math=\LARGE(1-\theta)*(1-\sqrt{|l-r|})*\frac{l%2Br}{2})
 
 
 dove:
- - $\theta$ è il valore di prossimità massimo letto dai sensori presenti sul robot. $\theta \in [0, 1]$ minore è $\theta$ più si è lontani da eventuali ostacoli.
- - $l$ indica la potenza erogata al motore sinistro, $l \in [0, 1]$ con 0 il motore è spento.
- - $r$ indica la potenza erogata al motore destro, $r \in [0, 1]$ con 0 il motore è spento.
+ - ![formula](https://render.githubusercontent.com/render/math?math=\theta) è il valore di prossimità massimo letto dai sensori presenti sul robot. ![formula](https://render.githubusercontent.com/render/math?math=\theta\in[0,1])  minore è ![formula](https://render.githubusercontent.com/render/math?math=\theta)  più si è lontani da eventuali ostacoli.
+ - ![formula](https://render.githubusercontent.com/render/math?math=l) indica la potenza erogata al motore sinistro, ![formula](https://render.githubusercontent.com/render/math?math=l\in[0,1]) con 0 il motore è spento.
+ - ![formula](https://render.githubusercontent.com/render/math?math=r) indica la potenza erogata al motore destro, ![formula](https://render.githubusercontent.com/render/math?math=r\in[0,1]) con 0 il motore è spento.
 
 In una fase successiva del progetto si analizzerà un secondo task in cui i robot devono muoversi con un moto rettilineo uniforme, evitando gli ostacoli e rimanendo nella metà orizzontale dell'arena in cui essi sono partiti.
 Dunque: 
 
-![](https://i.imgur.com/ohImSzw.png)
+![formula](https://render.githubusercontent.com/render/math?math=\LARGE(1-\theta)*(1-\sqrt{|l-r|})*\frac{l%2Br}{2}*\alpha)
 
 
-dove $\alpha = 1$ se il robot si trova nella propria metà, altrimenti $\alpha = 0$.
+dove ![formula](https://render.githubusercontent.com/render/math?math=\alpha=1) se il robot si trova nella propria metà, altrimenti ![formula](https://render.githubusercontent.com/render/math?math=\alpha=0).
 
 ### Rete Booleana
-In questo progetto il *core computazionale* è una **rete booleana** di moderate dimensioni (100 nodi e con $k=3$). In Figura 1 è mostrata la rappresentazione dell'interazione fra sensori - rete booleana - attuatori
-![](https://i.imgur.com/ilKsUR1.png)
+In questo progetto il *core computazionale* è una **rete booleana** di moderate dimensioni (100 nodi e con k=3). In Figura 1 è mostrata la rappresentazione dell'interazione fra sensori - rete booleana - attuatori
+![](https://brb.dynu.net/image/core.png)
 *Figura 1: i sensori dei robot sono collegati in maniere non fissa ad alcuni nodi della rete booleana. Questi nodi verranno sovrascritti con il valore (binarizzato) dei sensori ad ogni step di simulazione. Lo stato della rete booleana avanza aggiornando i valori di ogni nodo ad ogni step. Gli attuatori sono connessi in modo non fisso ad alcuni nodi. Gli attuatori hanno dunque un comportamento on/off: in questo caso i motori vengono accesi a piena potenza o spenti sulla base dell'attivazione del nodo di output.*
 
 Per ciascun robot la rete booleana viene inizializzata all'avvio della simulazione sulla base dei parametri forniti dall'esterno:
@@ -64,9 +64,7 @@ Dal punto di vista fisico ogni robot è simulato attraverso il modello del *foot
 L'ambiente invece è definito come un'arena quadrata con al centro un ostacolo. La superfice è piana e priva di colorazione.
 L'arena e i robot si presentano in questo modo:
 
-<p align="center">
-  <img src="https://i.imgur.com/JoYvIJq.png"/>
-</p>
+![](https://brb.dynu.net/image/arena.png)
 
 I robot si muovono con una velocità più elevata del normale (5 cm/s) per garantire una più elevata interazione fra i robot. L'unico mezzo di interazione tra i robot sono i sensori di prossimità e i motori, dunque non possono distinguere un ostacolo fissato (muro) da un robot in alcun modo.
 
@@ -138,7 +136,7 @@ I valori applicati nei campi variabili sono:
 |0.5|1|false|8|true with feed|
 |0.79||||true without feed|
 
-Ad ogni configurazione base viene applicata una combinazione di variazioni con un totale di $3*2*2*3*2 = 72$ possibili configurazioni.
+Ad ogni configurazione base viene applicata una combinazione di variazioni con un totale di ![formula](https://render.githubusercontent.com/render/math?math=3*2*2*3*2=72) possibili configurazioni.
 
 Un esempio di istanza di configurazione in formato JSON è la seguente:
 ```json
@@ -328,7 +326,7 @@ La variazione di almeno un nodo di output alla fine di ogni test porta a grandi 
 
 Anche il boxplot della massima fitness di ogni robot mostra che mediamente fare rewires dei nodi di output porta a migliori prestazioni. Tuttavia ciò non ha escluso ai controller senza rewire di raggiungere elevate prestazioni. Cioè probabilmente è causato che tali controller sono stati inizializzati con una buona scelta per i nodi di output.
 
-![](https://brb.dynu.net/image/or-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)
+![](https://brb.dynu.net/image/or-fitness-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)
 :-:|:-:
 
 Questo risultato rientra nelle aspettative in quanto facendo rewires anche ai nodi di output il controller ha molte più configurazioni possibili da esplorare, e nel caso in cui si ritrovi inizializzato a nodi di output inefficaci questi non saranno vincolanti fino al termine della simulazione.
@@ -337,7 +335,7 @@ Questo risultato rientra nelle aspettative in quanto facendo rewires anche ai no
 
 ### Node input count
 
-Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza le performance e la rapidità con cui le si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto con una rete di soli 100 nodi usarne 24 come nodi di input implica che buona parte di quei 24 nodi debbano avere un effetto utile sui due nodi di output al fine  muoversi nella maniera più idonea. Diminuendo il nuero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Inoltre diminuisce lo spazio di combinazioni da esplorare sulla configurazione dei nodi di input ![](https://i.imgur.com/0jJjO6x.png) e ciò garantisce una più elevata convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
+Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza le performance e la rapidità con cui le si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto con una rete di soli 100 nodi usarne 24 come nodi di input implica che buona parte di quei 24 nodi debbano avere un effetto utile sui due nodi di output al fine  muoversi nella maniera più idonea. Diminuendo il nuero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Inoltre diminuisce lo spazio di combinazioni da esplorare sulla configurazione dei nodi di input (![formula](https://render.githubusercontent.com/render/math?math=C_{100,8}<C_{100,24})) e ciò garantisce una più elevata convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
 
 ![](https://brb.dynu.net/image/nic-fitness-curve.png) | ![](https://brb.dynu.net/image/nic-boxplot.png)
 :-:|:-:
@@ -362,9 +360,9 @@ Non si esclude tuttavia la possibilità della presenza presenza di un bug all'in
 
 
 ### Dettaglio
-Ora sono esposti alcuni grafici con configurazioni singole, senza quindi raggruppare configurazioni differenti sotto parametri comuni.
+Per completezza sono esposti i grafici delle singole configurazioni senza reaggruppamenti di configurazioni diverse (ad eccezioen del self-loop che viene comunque raggruppato). Sono stati suddivisi in 3 categorie per il tipo di variante usata.
 
-|Variante| | |
+|Variante|Curva di fitness media|Miglior fitness al termine|
 |:--:|:--:|:--:|
 |Intera arena|![](https://brb.dynu.net/image/overall-fitness-curve.png)|![](https://brb.dynu.net/image/overall-boxplot.png)|
 |Metà arena|![](https://brb.dynu.net/image/half-overall-fitness-curve.png)|![](https://brb.dynu.net/image/half-overall-boxplot.png)|
@@ -390,7 +388,12 @@ Nella variante "metà arena" invece non è visibilmente emerso nessun comportame
 
 Il comportamento cooperativo descritto nel primo caso probabilmente non è nato durante la simulazione originaria ma bensì soltato durante la simulazione dove tutti i 10 robot hanno la stessa rete booleana. Infatti, è difficile che nasca una qualche sorta di interazione fra robot durante le simulazioni perchè tutti i 10 robot non hanno modo di interagire se non attraverso la loro presenza / non presenza intorno ad altri robot. Inoltre, i robot all'interno di una simulazione sono caratterizzati da reti booleane dello stesso tipo ma di istanza totalmente diversa, causando comportamenti totalmente differenti e ciò sfavorisce ulteriormente la nascita di comportamenti cooperativi.
 
+## Conclusioni
 
+ - miglior parametri
+ - comportamenti emersi
+ - qualcosa sul core
+ - lavori futuri e varianti
 
 ## Riproduzione dei risultati
 
@@ -417,50 +420,11 @@ Il progetto è suddiviso in tre sezioni principali:
  - **Analyzer**: una volta generati i file intermedi in formato JSON è possibile andare a generare i grafici sulla fitness attraverso questo eseguibile. Inoltre è possibile modificare questa sezione per estrarre e visualizzare le informazioni di più interesse e/o lanciare i robot che hanno ottenuto più fitness per vederne visivamente il comportamento.
      - `sbt "runMain Analyzer ../lua config_simulation.argos /storage/data"`
 
-I file generati da *Experiments* e *Loader* utilizzati per ricavare i risultati descritti in questo documento saranno distribuiti per un periodo non determinato. Il link per il download attraverso protocollo BitTorrent è [magnet link].
+[comment]: <> (I file generati da *Experiments* e *Loader* utilizzati per ricavare i risultati descritti in questo documento saranno distribuiti per un periodo non determinato. Il link per il download attraverso protocollo BitTorrent è [magnet link].)
 
 
 
-I parametri della configurazione base degli esperimenti che non verranno alterati sono:
- - simulazione:
-     -  ticks per seconds: 10
-     -  experiment length: 7200 (seconds)
-     -  network test steps: 400 (ticks)
-     -  robot count: 10
- - robot:
-     - proximity threshold: 0.1
-     - max wheel speed: 5 (cm/s)
-     - stay on half variation: **variabile**
- - rete booleana:
-     - max input rewires: 2
-     - input rewires probability: 1
-     - max output rewires: **variabile**
-     - output rewires probability: 1
-     - dual encoding: false
-     - node count: 100
-     - k: 3
-     - bias: **variabile**
-     - nodi in input: **variabile**
-     - nodi di output: 2
-     - self loops: **variabile**
-     - override output nodes bias: true
-
-Le variazioni sono
-
-| bias |max output rewires|self loop|node input count|half variation
-|:----:|:----:|:----:|:----:|:----:|
-|0.1|0|true|24|false|
-|0.5|1|false|8|true with feed|
-|0.79||||true without feed|
-
-Ad ogni configurazione base viene applicata una combinazione di variazioni con un totale di $3*2*2*3*2 = 72$ possibili configurazioni
-
-I nomi dei file generati rispecchiano alcuni parametri della ...
 
 
 
- - risultati variante metà
-
-     - pericolo di come è stato implementato -> se va nella zona a 0 fitness magari ci rimane e non evolve -> (comporta sono una più lenta convergenza?)
-
-     - i robot migliori presentano un comportamento avanti, ruota 180, avanti -> se si incastrano fra due muri otterrano una buona fitness
+[comment]: <> ( - risultati variante metà - pericolo di come è stato implementato -> se va nella zona a 0 fitness magari ci rimane e non evolve -> comporta sono una più lenta convergenza? - i robot migliori presentano un comportamento avanti, ruota 180, avanti -> se si incastrano fra due muri otterrano una buona fitness)
