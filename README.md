@@ -82,15 +82,15 @@ Sarà interessante analizzare l'interazione che i robot troveranno più convenie
 
 ## Lavoro svolto
 
-Il progetto nasce da un precedente lavoro svolto da **TODO** dal quale è stata ereditata l'implementazione di un controller con esattaente le caratteristiche necessarie per il progetto: una rete booleana immutabile che controlla il funzionamento dei motori e che viene perturbata dai valori dei sensori. Il controller muta le interconnesioni mantenendo la configurazione migliore della rete booleana sulla base della prestazione calcolate dalla funzione di fitness.
-Il lavoro svolto è stato quello di adattare il controller per un contesto multi robotico e per estrarre i dati necessari a trarre conclusioni. Inoltre è stato sviluppato un progetto che permette di lanciare le simulazioni in modo automatizzato, salvare i dati raccolti e generare le informazioni richieste.
+Il progetto nasce da un precedente lavoro svolto da Alessandro Gnucci dal quale è stata ereditata l'implementazione di un controller con esattaente le caratteristiche necessarie per il progetto: una rete booleana immutabile che controlla il funzionamento dei motori e che viene perturbata dai valori dei sensori. Il controller muta le interconnesioni mantenendo la configurazione migliore della rete booleana sulla base della fitness calcolata.
+Il lavoro svolto è stato quello di adattare il controller per un contesto multi robotico e per estrarre i dati necessari a trarre conclusioni. Inoltre è stato sviluppato un progetto parallelo che permette di lanciare le simulazioni in modo automatizzato, salvare i dati raccolti e generare le informazioni richieste.
 
 ### Controller
 Il controller è stato scritto in linguaggio Lua.
 Il funzionamento del controller può essere così descritto:
 
 #### Inizializzazione
-All'avvio della simulazione il controller inizializza una rete booleana sulla base della configurazione ricevuta, essa verrà mantenuta per l'intera durata della simulazione. Quest'ultima verrà suddivisa in molteplici test di durata (numero di step) prefissata: durante l'esecuzione di un test il controller del robot rimane invariato, facendo muovere il robot nell'arena sulla base del controllo della rete booleana e accumulando il valore di fitness calcolato ad ogni step (tick).
+All'avvio della simulazione il controller inizializza una rete booleana, che rimarrà invariata per tutta la simulazione, sulla base della configurazione ricevuta. La simulazione verrà suddivisa in molteplici test di durata (numero di step) prefissata: durante l'esecuzione di un test il controller del robot rimane invariato, facendo muovere il robot nell'arena sulla base del controllo della rete booleana e accumulando il valore di fitness calcolato ad ogni step (tick).
 
 #### Step
 Ad ogni step il controller sovrascrive ogni nodo di input attuale delle rete booleana con il valore binarizzato del corrispettivo sensore. Successivamente viene calcolato il nuovo stato della rete booleana e determinato il valore dei nodi di output. Questi valori vengono utilizzati per controllare i motori del robot. Al termine di ogni step viene valutata la funzione di fitness ed il valore ricavato viene sommato ad un totale parziale relativo al test attuale. Infine vengono stampati in standard output una serie di dati relativi al robot che serviranno per analizzarne il comportamento a posteriori.
@@ -104,7 +104,7 @@ Al termine di ogni test l'attuale configurazione (nodi di input e nodi di output
 Il lavoro più corposo di questo progetto è stato quello di configurare un ambiente automatizzato per l'esecuzione di vari esperimenti, l'estrazione dei dati e la loro analisi. In questa sezione vengono descritte le varie configurazioni utilizzate per gli esperimenti, come vengono passate al controller e in che modo le simulazioni vengono eseguite. 
 
 #### Configurazione di una simulazione
-Ogni simulazione necessità di una configurazione, quest'ultima non potrà più essere alterata dopo l'avvio della simulazione. Sono state individuate 72 configurazioni distinte da simulare. I parametri della configurazione base che non vengono alterati sono nella seguente lista suddivisi per categoria:
+Ogni simulazione necessita di una configurazione, quest'ultima non potrà più essere alterata dopo l'avvio della simulazione. Sono state individuate 72 configurazioni distinte da simulare. I parametri della configurazione base sono nella seguente lista suddivisi per categoria:
  - simulazione:
      -  ticks per seconds: 10
      -  experiment length: 7200 (seconds)
@@ -114,6 +114,7 @@ Ogni simulazione necessità di una configurazione, quest'ultima non potrà più 
      - proximity threshold: 0.1
      - max wheel speed: 5 (cm/s)
      - stay on half variation: **variabile**
+     - feed position: **variabile**
  - rete booleana:
      - max input rewires: 2
      - input rewires probability: 1
@@ -133,8 +134,10 @@ I valori applicati nei campi variabili sono:
 | bias |max output rewires|self loop|node input count|half variation
 |:----:|:----:|:----:|:----:|:----:|
 |0.1|0|true|24|false|
-|0.5|1|false|8|true with feed|
-|0.79||||true without feed|
+|0.5|1|false|8|true with position feed|
+|0.79||||true without position feed|
+
+**Nota**: con feed position si intende che durante l'inizializzazione del controller viene create una rete booleana con un nodo di input in più, questo servirà per comunicare alla rete se il robot si trovi o meno sulla metà arena corretta. Dunque, il nodo di input in più viene collegato ad un sensore virtuale che determina ad ogni step se il robot è nella regione corretta.
 
 Ad ogni configurazione base viene applicata una combinazione di variazioni con un totale di ![formula](https://render.githubusercontent.com/render/math?math=3*2*2*3*2=72) possibili configurazioni.
 
@@ -238,7 +241,7 @@ Ad ogni step il robot genera le stesse informazioni sopra citate omettendo il ca
 ```
 Ogni JSON è compattato in una singola riga e stampato in standard output. Ad ogni step dunque vengono stampati _n_ JSON in _n_ righe dove _n_ è il numero di robot presenti nella simulazione. Un'intera simulazione dunque genera un totale di 7200 (lunghezza esperimento) * 10 (tick/second) * 10 (numero di robot) = 720000 record JSON.
 
-Salvando l'output derivante dalla simulazione si ottiene un file composto da alcune stampe iniziali del simulazione argos seguite da una lunga serie di record JSON suddivisi per righe. L'esecuzione di `Experiments` salva questo flusso output su un file denominato sulla base della configurazione lanciata. Inoltre la configurazione stessa viene serializzata in formato JSON ed aggiunta al file come prima riga. Il file viene compresso con il tool `gzip` per risparmiare una notevole quantità di spazio. Lo schema di un file generato da una simulazione è dunque:
+Salvando l'output derivante dalla simulazione si ottiene un file composto da alcune stampe iniziali della simulazione argos seguite da una lunga serie di record JSON suddivisi per righe. L'esecuzione di `Experiments` salva questi flussi output su file denominati sulla base della configurazione lanciata. Inoltre la configurazione stessa viene serializzata in formato JSON ed aggiunta al file come prima riga. Il file viene compresso con il tool `gzip` per risparmiare una notevole quantità di spazio. Lo schema di un file generato da una simulazione è dunque:
 ```
 {configurazione in formato JSON}
 alcune stampe argos
@@ -257,7 +260,7 @@ alcune stampe argos
 
 ### Analisi dei dati
 
-Una volta che le simulazioni sono terminate si ottiene un insieme di file in formato gzip salvati su disco. In questa fase vengono estratte una serie di informazioni contenute in strutture di alto livello per facilitare l'analisi delle simulazioni. L'estrazione di queste strutture dati di alto livello richiede molto tempo e per questo si è deciso di introdurre una fase intermedia dove tali strutture vengono estrapolate e salvate in formato JSON su un file provissorio. In questo modo è possibile analizzare i dati prodotti dalle simulazioni in modo molto più efficiente.
+Una volta che le simulazioni sono terminate si ottiene un insieme di file in formato gzip salvati su disco. In questa fase vengono estratte una serie di informazioni contenute in strutture di alto livello per facilitare l'analisi dei dati raccolti. L'estrazione di queste strutture dati di alto livello richiede molto tempo e per questo si è deciso di introdurre una fase intermedia dove tali strutture vengono estrapolate e salvate in formato JSON su un file provissorio. In questo modo è possibile analizzare i dati prodotti dalle simulazioni in modo molto più efficiente.
 
 La sezione del progetto che si occupa di questa fase è denominata `Loader`. Se messo in esecuzione esso elabora per ogni file di simulazione gzip un file JSON contenente una struttura di questo tipo:
  - Per ogni robot viene generato un record con i seguenti campi:
@@ -295,9 +298,9 @@ In un calcolatore moderno `Experiments` impiega circa una settimana per terminar
 
 ## Risultati
 
-In questo capitolo si mostrano i risultati raccolti e si analizzano al fine di soddifare l'obiettivo del progetto.
+In questo capitolo si mostrano i risultati raccolti e li si analizzano al fine di soddifare l'obiettivo del progetto.
 
-Di seguito vi è riproposta la tabella di parametri testati nelle simulazioni:
+Di seguito vi è riproposta la tabella dei parametri testati:
 
 | bias |max output rewires|self loop|node input count|half variation
 |:----:|:----:|:----:|:----:|:----:|
@@ -305,26 +308,26 @@ Di seguito vi è riproposta la tabella di parametri testati nelle simulazioni:
 |0.5|1|false|8|true with feed|
 |0.79||||true without feed|
 
-Si analizzano i risultati usando principalmente due tipo di grafici: un boxplot contenente la miglior fitness raggiunta da ogni robot in una simulazione, un grafico della curva di fitness media. Quest'ultima viene calcolata prendendo per ogni robot la sua curva di fitness per poi farne una media; la curva di fitness è il valore massimo della fitness che un robot è riuscito a raggiungere per ogni test, dunque è una curva sempre crescente.
+Si analizzano i risultati usando principalmente due tipi di grafici: un boxplot contenente la miglior fitness raggiunta da ogni robot in una simulazione, e un grafico della curva di fitness media. Quest'ultima viene calcolata usando la sua curva di fitness di ogni robot per poi farne una media; la curva di fitness è il valore massimo della fitness che un robot è riuscito a raggiungere fino al test in questione, dunque è una curva sempre crescente.
 
-Per prima cosa si analizzano i risultati raggruppandoli sulle singole variazioni che si sono applicate alla configurazione. Dunque per ogni parametro vengono raggrupapti le 7200 simulazioni per un singolo parametro e poi elaborati le due misurazioni.
+Per prima cosa si analizzano i risultati raggruppandoli sulle singole variazioni che si sono applicate alla configurazione. Dunque per ogni parametro vengono raggrupapte le 7200 simulazioni per un singolo parametro e poi elaborate le due misurazioni.
 
 ### Bias
-Il primo parametro preso in esame è il bias. Come si può notare le reti ordinate (bias 0.1) sono quelle che mediamente ottengono peggiori prestazioni e che migliorano con più lentezza. Le reti caotiche invece (bias 0.5) ottengono modeste prestazioni medie, avento anche il miglioramento più veloce nell'arco dei primi 30 test. Le reti critiche (bias 0.79) sono quelle che ottengono prestazioni nella media migliori e che con una simulazione più lunga porterebbero a risultati finali probabilmente migliori.
+Il primo parametro preso in esame è il bias. Come si può notare dai grafici sottostanti le reti ordinate (bias 0.1) sono quelle che mediamente ottengono peggiori prestazioni e che migliorano con più lentezza. Le reti caotiche invece (bias 0.5) ottengono modeste prestazioni medie, avento anche il miglioramento più veloce nell'arco dei primi 30 test. Le reti critiche (bias 0.79) sono quelle che ottengono prestazioni nella media migliori e che con una simulazione più lunga probabilmente porterebbero a risultati finali migliori.
 
-Dal seguente boxplot si determina che tuttavia alcune singole prestazioni molto performanti sono ottenute anche da robot con reti ordinate e caotiche, mentre nella media le reti critiche offrono sempre una miglior prestazione. Ciò tuttavia non esclude che con una simulazione molto più lunga le reti caotiche ed oridinate raggiungano molto prima il loro limite di prestazione, mentre quelle critiche potrebbero raggiungere livelli ben più elevati.
+Dal boxplot si determina che alcune singole prestazioni molto performanti sono ottenute anche da robot con reti ordinate e caotiche, mentre nella media le reti critiche offrono sempre una miglior prestazione. Ciò tuttavia non esclude che con una simulazione molto più lunga le reti caotiche ed oridinate raggiungano prima il loro limite, mentre quelle critiche potrebbero raggiungere livelli ben più elevati di fitness per via della loro natura.
 
 
 ![](https://brb.dynu.net/image/bias-fitness-curve.png) | ![](https://brb.dynu.net/image/bias-boxplot.png)
 :-:|:-:
 
-Questi risultati sono in linea con le aspettative in quanto le reti caotiche sono caratterizzare da un comportamento caotico che nel contesto di questo progetto ???
+Questi risultati sono in linea con le aspettative in quanto le reti caotiche offrono una gamma di comportamenti più utili al task in questione: le reti caoutiche non hanno un comportamento prevedibile sulla base delle perturbazioni effettuate, le reti ordinate si ristabilizzano in fretta dopo una perturbazione, le reti critiche sono caraterrizate da un comprtamento ne caotico ne ordinato.
 
 ### Output rewires
 
-La variazione di almeno un nodo di output alla fine di ogni test porta a grandi benifici in termini di prestazioni ottenute. Nel seguente grafico infatti è mostrato l'andamento della fitness media nel caso in cui non si effettui mai un cambiamento ai nodi di output e il caso in cui ad ogni test si cambi un nodo di output.
+La variazione di almeno un nodo di output alla fine di ogni test porta a grandi benifici in termini di prestazioni ottenute. I seguenti grafici mostrato i risultati nel caso in cui non si effettui mai un cambiamento ai nodi di output e il caso in cui ad ogni test si cambi (rewires) un nodo di output.
 
-Anche il boxplot della massima fitness di ogni robot mostra che mediamente fare rewires dei nodi di output porta a migliori prestazioni. Tuttavia ciò non ha escluso ai controller senza rewire di raggiungere elevate prestazioni. Cioè probabilmente è causato che tali controller sono stati inizializzati con una buona scelta per i nodi di output.
+Il boxplot mostra che mediamente fare rewires dei nodi di output porta a migliori prestazioni. Tuttavia ciò non ha escluso ad alcuni robot con *output_rewires=0* di raggiungere elevate prestazioni. Ciò è probabilmente dovuto al fatto che tali robot sono caraterizzati da controller inizializzati con di nodi di output validi.
 
 ![](https://brb.dynu.net/image/or-fitness-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)
 :-:|:-:
@@ -335,22 +338,27 @@ Questo risultato rientra nelle aspettative in quanto facendo rewires anche ai no
 
 ### Node input count
 
-Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza le performance e la rapidità con cui le si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto con una rete di soli 100 nodi usarne 24 come nodi di input implica che buona parte di quei 24 nodi debbano avere un effetto utile sui due nodi di output al fine  muoversi nella maniera più idonea. Diminuendo il nuero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Inoltre diminuisce lo spazio di combinazioni da esplorare sulla configurazione dei nodi di input (![formula](https://render.githubusercontent.com/render/math?math=C_{100,8}<C_{100,24})) e ciò garantisce una più elevata convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
+Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza la prestazione e la rapidità con cui la si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto usare 24 nodi su 100 per l'input implica che il 24% dei nodi debbano avere un effetto utile sui due nodi di output al fine di far muovere il robot nella maniera richiesta. Diminuendo il numero di nodi di input si rilassa questo vincolo, dichiarando che soltanto 8 nodi della rete dovranno avere (sulla base delle percezioni) un effetto utile sui nodi di output.
+
+Inoltre, diminuendo il nuero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Questo perchè diminuisce lo spazio di combinazioni di configurazioni da esplorare (![formula](https://render.githubusercontent.com/render/math?math=C_{100,8}<C_{100,24})) e ciò garantisce una più veloce convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
 
 ![](https://brb.dynu.net/image/nic-fitness-curve.png) | ![](https://brb.dynu.net/image/nic-boxplot.png)
 :-:|:-:
+
+Da tenere in considerazione che sia con 8 che con 24 nodi di input il massimo numero di input rewires ad ogni test è fissato a 2. Se si mantenesse proporzionale il numero di rewires al numero di nodi forse la differenza di prestazioni non si noterebbe o i risultati sarebbero differenti.
 
 ### Self loops
 
 Dai seguenti risultati non è possibile determinare se il parametro *self_loops* abbia qualche influenza sulle prestazioni raggiunte.
 ![](https://brb.dynu.net/image/self-loops-fitness-curve.png) | ![](https://brb.dynu.net/image/self-loops-boxplot.png)
 :-:|:-:
+Dal test di wilcoxon sui valori del boxplot si evince che ...
 
 ### Variazioni
 
-Dai seguenti grafici è possibile notare come la variante della metà arena determini un peggioramento in termini di fitness ottenuta dei robot. Questo è un risultato aspettato in quanto in certi momenti i robot si trovano in zone dove la fitness è per definizione 0. Un fenomeno inaspettato è quello che le due varianti con e senza feed hanno prodotto il medesimo risultato in termini di fitness. Ci si aspettava che i controller che sapevano se si trovavano sulla metà corretta (dunque un nodo di input in più) otennessero miglior risultati rispetto ai controller che dovevano basarsi solo sul feedback del valore della fitness al termine del test. 
+Dai seguenti grafici è possibile notare come la variante della metà arena determini un peggioramento in termini di fitness ottenuta dei robot. Questo è un risultato aspettato in quanto in certi momenti i robot si trovano in zone dove la fitness è per definizione 0. Un fenomeno inaspettato è quello che le due varianti con e senza feed hanno prodotto il medesimo risultato in termini di fitness. Ci si aspettava che i controller che sapevano se si trovavano sulla metà corretta otennessero miglior risultati rispetto ai controller che dovevano basarsi solo sul feedback del valore della fitness al termine del test. 
 
-Tuttavia i risultati mostrano che i controller riescono ad utilizzare in qualche modo il feedback fornito dalla funzione di fitness. Se non fosse stato così i controller della variante "metà arena" avrebbero dovuto ottenere mediamente la metà della fitness ottenuta dalla variante "intera arena". I risultati invece mostrano che mediamente i robot si muovono in linea retta maggiormente nella metà corretta.
+Tuttavia, i risultati in entrambi i casi mostrano che i controller riescono ad utilizzare in qualche modo il feedback fornito dalla funzione di fitness. Se non fosse stato così i controller della variante "metà arena" avrebbero dovuto ottenere mediamente la metà della fitness ottenuta dalla variante "intera arena". I risultati invece mostrano che mediamente i robot si muovono in linea retta maggiormente nella metà corretta.
 ![](https://brb.dynu.net/image/variation-fitness-curve.png) | ![](https://brb.dynu.net/image/variation-boxplot.png)
 :-:|:-:
 
@@ -361,6 +369,11 @@ Non si esclude tuttavia la possibilità della presenza presenza di un bug all'in
 
 ### Dettaglio
 Per completezza sono esposti i grafici delle singole configurazioni senza reaggruppamenti di configurazioni diverse (ad eccezioen del self-loop che viene comunque raggruppato). Sono stati suddivisi in 3 categorie per il tipo di variante usata.
+
+Nelle legende i termini significano:
+ - B: bias
+ - OR: numero di output rewires
+ - NIC: numero di nodi di input
 
 |Variante|Curva di fitness media|Miglior fitness al termine|
 |:--:|:--:|:--:|
@@ -378,10 +391,10 @@ Per completezza sono esposti i grafici delle singole configurazioni senza reaggr
 
 Visivamente sono state rilanciate alcune simulazioni composte da 10 robot aventi la miglior rete booleana ottenuta durante un insieme di test.
 
-Da questa prova è stato riscontrato che nella variante "intera arena" (con bias=0.79) il miglior controller fa emergere una sorta di comportamento complessivo: tutti i robot finiscono per muoversi in senso antiorario intorno all'ostacolo al centro dell'arena. Questo comportamento fa si che vi sono minori collisioni fra robot e quindi la fitness finale sarà complessivamente più elevata. Questo comportamento può essere categorizzato come cooperativo in quanto tutti i robot ne traggono beneficio.
+Da questa prova è stato riscontrato che nella variante "intera arena" (con bias=0.79) il miglior controller fa emergere una sorta di comportamento complessivo: tutti i robot finiscono per muoversi in senso antiorario intorno all'ostacolo al centro dell'arena. Questo comportamento fa si che vi siano minori collisioni fra robot e quindi la fitness finale sarà complessivamente più elevata. Questo comportamento può essere categorizzato come cooperativo in quanto tutti i robot ne traggono beneficio.
 Il comportamento visivamente è il seguente:
 
-![](https://brb.dynu.net/image/exemple1.gif)
+![https://brb.dynu.net/image/example.gif](https://brb.dynu.net/image/example.gif)
 
 
 Nella variante "metà arena" invece non è visibilmente emerso nessun comportamento complessivo. 
@@ -390,10 +403,17 @@ Il comportamento cooperativo descritto nel primo caso probabilmente non è nato 
 
 ## Conclusioni
 
- - miglior parametri
- - comportamenti emersi
- - qualcosa sul core
- - lavori futuri e varianti
+I parametri testati che fanno raggiungere fitness più elevate ai robot in tempi più brevi sono complessivamente: bias: 0.79, output rewires: 1, nodi di input: 8. Mentre non è stato chiaro l'effetto dei parametri self-loops e feed-position. In generale i risultati sono serviti per confermare delle ipotesi iniziali come il fatto che le reti booleane critiche offrano migliori possibilità di sviluppo rispetto a quelle caotiche e ordinate. 
+
+Non sono emersi comportamenti copperativi o competitivi particolari a meno di prendere il controller migliore e copiarlo su tutti i 10 robot in una nuova simulazione.
+
+
+### Lavori futuri
+Sarebbe interessante provare ulteriori variazioni partendo dai parametri più efficaci che si sono individuati per determinare se con una rete così piccola si riescano a raggiungere prestazioni più elevate. Inoltre, sarebbe interessante prolungare la durata di una simulazione per determinare quale sia il limite massimo di fitness raggiungibile. Si potrebbe inoltre variare la composizione della rete booleana incrementando il numero di nodi o di interconnesioni (k) per determinare se quest'ultime offrano più possibilità di adattamento al robot.
+
+Sarebbe interessante introdurre una forma di interazione esplicita fra i robot come ad esempio il range and bearing per scoprire se i robot si adattassero utilizzando anche la comunicazione al fine di cooperare.
+
+Si potrebbe variare il task, l'arena o il robot per determinare come la stessa configurazione si riesca ad adattare in situazioni differenti.
 
 ## Riproduzione dei risultati
 
