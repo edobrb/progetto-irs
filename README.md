@@ -9,8 +9,22 @@ Questo progetto è il risultato del lavoro svolto per il corso di Sistemi Intell
     - [Simulazione fisica](#Simulazione-fisica)
     - [Obiettivi](#Obiettivi) 
 2. [Lavoro svolto](#Lavoro-svolto)
+    - [Controller](#Controller)
+    - [Esecuzione delle simulazioni](#Esecuzione-delle-simulazioni)
+    - [Analisi dei dati](#Analisi-dei-dati)
 3. [Risultati](#Risultati)
+    - [Bias](#Bias)
+    - [Output rewires](#Output-rewires)
+    - [Input node count](#Input-node-count)
+    - [Self loops](#Self-loops)
+    - [Varianti](#Varianti)
+    - [Dettaglio](#Dettaglio)
+    - [Comportamenti emersi](#Comportamenti-emersi)
+4. [Conclusioni](#Conclusioni)
+    - [Lavori futuri](#Lavori-futuri)
 4. [Riproduzione dei risultati](#Riproduzione-dei-risultati)
+    - [Struttura del repository](#Struttura-del-repository)
+    - [Lanciare gli esperimenti](#Lanciare-gli-esperimenti)
 
 ## Descrizione del progetto
 
@@ -131,7 +145,7 @@ Ogni simulazione necessita di una configurazione, quest'ultima non potrà più e
 
 I valori applicati nei campi variabili sono:
 
-| bias |max output rewires|self loop|node input count|half variation
+| bias |max output rewires|self loop|input node count|half variation
 |:----:|:----:|:----:|:----:|:----:|
 |0.1|0|true|24|false|
 |0.5|1|false|8|true with position feed|
@@ -302,7 +316,7 @@ In questo capitolo si mostrano i risultati raccolti e li si analizzano al fine d
 
 Di seguito vi è riproposta la tabella dei parametri testati:
 
-| bias |max output rewires|self loop|node input count|half variation
+| bias |max output rewires|self loop|input node count|half variation
 |:----:|:----:|:----:|:----:|:----:|
 |0.1|0|true|24|false|
 |0.5|1|false|8|true with feed|
@@ -336,7 +350,7 @@ Questo risultato rientra nelle aspettative in quanto facendo rewires anche ai no
 
 
 
-### Node input count
+### Input node count
 
 Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare influenza la prestazione e la rapidità con cui la si ottiene in maniera notevole. Ciò rientra nelle aspettative in quanto usare 24 nodi su 100 per l'input implica che il 24% dei nodi debbano avere un effetto utile sui due nodi di output al fine di far muovere il robot nella maniera richiesta. Diminuendo il numero di nodi di input si rilassa questo vincolo, dichiarando che soltanto 8 nodi della rete dovranno avere (sulla base delle percezioni) un effetto utile sui nodi di output.
 
@@ -352,15 +366,17 @@ Da tenere in considerazione che sia con 8 che con 24 nodi di input il massimo nu
 Dai seguenti risultati non è possibile determinare se il parametro *self_loops* abbia qualche influenza sulle prestazioni raggiunte.
 ![](https://brb.dynu.net/image/self-loops-fitness-curve.png) | ![](https://brb.dynu.net/image/self-loops-boxplot.png)
 :-:|:-:
-Dal test di wilcoxon sui valori del boxplot si evince che ...
+Tuttavia, dal test di wilcoxon sui valori del boxplot si evince che `p-value = 0.005864` dunque il piccolo gap tra i risultati è frutto dell'effetto che ha il self-loops e non è una variazione casuale. Da questo si conclude che mediamente è meglio, in termini di fitness, avere dei self-loops all'interno della rete booleaba.
 
-### Variazioni
+### Varianti
 
 Dai seguenti grafici è possibile notare come la variante della metà arena determini un peggioramento in termini di fitness ottenuta dei robot. Questo è un risultato aspettato in quanto in certi momenti i robot si trovano in zone dove la fitness è per definizione 0. Un fenomeno inaspettato è quello che le due varianti con e senza feed hanno prodotto il medesimo risultato in termini di fitness. Ci si aspettava che i controller che sapevano se si trovavano sulla metà corretta otennessero miglior risultati rispetto ai controller che dovevano basarsi solo sul feedback del valore della fitness al termine del test. 
 
 Tuttavia, i risultati in entrambi i casi mostrano che i controller riescono ad utilizzare in qualche modo il feedback fornito dalla funzione di fitness. Se non fosse stato così i controller della variante "metà arena" avrebbero dovuto ottenere mediamente la metà della fitness ottenuta dalla variante "intera arena". I risultati invece mostrano che mediamente i robot si muovono in linea retta maggiormente nella metà corretta.
 ![](https://brb.dynu.net/image/variation-fitness-curve.png) | ![](https://brb.dynu.net/image/variation-boxplot.png)
 :-:|:-:
+
+Effettuando il wilcox test sui valori del boxplot nei due casi della variante della metà arena si ddetermina che `p-value = 0.02159` dunque è possibile scartare l'ipotesi nulla, concludendo che dare alla rete booleana l'informazione della regione su cui si trova (feed_position) permette un leggero miglioramento delle prestazioni.
 
 Non si esclude tuttavia la possibilità della presenza presenza di un bug all'interno del progetto che può aver portato a risultati scoretti. In linea generale i risultati sono come da previsione, nei casi contrari è bene verificare la correttezza delle simulazioni per evitare di fare ipotesi azzardate.
 
@@ -403,9 +419,9 @@ Il comportamento cooperativo descritto nel primo caso probabilmente non è nato 
 
 ## Conclusioni
 
-I parametri testati che fanno raggiungere fitness più elevate ai robot in tempi più brevi sono complessivamente: bias: 0.79, output rewires: 1, nodi di input: 8. Mentre non è stato chiaro l'effetto dei parametri self-loops e feed-position. In generale i risultati sono serviti per confermare delle ipotesi iniziali come il fatto che le reti booleane critiche offrano migliori possibilità di sviluppo rispetto a quelle caotiche e ordinate. 
+I parametri testati che fanno raggiungere fitness più elevate ai robot in tempi più brevi sono complessivamente: bias: 0.79, output rewires: 1, nodi di input: 8. Mentre è meno chiaro l'effetto dei parametri self-loops e feed-position: entrambi sembrano avere un leggero effetto positivo sulla fitness. Riguardo al parametro feed-position in particolare ci si aspettava un deciso incremento delle prestazioni rispetto al caso contrario, ma ciò non è avvenuto. In generale i risultati sono serviti per confermare delle ipotesi iniziali come il fatto che le reti booleane critiche offrano migliori possibilità di sviluppo rispetto a quelle caotiche e ordinate.
 
-Non sono emersi comportamenti copperativi o competitivi particolari a meno di prendere il controller migliore e copiarlo su tutti i 10 robot in una nuova simulazione.
+Non sono emersi comportamenti copperativi o competitivi particolari a meno di scegliere il controller che ha ottenuto miglior fitness e copiarlo su tutti i robot in una nuova simulazione.
 
 
 ### Lavori futuri
@@ -439,6 +455,7 @@ Il progetto è suddiviso in tre sezioni principali:
      - per ogni grado di parallelismo servono circa 4 GB di memoria RAM
  - **Analyzer**: una volta generati i file intermedi in formato JSON è possibile andare a generare i grafici sulla fitness attraverso questo eseguibile. Inoltre è possibile modificare questa sezione per estrarre e visualizzare le informazioni di più interesse e/o lanciare i robot che hanno ottenuto più fitness per vederne visivamente il comportamento.
      - `sbt "runMain Analyzer ../lua config_simulation.argos /storage/data"`
+ - Settings: All'interno dell'oggetto Settings è possibile modificare la configurazione base delle simulazioni, le variazioni e il numero di ripetizioni.
 
 [comment]: <> (I file generati da *Experiments* e *Loader* utilizzati per ricavare i risultati descritti in questo documento saranno distribuiti per un periodo non determinato. Il link per il download attraverso protocollo BitTorrent è [magnet link].)
 
