@@ -30,7 +30,9 @@ object Analyzer extends App {
   })
 
   /** Groups the raw data by configuration. */
-  lazy val experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy {
+  lazy val experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy(resultSorted)
+
+  def resultSorted: ((Config, Iterable[RobotData])) => Int = {
     case (config, _) =>
       val bias = config.bn.options.bias
       val outputRewires = config.bn.max_output_rewires
@@ -38,14 +40,13 @@ object Analyzer extends App {
       val nic = config.bn.options.network_inputs_count
       val fp = if (config.robot.feed_position) 1 else 0
       val soh = if (config.robot.stay_on_half) 1 else 0
-      soh * 10000000 + fp * 1000000 + nic * 10000 + bias * 1000 + outputRewires * 10 + (if (selfLoops) 1 else 0)
+      soh * 10000000 + fp * 1000000 + nic * 10000 + (bias * 1000).toInt + outputRewires * 10 + (if (selfLoops) 1 else 0)
   }
-
 
   def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("tests").yAxisTitle("Average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
-    experimentsResults.foreach {
+    experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val tests_count = values.head.fitnessCurve.size
         val totalFitnessCurve = values.map(_.fitnessCurve).foldLeft(0 until tests_count map (_ => 0.0)) {
@@ -54,7 +55,6 @@ object Analyzer extends App {
         chart.addSeries(name(config), totalFitnessCurve.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
-    //new SwingWrapper(chart).displayChart
   }
 
   def showBoxPlot(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
@@ -62,26 +62,17 @@ object Analyzer extends App {
       .title(s"Final fitness of each robot").width(1920).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
     chart.getStyler.setToolTipsEnabled(true)
-    experimentsResults.foreach {
+    experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val result = values.map(_.fitnessCurve.last)
         chart.addSeries(name(config), result.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
-    //new SwingWrapper(chart).displayChart
   }
 
   /**
    * Groups the results into groups, for every group a boxplot and a xy chart will be generated.
    * For each group the sub-results are grouped for series and the merged.
-   *
-   * @param experimentsResults
-   * @param series
-   * @param chartName
-   * @param legend
-   * @param groups
-   * @tparam G
-   * @tparam S
    */
   def makeCharts[G, S](experimentsResults: Seq[(Config, Iterable[RobotData])],
                        series: Config => S,
@@ -106,10 +97,9 @@ object Analyzer extends App {
       case (sh, fp) => s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}overall"
     },
     legend = {
-      case (config, (sh, fp), _) =>
+      case (config, _, _) =>
         val bias = config.bn.options.bias
         val outputRewires = config.bn.max_output_rewires
-        val selfLoops = config.bn.options.self_loops
         val nic = config.bn.options.network_inputs_count
         s"B=$bias,OR=$outputRewires,NIC=$nic"
     })
@@ -137,19 +127,6 @@ object Analyzer extends App {
     groups = _ => (),
     series = config => (config.robot.stay_on_half, config.robot.feed_position),
     chartName = _ => "variation",
-    legend = {
-      case (_, _, (false, _)) => "whole arena"
-      case (_, _, (true, false)) => "half arena - no feed"
-      case (_, _, (true, true)) => "half arena - feed"
-    })
-  makeCharts[Unit, (Boolean, Boolean)](
-    experimentsResults.filter { case (config, _) =>
-      config.bn.options.bias == 0.79 && config.bn.options.network_inputs_count == 8 &&
-        config.bn.options.self_loops && config.bn.max_output_rewires == 1
-    },
-    groups = _ => (),
-    series = config => (config.robot.stay_on_half, config.robot.feed_position),
-    chartName = _ => "variation-opt",
     legend = {
       case (_, _, (false, _)) => "whole arena"
       case (_, _, (true, false)) => "half arena - no feed"
