@@ -38,7 +38,7 @@ Il robot cerca di sfruttare al meglio la propria capacità computazionale per ma
 ### Task
 La funzione di fitness dei robot modella il task del moto rettilineo uniforme con evitamento degli ostacoli, viene definita in questo modo:
 
-![formula](https://render.githubusercontent.com/render/math?math=\LARGE(1-\theta)\cdot(1-\sqrt{|l-r|})\cdot\frac{l%2Br}{2})
+![formula](https://render.githubusercontent.com/render/math?math=\LARGE%281-\theta%29\cdot%281-\sqrt{|l-r|}%29\cdot\frac{l%2Br}{2})
 
 
 dove:
@@ -49,7 +49,7 @@ dove:
 In una fase successiva del progetto si analizzerà un secondo task in cui i robot devono muoversi con un moto rettilineo uniforme, evitando gli ostacoli e rimanendo nella metà orizzontale dell'arena in cui essi sono partiti.
 Dunque: 
 
-![formula](https://render.githubusercontent.com/render/math?math=\LARGE(1-\theta)\cdot(1-\sqrt{|l-r|})\cdot\frac{l%2Br}{2}\cdot\alpha)
+![formula](https://render.githubusercontent.com/render/math?math=\LARGE%281-\theta%29\cdot%281-\sqrt{|l-r|}%29\cdot\frac{l%2Br}{2}\cdot\alpha)
 
 
 dove ![formula](https://render.githubusercontent.com/render/math?math=\alpha=1) se il robot si trova nella propria metà, altrimenti ![formula](https://render.githubusercontent.com/render/math?math=\alpha=0).
@@ -330,9 +330,10 @@ Il primo parametro preso in esame è il bias. Come si può notare dai grafici so
 
 Dal boxplot si determina che alcune singole prestazioni molto performanti sono ottenute anche da robot con reti ordinate e caotiche, mentre nella media le reti critiche offrono sempre una miglior prestazione. Ciò tuttavia non esclude che con una simulazione molto più lunga le reti caotiche ed ordinate raggiungano prima il loro limite, mentre quelle critiche potrebbero raggiungere livelli ben più elevati di fitness per via della loro natura.
 
+|||
+| --------|---------|
+|![](https://brb.dynu.net/image/bias-fitness-curve.png) | ![](https://brb.dynu.net/image/bias-boxplot.png)|
 
-![](https://brb.dynu.net/image/bias-fitness-curve.png) | ![](https://brb.dynu.net/image/bias-boxplot.png)
-:-:|:-:
 
 Questi risultati sono in linea con le aspettative viste le proprietà offerte da un sistema complesso in uno stato critico. In questo caso il sistema complesso è la rete booleana del robot, e ci si aspettava che nel raggiungere il proprio obiettivo il robot si avalesse di questo vantaggio. Questo risultato è un'ulteriore supporto alla congettura "i sistemi viventi sono complessi".
 
@@ -343,8 +344,10 @@ La variazione di almeno un nodo di output alla fine di ogni test porta a grandi 
 
 Il boxplot mostra che mediamente fare rewires dei nodi di output porta a migliori prestazioni. Tuttavia, ciò non ha escluso ad alcuni robot con *output_rewires=0* di raggiungere elevate prestazioni. Ciò è probabilmente dovuto dal fatto che tali robot sono stati inizializzati con di nodi di output già validi.
 
-![](https://brb.dynu.net/image/or-fitness-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)
-:-:|:-:
+|||
+| --------|---------|
+|![](https://brb.dynu.net/image/or-fitness-curve.png) | ![](https://brb.dynu.net/image/or-boxplot.png)|
+
 
 Questo risultato rientra nelle aspettative in quanto variando anche i nodi di output il controller ha molte più configurazioni possibili da esplorare, e nel caso in cui si ritrovi inizializzato a nodi di output inefficaci questi non saranno vincolanti fino al termine della simulazione.
 
@@ -356,16 +359,21 @@ Come mostrato dai seguenti grafici il numero di nodi di input da utilizzare infl
 
 Inoltre, diminuendo il numero di input a 8 aumenta la possibilità di individuare nodi che avranno un buon effetto sui due nodi di output. Questo perché diminuisce lo spazio di combinazioni di configurazioni da esplorare (![formula](https://render.githubusercontent.com/render/math?math=C_{100,8}<C_{100,24})) e ciò garantisce una più veloce convergenza alla miglior fitness ottenibile con la rete a disposizione. I 24 sensori di prossimità in questo caso vengono raggruppati di 3 in 3.
 
-![](https://brb.dynu.net/image/nic-fitness-curve.png) | ![](https://brb.dynu.net/image/nic-boxplot.png)
-:-:|:-:
+|||
+| --------|---------|
+|![](https://brb.dynu.net/image/nic-fitness-curve.png) | ![](https://brb.dynu.net/image/nic-boxplot.png)|
+
 
 Da tenere in considerazione che sia con 8 che con 24 nodi di input il massimo numero di input rewires ad ogni test è fissato a 2. Se si mantenesse proporzionale il numero di rewires al numero di nodi forse la differenza di prestazioni non si noterebbe o i risultati sarebbero differenti.
 
 ### Self loops
 
 Dai seguenti risultati non è possibile determinare se il parametro *self_loops* abbia qualche influenza sulle prestazioni raggiunte.
-![](https://brb.dynu.net/image/self-loops-fitness-curve.png) | ![](https://brb.dynu.net/image/self-loops-boxplot.png)
-:-:|:-:
+
+|||
+| --------|---------|
+|![](https://brb.dynu.net/image/self-loops-fitness-curve.png) | ![](https://brb.dynu.net/image/self-loops-boxplot.png)|
+
 
 Tuttavia, dal test di Wilcoxon sui valori del boxplot si evince che `p-value = 0.005864` dunque il piccolo gap tra i risultati è frutto dell'effetto che ha il self-loops e non è una variazione casuale. Da questo si conclude che mediamente è meglio, in termini di fitness, avere dei self-loops all'interno della rete booleana.
 
@@ -374,8 +382,11 @@ Tuttavia, dal test di Wilcoxon sui valori del boxplot si evince che `p-value = 0
 Dai seguenti grafici è possibile notare come la variante della metà arena determini un peggioramento in termini di fitness ottenuta dei robot. Questo è un risultato aspettato in quanto in certi momenti i robot si trovano in zone dove la fitness è per definizione 0. Un fenomeno inaspettato è quello che le due varianti con e senza feed hanno prodotto il medesimo risultato in termini di fitness. Ci si aspettava che i controller che sapevano se si trovassero  sulla metà corretta ottenessero miglior risultati rispetto ai controller che dovevano basarsi solo sul feedback del valore della fitness al termine del test. 
 
 Tuttavia, i risultati in entrambi i casi mostrano che i controller riescono ad utilizzare in qualche modo il feedback fornito dalla funzione di fitness. Se non fosse stato così i controller della variante "metà arena" avrebbero dovuto ottenere mediamente la metà della fitness ottenuta dalla variante "intera arena". I risultati invece mostrano che mediamente i robot si muovono in linea retta maggiormente nella metà corretta.
-![](https://brb.dynu.net/image/variation-fitness-curve.png) | ![](https://brb.dynu.net/image/variation-boxplot.png)
-:-:|:-:
+
+|||
+| --------|---------|
+|![](https://brb.dynu.net/image/variation-fitness-curve.png) | ![](https://brb.dynu.net/image/variation-boxplot.png)|
+
 
 Effettuando il Wilcoxon test sui valori del boxplot nei due casi della variante della metà arena si determina che `p-value = 0.02159` dunque è possibile scartare l'ipotesi nulla, concludendo che dare alla rete booleana l'informazione della regione su cui si trova (feed_position) permette un leggero miglioramento delle prestazioni.
 
