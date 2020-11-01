@@ -12,7 +12,7 @@ object Experiments extends App {
   implicit val arguments: Array[String] = args
 
   /** Simulation standard output (by lines) */
-  def runSimulation(config: Config, visualization: Boolean = true)(implicit args: Array[String]): Iterator[String] =
+  def runSimulation(config: Config, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
     Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), Settings.SIMULATION_FILE(args), config, visualization)
 
   /** Running experiments */
@@ -21,11 +21,11 @@ object Experiments extends App {
     case (experimentName, config) =>
       val filename = Settings.DATA_FOLDER + "/" + experimentName
       if (!utils.File.exists(filename)) {
-        Thread.sleep(Random.nextInt(100))
+        Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
         val expectedLines = config.expectedLines
         Benchmark.time {
           println(s"Started experiment $experimentName ...")
-          val out = config.toJson +: runSimulation(config)
+          val out = config.toJson +: runSimulation(config, visualization = false)
           utils.File.writeGzippedLines(filename, out)
         } match {
           case (Success(lines), time) if lines == expectedLines =>
