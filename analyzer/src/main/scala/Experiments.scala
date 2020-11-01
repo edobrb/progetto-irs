@@ -26,7 +26,7 @@ object Experiments extends App {
         Benchmark.time {
           println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false)
-          utils.File.writeGzippedLines(filename, out)
+          utils.File.writeGzippedLines(filename + ".gzip", out)
         } match {
           case (Success(lines), time) if lines == expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")

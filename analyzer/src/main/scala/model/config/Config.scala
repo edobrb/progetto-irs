@@ -88,7 +88,10 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
   def expectedLines: Int = {
     val argosInfoPrints = 19
     val initialConfigPrints = 1
-    simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count + simulation.robot_count * 2 + argosInfoPrints + initialConfigPrints
+    //simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count + simulation.robot_count * 2 + argosInfoPrints + initialConfigPrints
+    val stepPrints = simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count
+    val initialBnConfigPrints = stepPrints / simulation.network_test_steps
+    stepPrints + argosInfoPrints + initialConfigPrints + initialBnConfigPrints
   }
 
   def combine(variations: Seq[Seq[Config => Config]]): Seq[Config] = {

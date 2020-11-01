@@ -85,6 +85,6 @@ object Settings {
   /** Filenames of experiments and the relative config */
   def experiments: Map[String, Config] = {
     /** Configuration repetitions for statistical accuracy. * */
-    configurations.flatMap(config => (1 to 100).map(i => (config.filename + "-" + i, config))).toMap
+    configurations.flatMap(config => (1 to 1).map(i => (config.filename + "-" + i, config))).toMap
   }
 }

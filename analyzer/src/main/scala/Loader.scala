@@ -42,13 +42,14 @@ object Loader extends App {
           case (l :+ last, StepInfo(step, id, None, states, fitness, position)) =>
             l :+ last.add(states, fitness, position)
           case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn == last.bn =>
-            l :+ last.add(states, fitness, position)
+            l :+ last.add(states, fitness, position) //with new controller version this is not needed
           case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn != last.bn =>
             l :+ last :+ TestRun(bn, states, fitness, position)
           case (Nil, StepInfo(step, id, Some(bn), states, fitness, position)) =>
             Seq(TestRun(bn, states, fitness, position))
         })
     }
+
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
@@ -59,7 +60,7 @@ object Loader extends App {
         content: Iterator[String] =>
           val config: Config = Config.fromJson(content.next())
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-            extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = true)
+            extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = false)
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)

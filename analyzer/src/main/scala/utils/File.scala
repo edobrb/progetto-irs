@@ -7,7 +7,7 @@ import java.util.zip.{Deflater, GZIPInputStream, GZIPOutputStream}
 
 import scala.io.BufferedSource
 import scala.jdk.CollectionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object File {
 
@@ -83,4 +83,14 @@ object File {
       source.close()
       Done
     })
+
+  def move(source: String, destination: String): Try[Done] =
+    java.nio.file.Files.move(
+      Paths.get(source),
+      Paths.get(destination),
+      java.nio.file.StandardCopyOption.ATOMIC_MOVE
+    ) match {
+      case null => Failure(new Exception(s"Can't move $source to $destination"))
+      case _ => Success(Done)
+    }
 }

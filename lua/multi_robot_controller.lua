@@ -17,7 +17,6 @@ local best_network_fitness = -1
 local test_network_fitness = 0
 local current_step = 0
 local global_step = 0
-local current_edit_attempt = 1
 
 -- test parameters
 local config = json.decode(argos.param("CONFIG"))
@@ -110,29 +109,26 @@ local function build_new_network(previous_network)
 end
 
 function step()
-    if (global_step == 0 and PRINT_ANALYTICS) then print_network(test_network) end
-    global_step = global_step + 1
-    if(current_step < NETWORK_TEST_STEPS) then
-        current_step = current_step + 1
-        test_network_fitness = test_network_fitness + run_and_evaluate_test_network()
-        if(PRINT_ANALYTICS and current_step < NETWORK_TEST_STEPS) then print_network_state(test_network) end
-        if(PRINT_ANALYTICS and current_step >= NETWORK_TEST_STEPS) then print_network(test_network) end
-    else
-        current_edit_attempt = current_edit_attempt + 1
+    if(current_step >= NETWORK_TEST_STEPS) then
         if(test_network_fitness >= best_network_fitness) then
             best_network = test_network
             best_network_fitness = test_network_fitness
         end
         test_network = build_new_network(best_network)
         current_step, test_network_fitness = 0, 0
-        if(PRINT_ANALYTICS) then print_network(test_network) end
+        global_step = global_step + 1
     end
+
+
+    if (current_step == 0 and PRINT_ANALYTICS) then print_network(test_network) end
+    test_network_fitness = test_network_fitness + run_and_evaluate_test_network()
+    current_step = current_step + 1
+    if (PRINT_ANALYTICS) then print_network_state(test_network) end
 end
 
 function destroy()
     if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem (called too soon when argos fail to place the robot, destroy and retry to replace)
         if(PRINT_ANALYTICS) then
-            print_network(test_network)
             io.flush()
         end
     end
@@ -141,7 +137,7 @@ end
 function print_network(netowrk)
     local table = {
          id = robot.id, 
-         step = global_step,
+         step = global_step * NETWORK_TEST_STEPS + current_step,
          fitness = test_network_fitness,
          boolean_network = {
             functions = netowrk.boolean_functions, 
@@ -162,7 +158,7 @@ end
 function print_network_state(netowrk)
     local table = {
          id = robot.id, 
-         step = global_step,
+         step = global_step * NETWORK_TEST_STEPS + current_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,
          position = {robot.positioning.position.x, robot.positioning.position.y}
