@@ -13,6 +13,8 @@ object Settings {
 
   def PARALLELISM_DEGREE(implicit args: Array[String]): Int = args.applyOrElse[Int, String](3, _ => "4").toInt
 
+  def REPETITIONS: Range = 1 to 100
+
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Config = {
     def simulation = Config.Simulation(
@@ -85,6 +87,6 @@ object Settings {
   /** Filenames of experiments and the relative config */
   def experiments: Map[String, Config] = {
     /** Configuration repetitions for statistical accuracy. * */
-    configurations.flatMap(config => (1 to 1).map(i => (config.filename + "-" + i, config))).toMap
+    configurations.flatMap(config => REPETITIONS.map(i => (config.filename + "-" + i, config))).toMap
   }
 }

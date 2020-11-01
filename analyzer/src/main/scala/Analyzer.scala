@@ -7,6 +7,7 @@ import org.knowm.xchart.style.BoxStyler.BoxplotCalCulationMethod
 import play.api.libs.json.{JsError, JsSuccess, Json}
 import utils.Parallel.Parallel
 
+import scala.reflect.ClassTag
 import scala.util.{Failure, Success}
 
 object Analyzer extends App {
@@ -78,14 +79,14 @@ object Analyzer extends App {
                        series: Config => S,
                        chartName: G => String,
                        legend: (Config, G, S) => String,
-                       groups: Config => G): Unit = {
+                       groups: Config => G)(implicit classTag: ClassTag[G]): Unit = {
     experimentsResults.groupBy(v => groups(v._1)).foreach {
-      case (g: G, groupResult: Seq[(Config, Iterable[RobotData])]) =>
+      case (group: G, groupResult: Seq[(Config, Iterable[RobotData])]) =>
         val results = groupResult.groupBy(v => series(v._1)).map {
           case (_, seq) => (seq.head._1, seq.flatMap(v => v._2))
         }.toSeq
-        showAveragedFitnessCharts(s"${chartName(g)}-fitness-curve", results, config => s"${legend(config, g, series(config))}")
-        showBoxPlot(s"${chartName(g)}-boxplot", results, config => s"${legend(config, g, series(config))}")
+        showAveragedFitnessCharts(s"${chartName(group)}-fitness-curve", results, config => s"${legend(config, group, series(config))}")
+        showBoxPlot(s"${chartName(group)}-boxplot", results, config => s"${legend(config, group, series(config))}")
     }
   }
 
