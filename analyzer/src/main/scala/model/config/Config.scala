@@ -85,6 +85,12 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
     Json.toJson(this).toString()
   }
 
+  def expectedLines: Int = {
+    val argosInfoPrints = 19
+    val initialConfigPrints = 1
+    simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count + simulation.robot_count * 2 + argosInfoPrints + initialConfigPrints
+  }
+
   def combine(variations: Seq[Seq[Config => Config]]): Seq[Config] = {
     /** Generates configurations starting with a seq of basic configuration and a sequence of configuration variations. * */
     @scala.annotation.tailrec

@@ -42,6 +42,7 @@ object File {
         count = count + 1
         w.write(line + "\n")
       })
+      w.flush()
       w.close()
       gzos.close()
       fos.close()
@@ -59,10 +60,10 @@ object File {
     })
   }
 
-  def readGzippedLines2[T](fileName: String)(f: Iterator[String] => T): Try[T] = {
+  def readGzippedLinesAndMap[T](fileName: String)(mapper: Iterator[String] => T): Try[T] = {
     readGzippedLines(fileName).map {
       case (value, source) =>
-        val res = f(value)
+        val res = mapper(value)
         source.close()
         res
     }

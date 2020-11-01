@@ -13,7 +13,7 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments.keys.map(Settings.DATA_FOLDER(args) + "/" + _)
+  def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments.keys.map(Settings.DATA_FOLDER(args) + "/" + _ + ".gzip")
 
   def OUTPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._2)
 
@@ -55,7 +55,7 @@ object Loader extends App {
   FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
     case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
       println(s"Loading $input_filename ... ")
-      utils.File.readGzippedLines2(input_filename) {
+      utils.File.readGzippedLinesAndMap(input_filename) {
         content: Iterator[String] =>
           val config: Config = Config.fromJson(content.next())
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
