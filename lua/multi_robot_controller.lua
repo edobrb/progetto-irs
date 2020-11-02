@@ -23,7 +23,6 @@ local config = json.decode(argos.param("CONFIG"))
 local TICKS_PER_SECOND = config.simulation.ticks_per_seconds
 local EXPERIMENT_LENGTH = config.simulation.experiment_length
 local NETWORK_TEST_STEPS = config.simulation.network_test_steps
-local EDIT_ATTEMPTS_COUNT = EXPERIMENT_LENGTH * TICKS_PER_SECOND / NETWORK_TEST_STEPS -- the 1st factor has to be == to the experiment's length
 local PRINT_ANALYTICS = config.simulation.print_analytics
 
 -- robot parameters
@@ -41,15 +40,22 @@ local OUTPUT_REWIRES_PROBABILITY = config.bn.output_rewires_probability
 local USE_DUAL_ENCODING = config.bn.use_dual_encoding -- if true the obstacles are encoded as false and the wheels will turn on on false value
 local NETWORK_OPTIONS = config.bn.options
 
+local function select_which_half_arena()
+    if STAY_ON_HALF then
+        stay_upper = argos.is_upper()
+        robot.leds.set_all_colors(my_if(stay_upper, "yellow", "green"))
+    end
+end
+
 function init()
     math.randomseed(math.floor(os.clock() * 10000000)) -- each robot will have a different seed
 
-    if STAY_ON_HALF and FEED_POSITION then
+    if STAY_ON_HALF and FEED_POSITION then -- allocate space also for the position feed
         NETWORK_OPTIONS.network_inputs_count = NETWORK_OPTIONS.network_inputs_count + 1
     end
     test_network = BooleanNetwork(NETWORK_OPTIONS)
 
-    if config.bn.initial ~= nil then
+    if config.bn.initial ~= nil then -- use a given network
         test_network.boolean_functions = config.bn.initial.functions
         test_network.connection_matrix = config.bn.initial.connections
         test_network.input_nodes = config.bn.initial.inputs
@@ -58,11 +64,8 @@ function init()
     end
 
     best_network = test_network
-    
-    if STAY_ON_HALF then
-        stay_upper = argos.is_upper()
-        robot.leds.set_all_colors(my_if(stay_upper, "yellow", "green"))
-    end
+
+    select_which_half_arena()
 end
 
 ---@param network_outputs boolean[]
@@ -77,18 +80,15 @@ local function fitness_function(network_outputs, proximity_values)
     end
 end
 
----@param network BooleanNetwork
 local function run_and_evaluate_test_network()
-    local proximity_input_nodes_count = #test_network.input_nodes
-    if STAY_ON_HALF and FEED_POSITION then
-        proximity_input_nodes_count = proximity_input_nodes_count - 1
-    end
+    local proximity_input_nodes_count = #test_network.input_nodes - ternary(STAY_ON_HALF and FEED_POSITION, 1, 0)
     local proximity_values = argos.get_proximity_values(proximity_input_nodes_count)
     local network_inputs = argos.sensor_values_to_booleans(proximity_values, PROXIMITY_THRESHOLD, USE_DUAL_ENCODING)
-    test_network:force_input_values(network_inputs)
-    if STAY_ON_HALF and FEED_POSITION then
+    test_network:force_input_values(network_inputs) --feed the proximity values
+    if STAY_ON_HALF and FEED_POSITION then --feed the position information
         test_network:force_input_value(stay_upper == argos.is_upper(), #test_network.input_nodes)
     end
+    -- update the bn and collect the two output values
     local network_outputs = collect(test_network:update_and_get_outputs()):mapValues(function (value) return ternary(USE_DUAL_ENCODING, not value, value) end):all()
     argos.move_robot_by_booleans(network_outputs, MAX_WHEELS_SPEED)
     return fitness_function(network_outputs, proximity_values)
@@ -99,47 +99,61 @@ local function build_new_network(previous_network)
     local new_network = previous_network
     local input_rewires = 0
     local output_rewires = 0
-    while(input_rewires == 0 and output_rewires == 0) do --force to do at least one change
+
+    -- force to do at least one change
+    while(input_rewires == 0 and output_rewires == 0) do 
         input_rewires = count_winner_extractions(MAX_INPUT_REWIRES, INPUT_REWIRES_PROBABILITY)
         output_rewires = count_winner_extractions(MAX_OUTPUT_REWIRES, OUTPUT_REWIRES_PROBABILITY)
     end
-    new_network = editing.edit_network(new_network, input_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, true) end)
-    new_network = editing.edit_network(new_network, output_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, false) end)
+
+    -- reapply the edit if the input_nodes and output_nodes did not change
+    repeat
+        new_network = editing.edit_network(new_network, input_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, true) end)
+        new_network = editing.edit_network(new_network, output_rewires, function (network, edit_count) return editing.rewire_inputs_or_outputs(network, edit_count, false) end)
+    until (not collect(new_network.input_nodes).equals(collect(previous_network.input_nodes), true)) or (not collect(new_network.output_nodes).equals(collect(previous_network.output_nodes), true))
+
     return new_network
 end
 
 function step()
+    -- test finished, print the last bn state, edit the network, reset fitness
     if(current_step >= NETWORK_TEST_STEPS) then
         if (PRINT_ANALYTICS) then print_network_state(test_network) end
         if(test_network_fitness >= best_network_fitness) then
             best_network = test_network
             best_network_fitness = test_network_fitness
         end
-        test_network = build_new_network(best_network) -- TODO: check if not equals to previous
+        test_network = build_new_network(best_network)
         current_step, test_network_fitness = 0, 0
+        -- select_which_half_arena() TODO
     end
 
-
+    -- if it's the first step print also the bn schema, else print only the bn and robot state
     if (current_step == 0 and PRINT_ANALYTICS) then print_network(test_network)
     elseif (PRINT_ANALYTICS) then print_network_state(test_network) end
 
+    -- run the bn and set wheel speed
     test_network_fitness = test_network_fitness + run_and_evaluate_test_network()
     current_step = current_step + 1
+
+    -- the simulator will move the robot accordly
 end
 
 function destroy()
-    if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem (called too soon when argos fail to place the robot, destroy and retry to replace)
+    -- sometimes destroy gets called too soon, so this solves the problem
+    -- (called too soon when argos fail to place the robot, destroy and retry to replace)
+    if(best_network_fitness ~= -1) then
         if(PRINT_ANALYTICS) then print_network_state(test_network) end
     end
 end
 
 function print_network(netowrk)
     local table = {
-         id = robot.id, 
+         id = robot.id,
          step = print_step,
          fitness = test_network_fitness,
          boolean_network = {
-            functions = netowrk.boolean_functions, 
+            functions = netowrk.boolean_functions,
             connections = netowrk.connection_matrix,
             inputs = netowrk.input_nodes,
             outputs = netowrk.output_nodes,
@@ -158,7 +172,7 @@ end
 
 function print_network_state(netowrk)
     local table = {
-         id = robot.id, 
+         id = robot.id,
          step = print_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,

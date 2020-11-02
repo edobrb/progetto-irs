@@ -41,15 +41,12 @@ object Loader extends App {
     data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
       case (id, steps) =>
         (id, steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
-          case (l :+ last, StepInfo(step, id, None, states, fitness, position)) =>
+          case (l :+ last, StepInfo(_, _, None, states, fitness, position)) =>
             l :+ last.add(states, fitness, position)
-          case (tests, StepInfo(step, id, Some(bn), states, fitness, position)) =>
+          case (tests, StepInfo(_, _, Some(bn), states, fitness, position)) =>
             tests :+ TestRun(bn, states, fitness, position)
-          case (Nil, StepInfo(step, id, Some(bn), states, fitness, position)) =>
-            Seq(TestRun(bn, states, fitness, position))
         })
     }
-
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
@@ -61,9 +58,8 @@ object Loader extends App {
           val config: Config = Config.fromJson(content.next())
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
             val data = content.map(toStepInfo).collect { case Some(info) => info }
-            extractTests(data, ignoreBnStates = true).map {
-              case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps))
-            }
+            val tests = extractTests(data, ignoreBnStates = true)
+            tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)
