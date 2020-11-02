@@ -16,7 +16,7 @@ local best_network, test_network ---@type BooleanNetwork
 local best_network_fitness = -1
 local test_network_fitness = 0
 local current_step = 0
-local global_step = 0
+local print_step = 0
 
 -- test parameters
 local config = json.decode(argos.param("CONFIG"))
@@ -110,34 +110,33 @@ end
 
 function step()
     if(current_step >= NETWORK_TEST_STEPS) then
+        if (PRINT_ANALYTICS) then print_network_state(test_network) end
         if(test_network_fitness >= best_network_fitness) then
             best_network = test_network
             best_network_fitness = test_network_fitness
         end
-        test_network = build_new_network(best_network)
+        test_network = build_new_network(best_network) -- TODO: check if not equals to previous
         current_step, test_network_fitness = 0, 0
-        global_step = global_step + 1
     end
 
 
-    if (current_step == 0 and PRINT_ANALYTICS) then print_network(test_network) end
+    if (current_step == 0 and PRINT_ANALYTICS) then print_network(test_network)
+    elseif (PRINT_ANALYTICS) then print_network_state(test_network) end
+
     test_network_fitness = test_network_fitness + run_and_evaluate_test_network()
     current_step = current_step + 1
-    if (PRINT_ANALYTICS) then print_network_state(test_network) end
 end
 
 function destroy()
     if(best_network_fitness ~= -1) then -- sometimes destroy gets called too soon, so this solves the problem (called too soon when argos fail to place the robot, destroy and retry to replace)
-        if(PRINT_ANALYTICS) then
-            io.flush()
-        end
+        if(PRINT_ANALYTICS) then print_network_state(test_network) end
     end
 end
 
 function print_network(netowrk)
     local table = {
          id = robot.id, 
-         step = global_step * NETWORK_TEST_STEPS + current_step,
+         step = print_step,
          fitness = test_network_fitness,
          boolean_network = {
             functions = netowrk.boolean_functions, 
@@ -148,8 +147,10 @@ function print_network(netowrk)
          },
          states = netowrk.node_states,
          --proximity = argos.get_proximity_values(24)
+         --orientation = robot.positioning.orientation.z,
          position = {robot.positioning.position.x, robot.positioning.position.y}
         }
+    print_step = print_step + 1
     local res = json.encode(table)
     print(res)
     io.flush()
@@ -158,11 +159,12 @@ end
 function print_network_state(netowrk)
     local table = {
          id = robot.id, 
-         step = global_step * NETWORK_TEST_STEPS + current_step,
+         step = print_step,
          fitness = test_network_fitness,
          states = netowrk.node_states,
          position = {robot.positioning.position.x, robot.positioning.position.y}
         }
+    print_step = print_step + 1
     local res = json.encode(table)
     print(res)
     io.flush()
