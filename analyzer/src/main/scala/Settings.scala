@@ -13,7 +13,7 @@ object Settings {
 
   def PARALLELISM_DEGREE(implicit args: Array[String]): Int = args.applyOrElse[Int, String](3, _ => "4").toInt
 
-  def REPETITIONS: Range = 51 to 51
+  def REPETITIONS: Range = 1 to 100
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Config = {
@@ -54,30 +54,30 @@ object Settings {
   def configurations: Seq[Config] = {
     /** Configuration variations */
     def biasVariation: Seq[Config => Config] = Seq(
-      //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
+      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
       c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
-      //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79)))
+      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79)))
     )
 
     def outputRewiresVariation: Seq[Config => Config] = Seq(
-      //c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
+      c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
       c => c.copy(bn = c.bn.copy(max_output_rewires = 0))
     )
 
     def selfLoopVariation: Seq[Config => Config] = Seq(
       c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
-      //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
+      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
     )
 
     def stayOnHalfVariation: Seq[Config => Config] = Seq(
-      //c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
+      c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
       c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
-      //c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
+      c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
     )
 
     def networkInputCountVariation: Seq[Config => Config] = Seq(
       c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
-      //c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
+      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
     )
 
     val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)

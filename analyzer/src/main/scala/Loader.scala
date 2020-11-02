@@ -40,11 +40,11 @@ object Loader extends App {
   def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
     data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
       case (id, steps) =>
-        (id,  steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
+        (id, steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
           case (l :+ last, StepInfo(step, id, None, states, fitness, position)) =>
             l :+ last.add(states, fitness, position)
-          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) =>
-            l :+ last :+ TestRun(bn, states, fitness, position)
+          case (tests, StepInfo(step, id, Some(bn), states, fitness, position)) =>
+            tests :+ TestRun(bn, states, fitness, position)
           case (Nil, StepInfo(step, id, Some(bn), states, fitness, position)) =>
             Seq(TestRun(bn, states, fitness, position))
         })
@@ -61,10 +61,9 @@ object Loader extends App {
           val config: Config = Config.fromJson(content.next())
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
             val data = content.map(toStepInfo).collect { case Some(info) => info }
-            val res = extractTests(data, ignoreBnStates = true).map {
+            extractTests(data, ignoreBnStates = true).map {
               case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps))
             }
-            res
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)
