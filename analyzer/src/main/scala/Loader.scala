@@ -13,11 +13,13 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments.keys.map(Settings.DATA_FOLDER(args) + "/" + _ + ".gzip")
+  def BASE_FILENAMES(implicit args: Array[String]):Iterable[String] = Settings.experiments.keys.map(Settings.DATA_FOLDER(args) + "/" + _ )
+
+  def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._1)
 
   def OUTPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._2)
 
-  def FILENAMES(implicit args: Array[String]): Iterable[(String, String)] = INPUT_FILENAMES(args).map(v => (v, v + ".json"))
+  def FILENAMES(implicit args: Array[String]): Iterable[(String, String)] = BASE_FILENAMES(args).map(v => (v + ".gzip", v + ".json"))
 
   /** Formats for json conversions */
   implicit def dataFormat: OFormat[RobotData] = Json.format[RobotData]
@@ -38,12 +40,10 @@ object Loader extends App {
   def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
     data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
       case (id, steps) =>
-        (id, steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
+        (id,  steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
           case (l :+ last, StepInfo(step, id, None, states, fitness, position)) =>
             l :+ last.add(states, fitness, position)
-          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn == last.bn =>
-            l :+ last.add(states, fitness, position) //with new controller version this is not needed
-          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) if bn != last.bn =>
+          case (l :+ last, StepInfo(step, id, Some(bn), states, fitness, position)) =>
             l :+ last :+ TestRun(bn, states, fitness, position)
           case (Nil, StepInfo(step, id, Some(bn), states, fitness, position)) =>
             Seq(TestRun(bn, states, fitness, position))
@@ -60,7 +60,11 @@ object Loader extends App {
         content: Iterator[String] =>
           val config: Config = Config.fromJson(content.next())
           val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-            extractTests(content.map(toStepInfo).collect { case Some(info) => info }, ignoreBnStates = false)
+            val data = content.map(toStepInfo).collect { case Some(info) => info }
+            val res = extractTests(data, ignoreBnStates = true).map {
+              case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps))
+            }
+            res
           }
           println(s"done. (${time.toSeconds} s)")
           (config, results)

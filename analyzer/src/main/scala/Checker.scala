@@ -9,7 +9,7 @@ object Checker extends App {
 
   Loader.INPUT_FILENAMES.parForeach(threads = Settings.PARALLELISM_DEGREE, file => {
     utils.File.readGzippedLines(file) match {
-      case Failure(exception) => println(s"$file [FAILURE] Error: ${exception.getMessage}")
+      case Failure(exception) => //println(s"$file [FAILURE] Error: ${exception.getMessage}") //file not exists probably
       case Success((content, source)) =>
         Try {
           val config: Config = Config.fromJson(content.next())

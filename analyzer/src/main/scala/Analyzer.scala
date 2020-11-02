@@ -21,7 +21,11 @@ object Analyzer extends App {
     utils.File.read(filename).map { str =>
       println(s"Parsing $filename (${str.length} chars)")
       Json.fromJson[Seq[RobotData]](Json.parse(str)) match {
-        case JsSuccess(value, path) => value
+        case JsSuccess(value, path) =>
+          if(value.exists(_.fitness_values.size < 179)) {
+            println(value)
+          }
+          value
         case JsError(errors) => println(s"Error while parsing $filename: $errors"); Nil
       }
     } match {
