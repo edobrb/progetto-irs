@@ -1,3 +1,5 @@
+import java.awt.Font
+
 import Loader.dataFormat
 import model.RobotData
 import model.config.Config
@@ -49,8 +51,12 @@ object Analyzer extends App {
   }
 
   def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
-    val chart = new XYChartBuilder().xAxisTitle("tests").yAxisTitle("Average fitness")
+    val chart = new XYChartBuilder().xAxisTitle("edits").yAxisTitle("average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
+    chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
+    chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
+    chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
+    chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val tests_count = values.head.fitnessCurve.size
@@ -63,10 +69,14 @@ object Analyzer extends App {
   }
 
   def showBoxPlot(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
-    val chart = new BoxChartBuilder().xAxisTitle("steps").yAxisTitle("fitness")
+    val chart = new BoxChartBuilder().xAxisTitle("variation").yAxisTitle("fitness")
       .title(s"Final fitness of each robot").width(1920).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
     chart.getStyler.setToolTipsEnabled(true)
+    chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
+    chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
+    chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
+    chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 12))
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val result = values.map(_.fitnessCurve.last)

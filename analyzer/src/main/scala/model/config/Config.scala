@@ -88,7 +88,6 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
   def expectedLines: Int = {
     val argosInfoPrints = 19
     val initialConfigPrints = 1
-    //simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count + simulation.robot_count * 2 + argosInfoPrints + initialConfigPrints
     val stepPrints = simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count
     val initialBnConfigPrints = stepPrints / simulation.network_test_steps
     stepPrints + argosInfoPrints + initialConfigPrints + initialBnConfigPrints
@@ -110,8 +109,56 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
   }
 
   /** Map configuration to the respective filename */
-  def filename: String =
-    s"el=${simulation.experiment_length}-rc=${simulation.robot_count}-bs=${bn.options.bias}-" +
-      s"mir=${bn.max_input_rewires}-mor=${bn.max_output_rewires}-sl=${bn.options.self_loops}-" +
-      s"nic=${bn.options.network_inputs_count}-hv=${robot.stay_on_half}-fp=${robot.stay_on_half && robot.feed_position}"
+  def filename: String = {
+
+    case class P[T](f: Config => T, default: Option[T], name: String, ts: T => String) {
+      def isDefined(config: Config): Boolean = default match {
+        case Some(value) => f(config) != value
+        case None => true
+      }
+
+      def name(config: Config): String = s"$name=${f.andThen(ts).apply(config)}"
+    }
+    object P {
+      def apply[T](name: String, f: Config => T): P[T] = P(f, None, name, (v: T) => v.toString)
+
+      def apply[T](name: String, default: T, f: Config => T): P[T] = P(f, Some(default), name, (v: T) => v.toString)
+
+      def apply[T](name: String, default: T, f: Config => T, ts: T => String): P[T] = P(f, Some(default), name, ts)
+    }
+
+    val parametersNames = Seq[P[_]](
+      P("el", _.simulation.experiment_length),
+      P("rc", _.simulation.robot_count),
+      P("bs", _.bn.options.bias),
+      P("mir", _.bn.max_input_rewires),
+      P("mor", _.bn.max_output_rewires),
+      P("sl", _.bn.options.self_loops),
+      P("nic", _.bn.options.network_inputs_count),
+      P("hv", _.robot.stay_on_half),
+      P("fp", _.robot.feed_position),
+
+      P("ts", 10, _.simulation.ticks_per_seconds),
+      P("nts", 400, _.simulation.network_test_steps),
+      P("pa", true, _.simulation.print_analytics),
+      P("pxt", 0.1, _.robot.proximity_threshold),
+      P("mws", 5, _.robot.max_wheel_speed),
+      P("n", 100, _.bn.options.node_count),
+      P("k", 3, _.bn.options.nodes_input_count),
+      P("noc", 2, _.bn.options.network_outputs_count),
+      P("oonb", true, _.bn.options.override_output_nodes_bias),
+      P("mirp", 1.0, _.bn.input_rewires_probability),
+      P("morp", 1.0, _.bn.output_rewires_probability),
+      P("de", false, _.bn.use_dual_encoding),
+      P("ibn", None, (config: Config) => config.bn.initial, (_: Option[model.BooleanNetwork.Schema]) => "yes"),
+    )
+
+    val name = parametersNames.foldLeft("") {
+      case ("", p) if p.isDefined(this) => p.name(this)
+      case (name, p) if p.isDefined(this) => name + "-" + p.name(this)
+      case (name, _) => name
+    }
+
+    utils.Hash.sha256(name)
+  }
 }
