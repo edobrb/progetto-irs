@@ -62,7 +62,7 @@ class Bn {
                 states[n] = functions[n][f];
             }
         }
-    private:
+    //private:
         bool* states;
         bool* oldStates;
         bool** functions;

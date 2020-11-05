@@ -107,7 +107,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       srand (time(NULL));
    }
    //BN Options
-   bestBn = new Bn(10, 3, 0.79);
+   bestBn = new Bn(100, 3, 0.79);
    currentBn = bestBn->Clone();
 
    printf("%d\n", rand());
@@ -157,6 +157,7 @@ void CFootBotDiffusion::ControlStep() {
 
 void CFootBotDiffusion::PrintAnalytics() {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
+   const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    const Real w = tPosReading.Orientation.GetW();
    const Real z = tPosReading.Orientation.GetZ();
    const Real y = tPosReading.Orientation.GetY();
@@ -167,18 +168,27 @@ void CFootBotDiffusion::PrintAnalytics() {
    j["id"] = GetId();
    j["step"] = printStep;
    j["fitness"] = 0;
-   j["states"] = {false, true};
+   nlohmann::json jStates;
+   for(int n = 0; n < currentBn->N; n++) jStates.push_back(currentBn->states[n]);
+   j["states"] = jStates;
    j["position"] = { tPosReading.Position.GetX(), tPosReading.Position.GetY() };
    j["orientation"] = zAngle;
-   j["proximity"] = {0, 0};
+
+   //can be derived from arena, robot size, position and orientation if needed
+   //nlohmann::json jProximity;
+   //for(int i = 0 ; i < tProxReads.size(); i++) jProximity.push_back(tProxReads[i].Value);
+   //j["proximity"] = jProximity;
+
+   /*
    j["boolean_network"] = nullptr;
    j["boolean_network"]["functions"] = { {false, true}, {false, true}};
    j["boolean_network"]["connections"] = { { 1, 2, 3}, { 1, 2, 3} };
    j["boolean_network"]["inputs"] = { 1, 2, 3};
    j["boolean_network"]["outputs"] = { 1, 2};
-   j["boolean_network"]["overridden_output_functions"] = { {false, true}, {false, true}};
+   j["boolean_network"]["overridden_output_functions"] = { {false, true}, {false, true}};*/
 
-   //printf("%s\n", j.dump().c_str());
+
+   printf("%s\n", j.dump().c_str());
    fflush(stdout);
    printStep++;
 }
