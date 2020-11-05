@@ -4,13 +4,19 @@
 #include <argos3/core/utility/configuration/argos_configuration.h>
 /* 2D vector definition */
 #include <argos3/core/utility/math/vector2.h>
+#include "json.hpp"
 #include <iostream>
 #include <cmath>
+#include "bn.h"
 
 /****************************************/
 /****************************************/
 
 CFootBotDiffusion::CFootBotDiffusion() :
+   bestNetworkFitness(-1),
+   testNetworkFitness(0),
+   currentStep(0),
+   printStep(0),
    m_pcWheels(NULL),
    m_pcProximity(NULL),
    m_pcPositioning(NULL),
@@ -18,11 +24,31 @@ CFootBotDiffusion::CFootBotDiffusion() :
    m_cAlpha(10.0f),
    m_fDelta(0.5f),
    m_fWheelVelocity(2.5f),
+   bestBn(NULL),
+   currentBn(NULL),
    m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
                            ToRadians(m_cAlpha)) {}
 
 /****************************************/
 /****************************************/
+
+int TICKS_PER_SECOND;
+int EXPERIMENT_LENGTH;
+int NETWORK_TEST_STEPS;
+bool PRINT_ANALYTICS;
+
+Real PROXIMITY_THRESHOLD;
+Real MAX_WHEELS_SPEED;
+bool STAY_ON_HALF;
+bool FEED_POSITION;
+bool stay_upper = true;
+
+int MAX_INPUT_REWIRES;
+Real INPUT_REWIRES_PROBABILITY;
+int MAX_OUTPUT_REWIRES;
+Real OUTPUT_REWIRES_PROBABILITY;
+//bool USE_DUAL_ENCODING
+//local NETWORK_OPTIONS;
 
 void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    /*
@@ -52,24 +78,50 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    m_pcPositioning = GetSensor<CCI_PositioningSensor>("positioning");
    m_pcLEDs = GetActuator<CCI_LEDsActuator>("leds");
    m_pcLEDs->SetAllColors(CColor::RED);
+
    /*
-    * Parse the configuration file
-    *
-    * The user defines this part. Here, the algorithm accepts three
-    * parameters and it's nice to put them in the config file so we don't
-    * have to recompile if we want to try other settings.
+    * Parse the configuration json
     */
-   GetNodeAttributeOrDefault(t_node, "alpha", m_cAlpha, m_cAlpha);
-   m_cGoStraightAngleRange.Set(-ToRadians(m_cAlpha), ToRadians(m_cAlpha));
-   GetNodeAttributeOrDefault(t_node, "delta", m_fDelta, m_fDelta);
-   GetNodeAttributeOrDefault(t_node, "velocity", m_fWheelVelocity, m_fWheelVelocity);
-   m_fWheelVelocity *= 10;
+   std::string configStr = "null";
+   GetNodeAttributeOrDefault(t_node, "CONFIG", configStr, configStr);
+   config = nlohmann::json::parse(configStr);
+
+   TICKS_PER_SECOND = config["simulation"]["ticks_per_seconds"].get<int>();
+   EXPERIMENT_LENGTH = config["simulation"]["experiment_length"].get<int>();
+   PRINT_ANALYTICS = config["simulation"]["print_analytics"].get<bool>();
+   NETWORK_TEST_STEPS = config["simulation"]["network_test_steps"].get<int>(); //TODO: into task variation
+   
+
+   PROXIMITY_THRESHOLD = config["robot"]["proximity_threshold"].get<Real>();
+   MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>();
+   STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();       //TODO: into task variation
+   FEED_POSITION = config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
+
+   //TODO: into task variation
+   MAX_INPUT_REWIRES = config["bn"]["max_input_rewires"].get<int>();
+   INPUT_REWIRES_PROBABILITY = config["bn"]["input_rewires_probability"].get<Real>();
+   MAX_OUTPUT_REWIRES = config["bn"]["max_output_rewires"].get<int>();
+   OUTPUT_REWIRES_PROBABILITY = config["bn"]["output_rewires_probability"].get<Real>();
+
+   if(GetId() == "fb0") {
+      srand (time(NULL));
+   }
+   //BN Options
+   bestBn = new Bn(10, 3, 0.79);
+   currentBn = bestBn->Clone();
+
+   printf("%d\n", rand());
+   stay_upper = true; //TODO
 }
 
 /****************************************/
 /****************************************/
 
 void CFootBotDiffusion::ControlStep() {
+   currentBn->Step();
+   if(GetId() == "fb0") {
+      printf("%ld\n", currentStep);
+   }
    /* Get readings from proximity sensor */
    const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    /* Sum them together */
@@ -97,31 +149,47 @@ void CFootBotDiffusion::ControlStep() {
       }
    }
 
+   
+   PrintAnalytics();
+
+   currentStep++;
+}
+
+void CFootBotDiffusion::PrintAnalytics() {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
-
-
-   const std::string& id = GetId();
-   //z = qz / sqrt(1-qw*qw)
    const Real w = tPosReading.Orientation.GetW();
    const Real z = tPosReading.Orientation.GetZ();
    const Real y = tPosReading.Orientation.GetY();
    const Real x = tPosReading.Orientation.GetX();
    const Real zAngle = atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z));
-   printf("ciao %s, (%f,%f,%f)\n", id.c_str(), tPosReading.Position.GetX(), tPosReading.Position.GetY(), zAngle);
+
+   nlohmann::json j;
+   j["id"] = GetId();
+   j["step"] = printStep;
+   j["fitness"] = 0;
+   j["states"] = {false, true};
+   j["position"] = { tPosReading.Position.GetX(), tPosReading.Position.GetY() };
+   j["orientation"] = zAngle;
+   j["proximity"] = {0, 0};
+   j["boolean_network"] = nullptr;
+   j["boolean_network"]["functions"] = { {false, true}, {false, true}};
+   j["boolean_network"]["connections"] = { { 1, 2, 3}, { 1, 2, 3} };
+   j["boolean_network"]["inputs"] = { 1, 2, 3};
+   j["boolean_network"]["outputs"] = { 1, 2};
+   j["boolean_network"]["overridden_output_functions"] = { {false, true}, {false, true}};
+
+   //printf("%s\n", j.dump().c_str());
+   fflush(stdout);
+   printStep++;
+}
+
+CFootBotDiffusion::~CFootBotDiffusion() {
+   delete bestBn;
+   delete currentBn;
+}
+
+void CFootBotDiffusion::Reset() {
    
 }
 
-/****************************************/
-/****************************************/
-
-/*
- * This statement notifies ARGoS of the existence of the controller.
- * It binds the class passed as first argument to the string passed as
- * second argument.
- * The string is then usable in the configuration file to refer to this
- * controller.
- * When ARGoS reads that string in the configuration file, it knows which
- * controller class to instantiate.
- * See also the configuration files for an example of how this is used.
- */
 REGISTER_CONTROLLER(CFootBotDiffusion, "footbot_controller")

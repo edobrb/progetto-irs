@@ -33,6 +33,8 @@
 
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 
+#include "json.hpp"
+#include "bn.h"
 /*
  * All the ARGoS stuff in the 'argos' namespace.
  * With this statement, you save typing argos:: every time.
@@ -50,7 +52,7 @@ public:
    CFootBotDiffusion();
 
    /* Class destructor. */
-   virtual ~CFootBotDiffusion() {}
+   ~CFootBotDiffusion();
 
    /*
     * This function initializes the controller.
@@ -73,7 +75,7 @@ public:
     * so the function could have been omitted. It's here just for
     * completeness.
     */
-   virtual void Reset() {}
+   void Reset();
 
    /*
     * Called to cleanup what done by Init() when the experiment finishes.
@@ -84,6 +86,14 @@ public:
    virtual void Destroy() {}
 
 private:
+
+   void PrintAnalytics();
+
+   Real bestNetworkFitness, testNetworkFitness;
+   long printStep, currentStep;
+   nlohmann::json config;
+   Bn* bestBn;
+   Bn* currentBn;
 
    /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator* m_pcWheels;

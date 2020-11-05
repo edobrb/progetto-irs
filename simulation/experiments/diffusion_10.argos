@@ -6,8 +6,8 @@
   <!-- ************************* -->
   <framework>
     <system threads="0" />
-    <experiment length="0"
-                ticks_per_second="60"
+    <experiment length="7200"
+                ticks_per_second="10"
                 random_seed="124" />
   </framework>
 
@@ -25,7 +25,8 @@
         <footbot_proximity implementation="default" show_rays="true" noise_level="0.03" />
         <positioning implementation="default" />
       </sensors>
-      <params alpha="7.5" delta="0.1" velocity="5" />
+      <params alpha="7.5" delta="0.1" velocity="5" 
+              CONFIG='{"simulation":{"ticks_per_seconds":100,"experiment_length":7200,"network_test_steps":100,"print_analytics":false},"robot":{"stay_on_half":true,"feed_position":true,"proximity_threshold":0.1,"max_wheel_speed":5},"bn":{"max_input_rewires":3,"input_rewires_probability":0.5,"max_output_rewires":1,"output_rewires_probability":0.1,"use_dual_encoding":false,"options":{"node_count":100,"nodes_input_count":3,"bias":0.79,"network_inputs_count":24,"network_outputs_count":2,"self_loops":false,"override_output_nodes_bias":true}}}'/>
     </footbot_controller>
 
   </controllers>
@@ -111,12 +112,12 @@
   <!-- ****************** -->
   <!-- * Visualization * -->
   <!-- ****************** -->
-  <visualization>
+  <none>
     <qt-opengl>
       <camera>
         <placement index="1" position="0,0,5" look_at="0,0,0" up="0,0,1" lens_focal_length="50" />
       </camera>
     </qt-opengl>
-  </visualization>
+  </none>
 
 </argos-configuration>
