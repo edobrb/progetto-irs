@@ -86,7 +86,7 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
   }
 
   def expectedLines: Int = {
-    val argosInfoPrints = 19
+    val argosInfoPrints = 0
     val initialConfigPrints = 1
     val stepPrints = simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count
     val initialBnConfigPrints = stepPrints / simulation.network_test_steps

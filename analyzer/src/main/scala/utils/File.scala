@@ -29,7 +29,7 @@ object File {
     })
   }
 
-  def writeGzippedLines(filename: String, data: Iterator[String], level: Int = Deflater.BEST_COMPRESSION): Try[Long] =
+  def writeGzippedLines(filename: String, data: Iterator[String], level: Int = Deflater.DEFAULT_COMPRESSION): Try[Long] =
     Try {
       val fos = new FileOutputStream(filename)
       class MyGZIPOutputStream(out: OutputStream) extends GZIPOutputStream(out) {

@@ -166,12 +166,13 @@ void CFootBotDiffusion::ControlStep() {
    else if(PRINT_ANALYTICS) PrintAnalytics(false);
 
    RunAndEvaluateNetwork();
+   //printf("%f\n", testNetworkFitness);
    currentStep++;
 }
 
 void CFootBotDiffusion::Destroy() {
    if(currentStep > 0) { //can be called when a robot initialization fails
-      PrintAnalytics(true);
+      if(PRINT_ANALYTICS) PrintAnalytics(true);
       fflush(stdout);
    }
 }
@@ -188,7 +189,7 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    nlohmann::json j;
    j["id"] = GetId();
    j["step"] = printStep;
-   j["fitness"] = 0;
+   j["fitness"] = testNetworkFitness;
    nlohmann::json jStates = nlohmann::json::array();
    for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
    j["states"] = jStates;
