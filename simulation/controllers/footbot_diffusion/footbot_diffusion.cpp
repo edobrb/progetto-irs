@@ -7,6 +7,7 @@
 #include "json.hpp"
 #include <iostream>
 #include <cmath>
+#include "bn_hang.h"
 #include "bn.h"
 
 /****************************************/
@@ -21,13 +22,10 @@ CFootBotDiffusion::CFootBotDiffusion() :
    m_pcProximity(NULL),
    m_pcPositioning(NULL),
    m_pcLEDs(NULL),
-   m_cAlpha(10.0f),
-   m_fDelta(0.5f),
-   m_fWheelVelocity(2.5f),
    bestBn(NULL),
-   currentBn(NULL),
-   m_cGoStraightAngleRange(-ToRadians(m_cAlpha),
-                           ToRadians(m_cAlpha)) {}
+   testBn(NULL),
+   bestHang(NULL),
+   testHang(NULL) {}
 
 /****************************************/
 /****************************************/
@@ -48,31 +46,14 @@ Real INPUT_REWIRES_PROBABILITY;
 int MAX_OUTPUT_REWIRES;
 Real OUTPUT_REWIRES_PROBABILITY;
 //bool USE_DUAL_ENCODING
-//local NETWORK_OPTIONS;
+int N, K;
+double P;
+int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
+bool SELF_LOOPS, OVERRIDE_OUTPUT_FUNCTIONS;
+double P_OVERRIDE;
+bool ALLOW_MULTIPLE_HANG;
 
 void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
-   /*
-    * Get sensor/actuator handles
-    *
-    * The passed string (ex. "differential_steering") corresponds to the
-    * XML tag of the device whose handle we want to have. For a list of
-    * allowed values, type at the command prompt:
-    *
-    * $ argos3 -q actuators
-    *
-    * to have a list of all the possible actuators, or
-    *
-    * $ argos3 -q sensors
-    *
-    * to have a list of all the possible sensors.
-    *
-    * NOTE: ARGoS creates and initializes actuators and sensors
-    * internally, on the basis of the lists provided the configuration
-    * file at the <controllers><footbot_diffusion><actuators> and
-    * <controllers><footbot_diffusion><sensors> sections. If you forgot to
-    * list a device in the XML and then you request it here, an error
-    * occurs.
-    */
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
    m_pcPositioning = GetSensor<CCI_PositioningSensor>("positioning");
@@ -94,8 +75,8 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
    PROXIMITY_THRESHOLD = config["robot"]["proximity_threshold"].get<Real>();
    MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>();
-   STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();       //TODO: into task variation
-   FEED_POSITION = config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
+   STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();                      //TODO: into task variation
+   FEED_POSITION = STAY_ON_HALF && config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
 
    //TODO: into task variation
    MAX_INPUT_REWIRES = config["bn"]["max_input_rewires"].get<int>();
@@ -103,59 +84,99 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    MAX_OUTPUT_REWIRES = config["bn"]["max_output_rewires"].get<int>();
    OUTPUT_REWIRES_PROBABILITY = config["bn"]["output_rewires_probability"].get<Real>();
 
+   
+   N = config["bn"]["options"]["node_count"].get<int>();
+   K = config["bn"]["options"]["nodes_input_count"].get<int>();
+   P = config["bn"]["options"]["bias"].get<double>();
+   NETWORK_INPUT_COUNT = config["bn"]["options"]["network_inputs_count"].get<int>() + (FEED_POSITION ? 1 : 0);
+   NETWORK_OUTPUT_COUNT = config["bn"]["options"]["network_outputs_count"].get<int>();
+   SELF_LOOPS = config["bn"]["options"]["self_loops"].get<bool>();
+   OVERRIDE_OUTPUT_FUNCTIONS = config["bn"]["options"]["override_output_nodes_bias"].get<bool>();
+   P_OVERRIDE = 0.5;
+   ALLOW_MULTIPLE_HANG = false;
+
+
+
    if(GetId() == "fb0") {
       srand (time(NULL));
    }
-   //BN Options
-   bestBn = new Bn(100, 3, 0.79);
-   currentBn = bestBn->Clone();
+   bestBn = new Bn(N, K, P, SELF_LOOPS);
+   testBn = bestBn->Clone();
+   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, ALLOW_MULTIPLE_HANG, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, ALLOW_MULTIPLE_HANG, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testHang->CopyFrom(bestHang, bestBn);
 
-   printf("%d\n", rand());
-   stay_upper = true; //TODO
+
+
+   stay_upper = m_pcPositioning->GetReading().Position.GetX() > 0;
 }
 
 /****************************************/
 /****************************************/
 
-void CFootBotDiffusion::ControlStep() {
-   currentBn->Step();
-   if(GetId() == "fb0") {
-      printf("%ld\n", currentStep);
-   }
-   /* Get readings from proximity sensor */
+void CFootBotDiffusion::RunAndEvaluateNetwork() {
    const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
-   /* Sum them together */
-   CVector2 cAccumulator;
-   for(size_t i = 0; i < tProxReads.size(); ++i) {
-      cAccumulator += CVector2(tProxReads[i].Value, tProxReads[i].Angle);
-   }
-   cAccumulator /= tProxReads.size();
-   /* If the angle of the vector is small enough and the closest obstacle
-    * is far enough, continue going straight, otherwise curve a little
-    */
-   CRadians cAngle = cAccumulator.Angle();
-   if(m_cGoStraightAngleRange.WithinMinBoundIncludedMaxBoundIncluded(cAngle) &&
-      cAccumulator.Length() < m_fDelta ) {
-      /* Go straight */
-      m_pcWheels->SetLinearVelocity(m_fWheelVelocity, m_fWheelVelocity);
-   }
-   else {
-      /* Turn, depending on the sign of the angle */
-      if(cAngle.GetValue() > 0.0f) {
-         m_pcWheels->SetLinearVelocity(m_fWheelVelocity, 0.0f);
+   int proxInput = NETWORK_INPUT_COUNT - FEED_POSITION ? 1 : 0;
+
+   Real maxProximity = 0;
+   for(int i = 0; i < proxInput; i++) {
+      Real proxValue = 0;
+      for(size_t c = 0; c < tProxReads.size() / proxInput; ++c) {
+         proxValue += tProxReads[i].Value;
+         if(tProxReads[i].Value > maxProximity) maxProximity = tProxReads[i].Value;
       }
-      else {
-         m_pcWheels->SetLinearVelocity(0.0f, m_fWheelVelocity);
+      proxValue = proxValue / (tProxReads.size() / proxInput);
+      testHang->PushInput(testBn, i, proxValue > PROXIMITY_THRESHOLD);
+   }
+   bool correctHalf = stay_upper == (m_pcPositioning->GetReading().Position.GetX() > 0);
+   if(FEED_POSITION) {
+      testHang->PushInput(testBn, NETWORK_INPUT_COUNT - 1, correctHalf);
+   }
+   testBn->Step();
+   Real left = testHang->GetOutput(testBn, 0)?MAX_WHEELS_SPEED:0;
+   Real right = testHang->GetOutput(testBn, 1)?MAX_WHEELS_SPEED:0;
+   m_pcWheels->SetLinearVelocity(left, right);
+
+
+   if(STAY_ON_HALF && !correctHalf) {
+      testNetworkFitness += 0;
+   } else {
+      left /= MAX_WHEELS_SPEED;
+      right /= MAX_WHEELS_SPEED;
+      Real obstacleAvoidanceFitness = (1 - maxProximity) * (1 - sqrt(abs(left - right))) * (left + right) / 2;
+      testNetworkFitness += 100 * obstacleAvoidanceFitness / NETWORK_TEST_STEPS;
+   }
+}
+
+void CFootBotDiffusion::ControlStep() {
+   if(currentStep >= NETWORK_TEST_STEPS) {
+      if(PRINT_ANALYTICS) PrintAnalytics(false);
+      if(testNetworkFitness >= bestNetworkFitness) {
+         bestBn->CopyFrom(testBn);
+         bestHang->CopyFrom(testHang, bestBn);
+         bestNetworkFitness = testNetworkFitness;
       }
+      //if(variation is hang rewires)
+      testHang->Rewires(testBn, MAX_INPUT_REWIRES, MAX_OUTPUT_REWIRES, ALLOW_MULTIPLE_HANG); //TODO probability
+      currentStep = 0;
+      testNetworkFitness = 0;
    }
 
-   
-   PrintAnalytics();
+   if(currentStep == 0 && PRINT_ANALYTICS) PrintAnalytics(true);
+   else if(PRINT_ANALYTICS) PrintAnalytics(false);
 
+   RunAndEvaluateNetwork();
    currentStep++;
 }
 
-void CFootBotDiffusion::PrintAnalytics() {
+void CFootBotDiffusion::Destroy() {
+   if(currentStep > 0) { //can be called when a robot initialization fails
+      PrintAnalytics(true);
+      fflush(stdout);
+   }
+}
+
+void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
    const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    const Real w = tPosReading.Orientation.GetW();
@@ -168,8 +189,8 @@ void CFootBotDiffusion::PrintAnalytics() {
    j["id"] = GetId();
    j["step"] = printStep;
    j["fitness"] = 0;
-   nlohmann::json jStates;
-   for(int n = 0; n < currentBn->N; n++) jStates.push_back(currentBn->states[n]);
+   nlohmann::json jStates = nlohmann::json::array();
+   for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
    j["states"] = jStates;
    j["position"] = { tPosReading.Position.GetX(), tPosReading.Position.GetY() };
    j["orientation"] = zAngle;
@@ -179,23 +200,51 @@ void CFootBotDiffusion::PrintAnalytics() {
    //for(int i = 0 ; i < tProxReads.size(); i++) jProximity.push_back(tProxReads[i].Value);
    //j["proximity"] = jProximity;
 
-   /*
-   j["boolean_network"] = nullptr;
-   j["boolean_network"]["functions"] = { {false, true}, {false, true}};
-   j["boolean_network"]["connections"] = { { 1, 2, 3}, { 1, 2, 3} };
-   j["boolean_network"]["inputs"] = { 1, 2, 3};
-   j["boolean_network"]["outputs"] = { 1, 2};
-   j["boolean_network"]["overridden_output_functions"] = { {false, true}, {false, true}};*/
+   if(printBnSchema) {
+      j["boolean_network"] = nullptr;
+      nlohmann::json jFunctions = nlohmann::json::array();
+      for(int n = 0; n < testBn->N; n++) {
+         nlohmann::json jTruthTable = nlohmann::json::array();
+         for(int k = 0; k < testBn->K2; k++)
+            jTruthTable.push_back(testBn->GetTruthTableEntry(n, k));
+         jFunctions.push_back(jTruthTable);
+      }
+      j["boolean_network"]["functions"] = jFunctions;
+      nlohmann::json jConnections = nlohmann::json::array();
+      for(int n = 0; n < testBn->N; n++) {
+         nlohmann::json jNodeConnections = nlohmann::json::array();
+         for(int k = 0; k < testBn->K; k++)
+            jNodeConnections.push_back(testBn->GetConnectionIndex(n, k));
+         jConnections.push_back(jNodeConnections);
+      }
+      j["boolean_network"]["connections"] = jConnections;
 
+      nlohmann::json jInput = nlohmann::json::array();
+      for(int i = 0; i < NETWORK_INPUT_COUNT; i++) jInput.push_back(testHang->GetInputNodeIndex(i));
+      j["boolean_network"]["inputs"] = jInput;
+      nlohmann::json jOutputs = nlohmann::json::array();
+      for(int i = 0; i < NETWORK_OUTPUT_COUNT; i++) jOutputs.push_back(testHang->GetOutputNodeIndex(i));
+      j["boolean_network"]["outputs"] = jOutputs;
+
+      nlohmann::json jOverriddenFunctions = nlohmann::json::array();
+      for(int n = 0; n < NETWORK_OUTPUT_COUNT; n++) {
+         nlohmann::json jTruthTable = nlohmann::json::array();
+         for(int k = 0; k < testBn->K2; k++)
+            jTruthTable.push_back(testHang->GetOverriddenOutputFunctions(n, k));
+         jOverriddenFunctions.push_back(jTruthTable);
+      }
+      j["boolean_network"]["overridden_output_functions"] = jOverriddenFunctions;
+   }
 
    printf("%s\n", j.dump().c_str());
-   fflush(stdout);
    printStep++;
 }
 
 CFootBotDiffusion::~CFootBotDiffusion() {
    delete bestBn;
-   delete currentBn;
+   delete testBn;
+   delete bestHang;
+   delete testHang;
 }
 
 void CFootBotDiffusion::Reset() {

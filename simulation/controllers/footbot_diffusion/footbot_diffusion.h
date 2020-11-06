@@ -34,7 +34,9 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 
 #include "json.hpp"
+#include "bn_hang.h"
 #include "bn.h"
+
 /*
  * All the ARGoS stuff in the 'argos' namespace.
  * With this statement, you save typing argos:: every time.
@@ -59,13 +61,13 @@ public:
     * The 't_node' variable points to the <parameters> section in the XML
     * file in the <controllers><footbot_diffusion_controller> section.
     */
-   virtual void Init(TConfigurationNode& t_node);
+   void Init(TConfigurationNode& t_node);
 
    /*
     * This function is called once every time step.
     * The length of the time step is set in the XML file.
     */
-   virtual void ControlStep();
+   void ControlStep();
 
    /*
     * This function resets the controller to its state right after the
@@ -83,49 +85,25 @@ public:
     * so the function could have been omitted. It's here just for
     * completeness.
     */
-   virtual void Destroy() {}
+   void Destroy();
 
 private:
 
-   void PrintAnalytics();
+   void PrintAnalytics(bool printBnSchema);
+   void RunAndEvaluateNetwork();
 
    Real bestNetworkFitness, testNetworkFitness;
    long printStep, currentStep;
    nlohmann::json config;
    Bn* bestBn;
-   Bn* currentBn;
+   Bn* testBn;
+   BnHang* bestHang;
+   BnHang* testHang;
 
-   /* Pointer to the differential steering actuator */
    CCI_DifferentialSteeringActuator* m_pcWheels;
-   /* Pointer to the foot-bot proximity sensor */
    CCI_FootBotProximitySensor* m_pcProximity;
    CCI_PositioningSensor* m_pcPositioning;
    CCI_LEDsActuator* m_pcLEDs;
-   
-   /*
-    * The following variables are used as parameters for the
-    * algorithm. You can set their value in the <parameters> section
-    * of the XML configuration file, under the
-    * <controllers><footbot_diffusion_controller> section.
-    */
-
-   /* Maximum tolerance for the angle between
-    * the robot heading direction and
-    * the closest obstacle detected. */
-   CDegrees m_cAlpha;
-   /* Maximum tolerance for the proximity reading between
-    * the robot and the closest obstacle.
-    * The proximity reading is 0 when nothing is detected
-    * and grows exponentially to 1 when the obstacle is
-    * touching the robot.
-    */
-   Real m_fDelta;
-   /* Wheel speed. */
-   Real m_fWheelVelocity;
-   /* Angle tolerance range to go straight.
-    * It is set to [-alpha,alpha]. */
-   CRange<CRadians> m_cGoStraightAngleRange;
-
 };
 
 #endif
