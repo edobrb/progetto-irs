@@ -17,8 +17,8 @@ object Experiments extends App {
 
   /** Running experiments */
   println(s"Running ${Settings.experiments.size} experiments...")
-  Settings.experiments.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
-    case (experimentName, config) =>
+  Settings.experiments.toList.sortBy(_._3).parForeach(threads = Settings.PARALLELISM_DEGREE, {
+    case (experimentName, config, _) =>
       val filename = Settings.DATA_FOLDER + "/" + experimentName + ".gzip"
       if (!utils.File.exists(filename)) {
         Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos

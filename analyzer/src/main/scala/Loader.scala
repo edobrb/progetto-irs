@@ -13,7 +13,7 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def BASE_FILENAMES(implicit args: Array[String]):Iterable[String] = Settings.experiments.keys.map(Settings.DATA_FOLDER(args) + "/" + _ )
+  def BASE_FILENAMES(implicit args: Array[String]):Iterable[String] = Settings.experiments(args).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _ )
 
   def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._1)
 

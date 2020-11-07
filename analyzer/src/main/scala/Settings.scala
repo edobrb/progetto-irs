@@ -1,19 +1,34 @@
 import model.config.Config
 
+import scala.util.Try
+
 object Settings {
 
-  def argOrException(index: Int, argName: String)(args: Array[String]): String =
-    if (args.length > index) args(index) else throw new Exception(s"Argument $index should be $argName")
+  def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
+    argOrException(argName, f, Some(default))(args)
+  def argOrException[T](argName: String, f: String => Option[T], default: Option[T] = None)(args: Array[String]): T =
+    args.find(a => Try {
+      a.split('=')(0) == argName
+    }.toOption.contains(true)).flatMap(a => Try {
+      a.split('=')(1)
+    }.toOption).flatMap(f) match {
+      case Some(value) => value
+      case None => default match {
+        case Some(value) => value
+        case None => throw new Exception(s"Argument $argName not defined")
+      }
+    }
 
-  def WORKING_DIR(implicit args: Array[String]): String = argOrException(0, "WORKING_DIR (lua)")(args)
+  def WORKING_DIR(implicit args: Array[String]): String = argOrException("working_dir", Some.apply)(args)
 
-  def SIMULATION_FILE(implicit args: Array[String]): String = argOrException(1, "SIMULATION_FILE (.argos)")(args)
+  def SIMULATION_FILE(implicit args: Array[String]): String = argOrException("argos", Some.apply)(args)
 
-  def DATA_FOLDER(implicit args: Array[String]): String = argOrException(2, "DATA_FOLDER")(args)
+  def DATA_FOLDER(implicit args: Array[String]): String = argOrException("data", Some.apply)(args)
 
-  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = args.applyOrElse[Int, String](3, _ => "4").toInt
+  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
 
-  def REPETITIONS: Range = 1 to 100
+  def REPETITIONS(implicit args: Array[String]): Range =
+    argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Config = {
@@ -85,8 +100,8 @@ object Settings {
   }
 
   /** Filenames of experiments and the relative config */
-  def experiments: Map[String, Config] = {
+  def experiments(implicit args: Array[String]): Seq[(String, Config, Int)] = {
     /** Configuration repetitions for statistical accuracy. * */
-    configurations.flatMap(config => REPETITIONS.map(i => (config.filename + "-" + i, config))).toMap
+    configurations.flatMap(config => REPETITIONS.map(i => (config.filename + "-" + i, config, i)))
   }
 }
