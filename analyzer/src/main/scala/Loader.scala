@@ -13,7 +13,7 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def BASE_FILENAMES(implicit args: Array[String]):Iterable[String] = Settings.experiments(args).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _ )
+  def BASE_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments(args).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _)
 
   def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._1)
 
@@ -48,10 +48,12 @@ object Loader extends App {
         })
     }
 
-  /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
-   * RobotData and then writes it into a json file */
-  FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
-    case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
+  def load(input_filename: String, output_filename: String): Unit = {
+    if (utils.File.exists(output_filename)) {
+      println("Skipping " + input_filename)
+    } else if (!utils.File.exists(input_filename)) {
+      println("Not found " + input_filename)
+    } else {
       println(s"Loading $input_filename ... ")
       utils.File.readGzippedLinesAndMap(input_filename) {
         content: Iterator[String] =>
@@ -72,8 +74,12 @@ object Loader extends App {
           }
           utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       }
-    case (input_filename, output_filename) if utils.File.exists(output_filename) => println("Skipping " + input_filename)
-    case (input_filename, _) => println("Not found " + input_filename)
-  })
+    }
+  }
 
+  /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
+   * RobotData and then writes it into a json file */
+  FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
+    case (input_filename, output_filename) => load(input_filename, output_filename)
+  })
 }

@@ -19,17 +19,22 @@ object Experiments extends App {
   println(s"Running ${Settings.experiments.size} experiments...")
   Settings.experiments.toList.sortBy(_._3).parForeach(threads = Settings.PARALLELISM_DEGREE, {
     case (experimentName, config, _) =>
-      val filename = Settings.DATA_FOLDER + "/" + experimentName + ".gzip"
-      if (!utils.File.exists(filename)) {
+      val filename = Settings.DATA_FOLDER + "/" + experimentName
+      val output_filename = filename + ".gzip"
+      if (!utils.File.exists(output_filename)) {
         Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
         val expectedLines = config.expectedLines
         Benchmark.time {
           println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
-          utils.File.writeGzippedLines(filename, out)
+          utils.File.writeGzippedLines(output_filename, out)
         } match {
           case (Success(lines), time) if lines == expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")
+            val load = Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)
+            if (load) {
+              Loader.load(output_filename, filename + ".json")
+            }
           case (Success(lines), time) if lines != expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [FAILURE]")
           case (Failure(exception), time) =>
