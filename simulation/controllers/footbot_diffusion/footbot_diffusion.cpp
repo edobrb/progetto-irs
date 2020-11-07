@@ -51,7 +51,7 @@ double P;
 int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
 bool SELF_LOOPS, OVERRIDE_OUTPUT_FUNCTIONS;
 double P_OVERRIDE;
-bool ALLOW_MULTIPLE_HANG;
+bool IO_NODE_OVERLAP;
 
 void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
@@ -93,7 +93,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    SELF_LOOPS = config["bn"]["options"]["self_loops"].get<bool>();
    OVERRIDE_OUTPUT_FUNCTIONS = config["bn"]["options"]["override_output_nodes_bias"].get<bool>();
    P_OVERRIDE = 0.5;
-   ALLOW_MULTIPLE_HANG = false;
+   IO_NODE_OVERLAP = false;
 
 
 
@@ -101,11 +101,11 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       srand (time(NULL));
    }
    bestBn = new Bn(N, K, P, SELF_LOOPS);
-   testBn = bestBn->Clone();
-   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, ALLOW_MULTIPLE_HANG, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
-   testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, ALLOW_MULTIPLE_HANG, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testBn = new Bn(N, K, P, SELF_LOOPS);
+   testBn->CopyFrom(bestBn);
+   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang->CopyFrom(bestHang, bestBn);
-
 
 
    stay_upper = m_pcPositioning->GetReading().Position.GetX() > 0;
@@ -115,36 +115,45 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 /****************************************/
 
 void CFootBotDiffusion::RunAndEvaluateNetwork() {
-   const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
-   int proxInput = NETWORK_INPUT_COUNT - FEED_POSITION ? 1 : 0;
 
-   Real maxProximity = 0;
-   for(int i = 0; i < proxInput; i++) {
-      Real proxValue = 0;
-      for(size_t c = 0; c < tProxReads.size() / proxInput; ++c) {
-         proxValue += tProxReads[i].Value;
-         if(tProxReads[i].Value > maxProximity) maxProximity = tProxReads[i].Value;
+   //Feed network
+   const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
+   int proximityInputCount = NETWORK_INPUT_COUNT - FEED_POSITION ? 1 : 0;
+   Real maxProximityValue = 0;
+   int proximityGroupSize = proximityReadings.size() / proximityInputCount;
+   for(int i = 0; i < proximityInputCount; i++) {
+      Real sum = 0;
+      for(size_t c = 0; c < proximityGroupSize; c++) {
+         sum += proximityReadings[i].Value;
+         if(proximityReadings[i].Value > maxProximityValue) maxProximityValue = proximityReadings[i].Value;
       }
-      proxValue = proxValue / (tProxReads.size() / proxInput);
-      testHang->PushInput(testBn, i, proxValue > PROXIMITY_THRESHOLD);
+      sum = sum / proximityGroupSize;
+      testHang->PushInput(testBn, i, sum > PROXIMITY_THRESHOLD);
    }
-   bool correctHalf = stay_upper == (m_pcPositioning->GetReading().Position.GetX() > 0);
+   bool isInCorrectHalf = stay_upper == (m_pcPositioning->GetReading().Position.GetX() > 0);
    if(FEED_POSITION) {
-      testHang->PushInput(testBn, NETWORK_INPUT_COUNT - 1, correctHalf);
+      testHang->PushInput(testBn, NETWORK_INPUT_COUNT - 1, isInCorrectHalf);
    }
+
+   //Run network
    testBn->Step();
-   Real left = testHang->GetOutput(testBn, 0)?MAX_WHEELS_SPEED:0;
-   Real right = testHang->GetOutput(testBn, 1)?MAX_WHEELS_SPEED:0;
+
+   //Run motors with output
+   Real left = testHang->GetOutput(testBn, 0) ? MAX_WHEELS_SPEED : 0;
+   Real right = testHang->GetOutput(testBn, 1) ? MAX_WHEELS_SPEED : 0;
    m_pcWheels->SetLinearVelocity(left, right);
 
-
-   if(STAY_ON_HALF && !correctHalf) {
+   // Fitness function
+   if(STAY_ON_HALF && !isInCorrectHalf) {
       testNetworkFitness += 0;
    } else {
       left /= MAX_WHEELS_SPEED;
       right /= MAX_WHEELS_SPEED;
-      Real obstacleAvoidanceFitness = (1 - maxProximity) * (1 - sqrt(abs(left - right))) * (left + right) / 2;
-      testNetworkFitness += 100 * obstacleAvoidanceFitness / NETWORK_TEST_STEPS;
+      Real speedFactor = (left + right) / 2;
+      Real straightFactor = (1 - sqrt(abs(left - right)));
+      Real proximityFactor = (1 - maxProximityValue);
+      Real totalFactor = speedFactor * straightFactor * totalFactor;
+      testNetworkFitness += 100 * totalFactor / NETWORK_TEST_STEPS;
    }
 }
 
@@ -156,8 +165,12 @@ void CFootBotDiffusion::ControlStep() {
          bestHang->CopyFrom(testHang, bestBn);
          bestNetworkFitness = testNetworkFitness;
       }
-      //if(variation is hang rewires)
-      testHang->Rewires(testBn, MAX_INPUT_REWIRES, MAX_OUTPUT_REWIRES, ALLOW_MULTIPLE_HANG); //TODO probability
+      //if(variation is X) ...
+      int inputRewires = 0;
+      for(int i = 0; i < MAX_INPUT_REWIRES; i++) inputRewires += ((double)rand() / RAND_MAX) < INPUT_REWIRES_PROBABILITY ? 1 : 0;
+      int outputRewires = 0;
+      for(int i = 0; i < MAX_OUTPUT_REWIRES; i++) outputRewires += ((double)rand() / RAND_MAX) < OUTPUT_REWIRES_PROBABILITY ? 1 : 0;
+      testHang->Rewires(testBn, inputRewires, outputRewires, IO_NODE_OVERLAP);
       currentStep = 0;
       testNetworkFitness = 0;
    }
@@ -166,7 +179,6 @@ void CFootBotDiffusion::ControlStep() {
    else if(PRINT_ANALYTICS) PrintAnalytics(false);
 
    RunAndEvaluateNetwork();
-   //printf("%f\n", testNetworkFitness);
    currentStep++;
 }
 

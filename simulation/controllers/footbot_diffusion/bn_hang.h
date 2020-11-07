@@ -6,34 +6,34 @@
 
 class BnHang {
     public:
-        BnHang(int inputs, int outputs, Bn* bn, bool allowMultipleHang, bool overrideOutputFunctions, double p) {
-            InputCount = inputs;
-            OutputCount = outputs;
+        BnHang(int inputCount, int outputCount, Bn* bn, bool nodeOverlap, bool overrideOutputFunctions, double p) {
+            InputCount = inputCount;
+            OutputCount = outputCount;
             inputNodes = new int[InputCount];
             outputNodes = new int[OutputCount];
-            if(overrideOutputFunctions) overriddenOutputFunctions = new bool*[OutputCount];
-            else overriddenOutputFunctions = nullptr;
+            overriddenOutputFunctions = overrideOutputFunctions ? new bool*[OutputCount] : nullptr;
             
             std::vector<int> nodes(bn->N);
             std::iota(std::begin(nodes), std::end(nodes), 0);
 
             for(int i = 0; i < InputCount; i++) {
-                if(allowMultipleHang) {
-                    inputNodes[i] = rand() % bn->N;
+                if(nodeOverlap) {
+                    inputNodes[i] = rand() % bn->N; //Select random input node
                 } else {
                     int extracted = nodes[rand() % nodes.size()];
-                    inputNodes[i] = extracted;
+                    inputNodes[i] = extracted; //Select random input node from free nodes
                     nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
                 }
             }
-            for(int i = 0; i < OutputCount; i++) { //TODO: a node can be input and output node?
-                if(allowMultipleHang) {
-                    outputNodes[i] = rand() % bn->N;
+            for(int i = 0; i < OutputCount; i++) {
+                if(nodeOverlap) {
+                    outputNodes[i] = rand() % bn->N; //Select random output node
                 } else {
                     int extracted = nodes[rand() % nodes.size()];
-                    outputNodes[i] = extracted;
+                    outputNodes[i] = extracted; //Select random output node from free nodes
                     nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
                 }
+
                 if(overriddenOutputFunctions != nullptr) {
                     overriddenOutputFunctions[i] = new bool[bn->K2];
                     for(int k = 0; k < bn->K2; k++) {
@@ -68,45 +68,45 @@ class BnHang {
                 return overriddenOutputFunctions[index][truthTableColumns];
             }
         }
-        void Rewires(Bn* bn, int inputRewires, int outputRewires, bool allowMultipleHang) {
-            if(allowMultipleHang) {
-                //TODO
-            } else {
-                std::vector<int> nodes(bn->N);
-                std::iota(std::begin(nodes), std::end(nodes), 0);
-                for(int i = 0; i < InputCount; i++) nodes.erase(std::remove(nodes.begin(), nodes.end(), inputNodes[i]), nodes.end());
-                for(int i = 0; i < OutputCount; i++) nodes.erase(std::remove(nodes.begin(), nodes.end(), outputNodes[i]), nodes.end());
+        void Rewires(Bn* bn, int inputRewires, int outputRewires, bool nodeOverlap) {
+            //Find free nodes
+            std::vector<int> nodes(bn->N);
+            std::iota(std::begin(nodes), std::end(nodes), 0);
+            for(int i = 0; i < InputCount; i++) nodes.erase(std::remove(nodes.begin(), nodes.end(), inputNodes[i]), nodes.end());
+            for(int i = 0; i < OutputCount; i++) nodes.erase(std::remove(nodes.begin(), nodes.end(), outputNodes[i]), nodes.end());
 
-                std::vector<int> inputsIndex(InputCount);
-                std::iota(std::begin(inputsIndex), std::end(inputsIndex), 0);
-                std::vector<int> inputToRewires(inputRewires);
-                for(int i = 0; i < inputRewires; i++) {
-                    int extracted = inputsIndex[rand() % inputsIndex.size()];
-                    inputToRewires.push_back(extracted);
-                    inputsIndex.erase(std::remove(inputsIndex.begin(), inputsIndex.end(), extracted), inputsIndex.end());
-                    nodes.push_back(inputNodes[extracted]);
-                }
+            //Select 'inputRewires' input nodes to rewire
+            std::vector<int> inputsIndex(InputCount);
+            std::iota(std::begin(inputsIndex), std::end(inputsIndex), 0);
+            std::vector<int> inputToRewires(inputRewires);
+            for(int i = 0; i < inputRewires; i++) {
+                int extracted = inputsIndex[rand() % inputsIndex.size()];
+                inputToRewires[i] = extracted;
+                inputsIndex.erase(std::remove(inputsIndex.begin(), inputsIndex.end(), extracted), inputsIndex.end());
+                nodes.push_back(inputNodes[extracted]);
+            }
 
-                std::vector<int> outputsIndex(OutputCount);
-                std::iota(std::begin(outputsIndex), std::end(outputsIndex), 0);
-                std::vector<int> outputToRewires(outputRewires);
-                for(int i = 0; i < outputRewires; i++) {
-                    int extracted = outputsIndex[rand() % outputsIndex.size()];
-                    outputToRewires.push_back(extracted);
-                    outputsIndex.erase(std::remove(outputsIndex.begin(), outputsIndex.end(), extracted), outputsIndex.end());
-                    nodes.push_back(outputNodes[extracted]);
-                }
+            //Select 'outputRewires' input nodes to rewire
+            std::vector<int> outputsIndex(OutputCount);
+            std::iota(std::begin(outputsIndex), std::end(outputsIndex), 0);
+            std::vector<int> outputToRewires(outputRewires);
+            for(int i = 0; i < outputRewires; i++) {
+                int extracted = outputsIndex[rand() % outputsIndex.size()];
+                outputToRewires[i] = extracted;
+                outputsIndex.erase(std::remove(outputsIndex.begin(), outputsIndex.end(), extracted), outputsIndex.end());
+                nodes.push_back(outputNodes[extracted]);
+            }
 
-                for(int i = 0; i < inputRewires; i++) {
-                    int extracted = nodes[rand() % nodes.size()];
-                    nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
-                    inputNodes[inputToRewires[i]] = extracted;
-                }
-                for(int i = 0; i < outputRewires; i++) {
-                    int extracted = nodes[rand() % nodes.size()];
-                    nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
-                    outputNodes[outputToRewires[i]] = extracted;
-                }
+            //Rewires the node by selecting one by one from the pool 'nodes'
+            for(int i = 0; i < inputRewires; i++) {
+                int extracted = nodes[rand() % nodes.size()];
+                nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
+                inputNodes[inputToRewires[i]] = nodeOverlap ? rand() % bn->N : extracted;
+            }
+            for(int i = 0; i < outputRewires; i++) {
+                int extracted = nodes[rand() % nodes.size()];
+                nodes.erase(std::remove(nodes.begin(), nodes.end(), extracted), nodes.end());
+                outputNodes[outputToRewires[i]] = nodeOverlap ? rand() % bn->N : extracted;
             }
         }
         void CopyFrom(BnHang* hang, Bn* bn) {

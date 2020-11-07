@@ -3,7 +3,7 @@
 
 class Bn {
     public:
-        Bn(int n, int k, double p, bool allowSelfLoops) {
+        Bn(int n, int k, double p, bool selfLoops) {
             N = n;
             K = k;
             K2 = 1 << k;
@@ -14,17 +14,15 @@ class Bn {
             functions = new bool*[n];
             connections = new int*[n];
             for (int i = 0; i < n; i++) {
-                states[i] = rand() % 2 == 0;
+                states[i] = rand() % 2 == 0; //50-50 initial states
                 oldStates[i] = false;
-
                 functions[i] = new bool[K2];
                 connections[i] = new int[k];
-
-                for (int j = 0; j < K2; j++) functions[i][j] = ((double)rand() / RAND_MAX) < p;
+                for (int j = 0; j < K2; j++) functions[i][j] = ((double)rand() / RAND_MAX) < p; //p biased function
                 for (int j = 0; j < k; j++) {
                     do {
-                        connections[i][j] = rand() % n;
-                    } while(!allowSelfLoops && connections[i][j] == i);
+                        connections[i][j] = rand() % n; //Random topology
+                    } while(!selfLoops && connections[i][j] == i);
                 }
             }
         }
@@ -32,10 +30,8 @@ class Bn {
             for (int n = 0; n < N; n++) oldStates[n] = states[n];
             for (int n = 0; n < N; n++) {
                 int truthTableColumns = 0;
-                for (int k = 0; k < K; k++) {//if (connections[n, k] != -1)
-                    truthTableColumns += (1 << k) * (oldStates[connections[n][k]] ? 1 : 0);
-                    //f += (1 << k) & (-oldStates[connections[n][k]]);
-                }
+                int* nodeConnection = connections[n];
+                for (int k = 0; k < K; k++) truthTableColumns += (1 << k) & (-oldStates[nodeConnection[k]]);
                 states[n] = functions[n][truthTableColumns];
             }
         }
@@ -49,24 +45,18 @@ class Bn {
             delete [] states;
             delete [] oldStates;
         }
-        Bn* Clone() {
-            Bn* newBn = new Bn(N, K, 0, true);
-            for (int n = 0; n < N; n++) {
-                newBn->SetNodeState(n, GetNodeState(n));
-                for (int k = 0; k < K; k++) newBn->SetConnectionIndex(n, k, GetConnectionIndex(n, k)); 
-                for (int k = 0; k < K2; k++) newBn->SetTruthTableEntry(n, k, GetTruthTableEntry(n, k));
-            }
-            return newBn;
-        }
+
         void CopyFrom(Bn* other) {
             for (int n = 0; n < N; n++) SetNodeState(n, other->GetNodeState(n));
+            for (int n = 0; n < N; n++) SetOldNodeState(n, other->GetOldNodeState(n));
             for (int n = 0; n < N; n++) for (int k = 0; k < K; k++) SetConnectionIndex(n, k, other->GetConnectionIndex(n, k));
             for (int n = 0; n < N; n++) for (int k = 0; k < K2; k++) SetTruthTableEntry(n, k, other->GetTruthTableEntry(n, k));
         }
-        
-
         inline bool GetOldNodeState(int index) {
             return oldStates[index];
+        }
+        inline void SetOldNodeState(int index, bool value) {
+            oldStates[index] = value;
         }
         inline bool GetNodeState(int index) {
             return states[index];
