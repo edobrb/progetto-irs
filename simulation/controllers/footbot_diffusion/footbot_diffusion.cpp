@@ -152,7 +152,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
       Real speedFactor = (left + right) / 2;
       Real straightFactor = (1 - sqrt(abs(left - right)));
       Real proximityFactor = (1 - maxProximityValue);
-      Real totalFactor = speedFactor * straightFactor * totalFactor;
+      Real totalFactor = speedFactor * straightFactor * proximityFactor;
       testNetworkFitness += 100 * totalFactor / NETWORK_TEST_STEPS;
    }
 }
