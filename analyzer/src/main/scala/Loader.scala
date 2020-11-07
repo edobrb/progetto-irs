@@ -48,38 +48,36 @@ object Loader extends App {
         })
     }
 
-  def load(input_filename: String, output_filename: String): Unit = {
-    if (utils.File.exists(output_filename)) {
-      println("Skipping " + input_filename)
-    } else if (!utils.File.exists(input_filename)) {
-      println("Not found " + input_filename)
-    } else {
-      println(s"Loading $input_filename ... ")
-      utils.File.readGzippedLinesAndMap(input_filename) {
-        content: Iterator[String] =>
-          val config: Config = Config.fromJson(content.next())
-          val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
-            val data = content.map(toStepInfo).collect { case Some(info) => info }
-            val tests = extractTests(data, ignoreBnStates = true)
-            tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
-          }
-          println(s"done. (${time.toSeconds} s)")
-          (config, results)
-      } match {
-        case Failure(exception) => println(s"$input_filename throw an exception: ${exception.getMessage}"); Seq()
-        case Success((config: Config, result: Map[RobotId, Seq[TestRun]])) =>
-          val robotsData = result.map {
-            case (robotId, tests) =>
-              RobotData(input_filename, config, robotId, tests.map(_.fitnessValues.last) /*, tests.flatMap(_.positions)*/ , tests.maxBy(_.fitnessValues.last).bn)
-          }
-          utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
+  def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
+    Try {
+      val config: Config = Config.fromJson(content.next())
+      val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
+        val data = content.map(toStepInfo).collect { case Some(info) => info }
+        val tests = extractTests(data, ignoreBnStates = true)
+        tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
       }
+      val robotsData = results.map {
+        case (robotId, tests) =>
+          RobotData("", config, robotId, tests.map(_.fitnessValues.last) /*, tests.flatMap(_.positions)*/ , tests.maxBy(_.fitnessValues.last).bn)
+      }
+      utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
+      time
     }
   }
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
   FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
-    case (input_filename, output_filename) => load(input_filename, output_filename)
+    case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
+      println(s"Loading $input_filename ... ")
+      utils.File.readGzippedLinesAndMap(input_filename) {
+        content: Iterator[String] => load(content, output_filename)
+      }.flatten match {
+        case Failure(exception) => println(s"$input_filename throw an exception: ${exception.getMessage}"); Seq()
+        case Success(time) => println(s"Loading of $input_filename done in ${time.toSeconds} s")
+      }
+    case (input_filename, output_filename) if utils.File.exists(output_filename) => println("Skipping " + input_filename)
+    case (input_filename, _) => println("Not found " + input_filename)
   })
+
 }
