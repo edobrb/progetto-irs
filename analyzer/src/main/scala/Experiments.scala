@@ -26,13 +26,18 @@ object Experiments extends App {
         val expectedLines = config.expectedLines
         Benchmark.time {
           println(s"Started experiment $experimentName ...")
-          val out = (config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))).to(LazyList)
-          (utils.File.writeGzippedLines(output_filename, out.iterator), out)
+          val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
+          if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
+            val lines = out.to(LazyList)
+            (utils.File.writeGzippedLines(output_filename, lines.iterator), Some(lines))
+          } else {
+            (utils.File.writeGzippedLines(output_filename, out), None)
+          }
         } match {
           case ((Success(lines), out), time) if lines == expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")
-            if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
-              Loader.load(out.iterator, filename + ".json") match {
+            out.foreach { v => //Loading now
+              Loader.load(v.iterator, filename + ".json") match {
                 case Failure(exception) => println(s"Error while loading ${filename + ".json"}: ${exception.getMessage}")
                 case Success(timeLoad) => println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
               }
