@@ -51,7 +51,7 @@ object Loader extends App {
       val config: Config = Config.fromJson(content.next())
       val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        val tests = extractTests(data, ignoreBnStates = true)
+        val tests = extractTests(data, ignoreBnStates = false)
         tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
       }
       val robotsData = results.map {

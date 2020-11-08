@@ -10,7 +10,9 @@ import play.api.libs.json.{JsError, JsSuccess, Json}
 import utils.Parallel.Parallel
 
 import scala.reflect.ClassTag
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
+import com.github.plokhotnyuk.jsoniter_scala.macros._
+import com.github.plokhotnyuk.jsoniter_scala.core._
 
 object Analyzer extends App {
 
@@ -18,18 +20,12 @@ object Analyzer extends App {
 
   def RESULT_FOLDER(implicit args: Array[String]): String = Settings.DATA_FOLDER(args) + "/results"
 
+  implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
   lazy val rawData: Iterable[RobotData] = Loader.OUTPUT_FILENAMES.parFlatmap(Settings.PARALLELISM_DEGREE, { filename =>
     utils.File.read(filename).map { str =>
       println(s"Parsing $filename (${str.length} chars)")
-      Json.fromJson[Seq[RobotData]](Json.parse(str)) match {
-        case JsSuccess(value, path) =>
-          if(value.exists(_.fitness_values.size < 179)) {
-            println(value)
-          }
-          value
-        case JsError(errors) => println(s"Error while parsing $filename: $errors"); Nil
-      }
+      Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
     } match {
       case Failure(exception) => println(s"Error while loading $filename: $exception"); Nil
       case Success(value) => value
@@ -118,7 +114,7 @@ object Analyzer extends App {
         val nic = config.bn.options.network_inputs_count
         s"B=$bias,OR=$outputRewires,NIC=$nic"
     })
-  makeCharts[Unit, Double](experimentsResults,
+  /*makeCharts[Unit, Double](experimentsResults,
     groups = _ => (),
     series = _.bn.options.bias,
     chartName = _ => "bias",
@@ -146,7 +142,7 @@ object Analyzer extends App {
       case (_, _, (false, _)) => "whole arena"
       case (_, _, (true, false)) => "half arena - no feed"
       case (_, _, (true, true)) => "half arena - feed"
-    })
+    })*/
 
 
   /** Run a simulation where each robot has the best boolean network. */
@@ -157,10 +153,11 @@ object Analyzer extends App {
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 720000, print_analytics = false),
       bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))
     println(config)
-    Experiments.runSimulation(config, visualization = true).foreach(println)
+    //val initial = config.bn.initial.map(v => v.copy(connections = v.connections.map(_.map(_+1)), inputs = v.inputs.map(_+1), outputs = v.outputs.map(_+1)))
+    Experiments.runSimulation(config.copy(bn = config.bn.copy(initial = config.bn.initial)), visualization = true).foreach(println)
   }
 
-  runSimulationWithBestRobot(config => config.bn.options.bias == 0.79 && !config.robot.stay_on_half && !config.robot.feed_position)
+  runSimulationWithBestRobot(config => config.bn.options.bias == 0.5 && !config.robot.stay_on_half && !config.robot.feed_position)
 
   println("done")
 }
