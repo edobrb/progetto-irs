@@ -15,7 +15,7 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def BASE_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments(args).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _)
+  def BASE_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments(args).sortBy(_._3).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _)
 
   def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._1)
 
@@ -28,11 +28,10 @@ object Loader extends App {
 
   implicit def siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
-  implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
-
   /** Map a experiment output's line to it's representation object (StepInfo) */
-  def toStepInfo(jsonStep: String): Option[StepInfo] =
-    Try(readFromString[StepInfo](jsonStep)).toOption
+  def toStepInfo(jsonStep: String)(implicit siCodec: JsonValueCodec[StepInfo]): Option[StepInfo] = {
+    Try(readFromString[StepInfo](jsonStep)(siCodec)).toOption
+  }
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
   def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
@@ -48,15 +47,17 @@ object Loader extends App {
 
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
     Try {
+      implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
       val config: Config = Config.fromJson(content.next())
-      val (results: Map[RobotId, Seq[TestRun]], time: FiniteDuration) = Benchmark.time {
+      val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        val tests = extractTests(data, ignoreBnStates = false)
-        tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
-      }
-      val robotsData = results.map {
-        case (robotId, tests) =>
-          RobotData("", config, robotId, tests.map(_.fitnessValues.last) /*, tests.flatMap(_.positions)*/ , tests.maxBy(_.fitnessValues.last).bn)
+        val tests = extractTests(data.iterator, ignoreBnStates = true)
+        val results: Map[RobotId, Seq[TestRun]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
+
+        results.map {
+          case (robotId, tests) =>
+            RobotData("", config, robotId, tests.map(_.fitnessValues.last) /*, tests.flatMap(_.positions)*/ , tests.maxBy(_.fitnessValues.last).bn)
+        }
       }
       utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       time

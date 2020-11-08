@@ -25,26 +25,26 @@ object Experiments extends App {
         Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
         val expectedLines = config.expectedLines
         Benchmark.time {
-          println(s"Started experiment $experimentName ...")
+          //println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
           if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
-            val lines = out.to(LazyList)
-            (utils.File.writeGzippedLines(output_filename, lines.iterator), Some(lines))
+            val lines:Seq[String] = out.to(LazyList)
+            (1 to 2).parMap(2, {
+              case 1 => Loader.load(lines.iterator, filename + ".json") match {
+                case Failure(exception) => println(s"Error while loading ${filename + ".json"}: ${exception.getMessage}")
+                case Success(timeLoad) => //println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
+              }
+              case 2 => utils.File.writeGzippedLines(output_filename, lines.iterator)
+            }).last
           } else {
-            (utils.File.writeGzippedLines(output_filename, out), None)
+            utils.File.writeGzippedLines(output_filename, out)
           }
         } match {
-          case ((Success(lines), out), time) if lines == expectedLines =>
+          case (Success(lines), time) if lines == expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")
-            out.foreach { v => //Loading now
-              Loader.load(v.iterator, filename + ".json") match {
-                case Failure(exception) => println(s"Error while loading ${filename + ".json"}: ${exception.getMessage}")
-                case Success(timeLoad) => println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
-              }
-            }
-          case ((Success(lines), _), time) if lines != expectedLines =>
+          case (Success(lines), time) if lines != expectedLines =>
             println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [FAILURE]")
-          case ((Failure(exception), _), time) =>
+          case (Failure(exception), time) =>
             println(s"Failed experiment $experimentName (${time.toSeconds} s, error: ${exception.getMessage}) [FAILURE]")
         }
       } else {

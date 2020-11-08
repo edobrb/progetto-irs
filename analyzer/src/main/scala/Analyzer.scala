@@ -114,7 +114,7 @@ object Analyzer extends App {
         val nic = config.bn.options.network_inputs_count
         s"B=$bias,OR=$outputRewires,NIC=$nic"
     })
-  /*makeCharts[Unit, Double](experimentsResults,
+  makeCharts[Unit, Double](experimentsResults,
     groups = _ => (),
     series = _.bn.options.bias,
     chartName = _ => "bias",
@@ -142,7 +142,7 @@ object Analyzer extends App {
       case (_, _, (false, _)) => "whole arena"
       case (_, _, (true, false)) => "half arena - no feed"
       case (_, _, (true, true)) => "half arena - feed"
-    })*/
+    })
 
 
   /** Run a simulation where each robot has the best boolean network. */
@@ -153,11 +153,12 @@ object Analyzer extends App {
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 720000, print_analytics = false),
       bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))
     println(config)
-    //val initial = config.bn.initial.map(v => v.copy(connections = v.connections.map(_.map(_+1)), inputs = v.inputs.map(_+1), outputs = v.outputs.map(_+1)))
-    Experiments.runSimulation(config.copy(bn = config.bn.copy(initial = config.bn.initial)), visualization = true).foreach(println)
+    //val initial = config.bn.initial.map(v => v.copy(connections = v.connections.map(_.map(_-1)), inputs = v.inputs.map(_-1), outputs = v.outputs.map(_-1)))
+    Experiments.runSimulation(config.copy(bn = config.bn.copy(initial = config.bn.initial
+    )), visualization = true).foreach(println)
   }
 
-  runSimulationWithBestRobot(config => config.bn.options.bias == 0.5 && !config.robot.stay_on_half && !config.robot.feed_position)
+  runSimulationWithBestRobot(config => config.bn.options.bias == 0.79 && !config.robot.stay_on_half && !config.robot.feed_position)
 
   println("done")
 }
