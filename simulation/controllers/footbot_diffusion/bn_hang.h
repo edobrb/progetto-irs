@@ -54,6 +54,15 @@ class BnHang {
             delete [] outputNodes;
         }
 
+        inline void SetInputIndex(int index, int value) {
+            inputNodes[index] = value;
+        }
+        inline void SetOutputIndex(int index, int value) {
+            outputNodes[index] = value;
+        }
+        inline void SetOverriddenTruthTableEntry(int index, int k, bool value) {
+            overriddenOutputFunctions[index][k] = value;
+        }
         inline void PushInput(Bn* bn, int index, bool value) {
             bn->SetNodeState(inputNodes[index], value);
         }

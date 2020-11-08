@@ -74,7 +74,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    
 
    PROXIMITY_THRESHOLD = config["robot"]["proximity_threshold"].get<Real>();
-   MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>();
+   MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>() * TICKS_PER_SECOND;
    STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();                      //TODO: into task variation
    FEED_POSITION = STAY_ON_HALF && config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
 
@@ -96,19 +96,59 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    IO_NODE_OVERLAP = false;
 
 
+   
 
    if(GetId() == "fb0") {
       srand (time(NULL));
    }
+
    bestBn = new Bn(N, K, P, SELF_LOOPS);
+   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   if(config["bn"]["initial"].is_object()) {
+      nlohmann::json connections = config["bn"]["initial"]["connections"];
+      for(int n = 0; n < bestBn->N; n++) {
+         for(int k = 0; k < bestBn->K; k++) {
+            bestBn->SetConnectionIndex(n, k, connections[n][k].get<int>());
+         }
+      }
+      nlohmann::json functions = config["bn"]["initial"]["functions"];
+      for(int n = 0; n < bestBn->N; n++) {
+         for(int k = 0; k < bestBn->K2; k++) {
+            bestBn->SetTruthTableEntry(n, k, functions[n][k].get<bool>());
+         }
+      }
+
+      nlohmann::json inputs = config["bn"]["initial"]["inputs"];
+      for(int n = 0; n < bestHang->InputCount; n++) {
+         bestHang->SetInputIndex(n, inputs[n].get<int>());
+      }
+      nlohmann::json outputs = config["bn"]["initial"]["outputs"];
+      for(int n = 0; n < bestHang->OutputCount; n++) {
+         bestHang->SetOutputIndex(n, outputs[n].get<int>());
+      }
+      nlohmann::json overriddenFunctions = config["bn"]["initial"]["overridden_output_functions"];
+      if(overriddenFunctions.is_array()) {
+         for(int n = 0; n < bestHang->OutputCount; n++) {
+            for(int k = 0; k < bestBn->K2; k++) {
+               bestHang->SetOverriddenTruthTableEntry(n, k, overriddenFunctions[n][k].get<bool>());
+            }
+         }
+      }
+      //nlohmann::json states = config["bn"]["initial"]["states"];
+      for(int n = 0; n < bestBn->N; n++) {
+         //bestBn->SetNodeState(n, states[n].get<int>());
+      }
+   }
+
    testBn = new Bn(N, K, P, SELF_LOOPS);
    testBn->CopyFrom(bestBn);
-   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang->CopyFrom(bestHang, bestBn);
 
-
    stay_upper = m_pcPositioning->GetReading().Position.GetX() > 0;
+   if(stay_upper) {
+      m_pcLEDs->SetAllColors(CColor::GREEN);
+   }
 }
 
 /****************************************/
@@ -118,14 +158,14 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
 
    //Feed network
    const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
-   int proximityInputCount = NETWORK_INPUT_COUNT - FEED_POSITION ? 1 : 0;
+   int proximityInputCount = NETWORK_INPUT_COUNT - (FEED_POSITION ? 1 : 0);
    Real maxProximityValue = 0;
    int proximityGroupSize = proximityReadings.size() / proximityInputCount;
    for(int i = 0; i < proximityInputCount; i++) {
       Real sum = 0;
       for(size_t c = 0; c < proximityGroupSize; c++) {
-         sum += proximityReadings[i].Value;
-         if(proximityReadings[i].Value > maxProximityValue) maxProximityValue = proximityReadings[i].Value;
+         sum += proximityReadings[i * proximityGroupSize + c].Value;
+         if(proximityReadings[i * proximityGroupSize + c].Value > maxProximityValue) maxProximityValue = proximityReadings[i * proximityGroupSize + c].Value;
       }
       sum = sum / proximityGroupSize;
       testHang->PushInput(testBn, i, sum > PROXIMITY_THRESHOLD);
@@ -153,7 +193,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
       Real straightFactor = (1 - sqrt(abs(left - right)));
       Real proximityFactor = (1 - maxProximityValue);
       Real totalFactor = speedFactor * straightFactor * proximityFactor;
-      testNetworkFitness += 100 * totalFactor / NETWORK_TEST_STEPS;
+      testNetworkFitness += 100 * totalFactor / 400;
    }
 }
 
@@ -191,7 +231,7 @@ void CFootBotDiffusion::Destroy() {
 
 void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
-   const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
+   //const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    const Real w = tPosReading.Orientation.GetW();
    const Real z = tPosReading.Orientation.GetZ();
    const Real y = tPosReading.Orientation.GetY();
