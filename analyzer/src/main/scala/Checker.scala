@@ -11,14 +11,7 @@ object Checker extends App {
 
   implicit val arguments: Array[String] = args
 
-  implicit val codec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
-
-  val asd = utils.Benchmark.time(utils.File.readGzippedLinesAndMap("C:\\Users\\Edo\\Documents\\data\\f38887ad4f2a14b18cdb28b2c1e87915944a49e14ba7b2804f3c24cafd7f4123-72.gzip") {
-    it => it.drop(1).map(v => readFromString[StepInfo](v+"asd")).to(Seq)
-  })
-  println(asd._1.get.size)
-  println(asd._2.toSeconds)
-  /*Loader.INPUT_FILENAMES.parForeach(threads = Settings.PARALLELISM_DEGREE, file => {
+  Loader.INPUT_FILENAMES.parForeach(threads = Settings.PARALLELISM_DEGREE, file => {
     utils.File.readGzippedLines(file) match {
       case Failure(exception) => //println(s"$file [FAILURE] Error: ${exception.getMessage}") //file not exists probably
       case Success((content, source)) =>
@@ -32,5 +25,5 @@ object Checker extends App {
         }
         source.close()
     }
-  })*/
+  })
 }
