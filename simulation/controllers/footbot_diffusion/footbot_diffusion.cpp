@@ -146,7 +146,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    testHang->CopyFrom(bestHang, bestBn);
 
    stay_upper = m_pcPositioning->GetReading().Position.GetX() > 0;
-   if(stay_upper) {
+   if(stay_upper && STAY_ON_HALF) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
    }
 }

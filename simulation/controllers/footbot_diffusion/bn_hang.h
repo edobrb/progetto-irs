@@ -92,7 +92,7 @@ class BnHang {
                 int extracted = inputsIndex[rand() % inputsIndex.size()];
                 inputToRewires[i] = extracted;
                 inputsIndex.erase(std::remove(inputsIndex.begin(), inputsIndex.end(), extracted), inputsIndex.end());
-                nodes.push_back(inputNodes[extracted]);
+                //nodes.push_back(inputNodes[extracted]);
             }
 
             //Select 'outputRewires' input nodes to rewire
@@ -103,7 +103,7 @@ class BnHang {
                 int extracted = outputsIndex[rand() % outputsIndex.size()];
                 outputToRewires[i] = extracted;
                 outputsIndex.erase(std::remove(outputsIndex.begin(), outputsIndex.end(), extracted), outputsIndex.end());
-                nodes.push_back(outputNodes[extracted]);
+                //nodes.push_back(outputNodes[extracted]);
             }
 
             //Rewires the node by selecting one by one from the pool 'nodes'
