@@ -8,6 +8,8 @@ import Config.JsonFormats._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
+import com.github.plokhotnyuk.jsoniter_scala.macros._
+import com.github.plokhotnyuk.jsoniter_scala.core._
 
 object Loader extends App {
 
@@ -26,15 +28,11 @@ object Loader extends App {
 
   implicit def siFormat: OFormat[StepInfo] = Json.format[StepInfo]
 
+  implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
+
   /** Map a experiment output's line to it's representation object (StepInfo) */
   def toStepInfo(jsonStep: String): Option[StepInfo] =
-    Try(Json.parse(jsonStep)) match {
-      case Success(json) => Json.fromJson[StepInfo](json) match {
-        case JsSuccess(info, _) => Some(info)
-        case JsError(_) => None
-      }
-      case Failure(_) => None
-    }
+    Try(readFromString[StepInfo](jsonStep)).toOption
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
   def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
