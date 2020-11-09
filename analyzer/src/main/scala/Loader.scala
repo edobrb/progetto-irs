@@ -10,6 +10,7 @@ import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import com.github.plokhotnyuk.jsoniter_scala.core._
+import utils.RichIterator.RichIterator
 
 object Loader extends App {
 
@@ -35,14 +36,16 @@ object Loader extends App {
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
   def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
-    data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).toSeq.groupBy(_.id).map {
-      case (id, steps) =>
-        (id, steps.sortBy(_.step).foldLeft(Seq[TestRun]()) {
-          case (l :+ last, StepInfo(_, _, None, states, fitness, position)) =>
-            l :+ last.add(states, fitness, position)
-          case (tests, StepInfo(_, _, Some(bn), states, fitness, position)) =>
-            tests :+ TestRun(bn, states, fitness, position)
-        })
+    data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).to(LazyList).groupBy(_.id).map {
+      case (robotId, robotSteps) =>
+        val (_, performedTests) = robotSteps.foldLeft((-1, Seq[TestRun]())) {
+          case ((oldStep, _), StepInfo(step, _, _, _, _, _)) if oldStep >= step => throw new Exception("Unordered steps")
+          case ((_, l :+ last), StepInfo(step, _, None, states, fitness, position)) =>
+            (step, l :+ last.add(states, fitness, position))
+          case ((_, tests), StepInfo(step, _, Some(bn), states, fitness, position)) =>
+            (step, tests :+ TestRun(bn, states, fitness, position))
+        }
+        (robotId, performedTests)
     }
 
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
@@ -51,7 +54,7 @@ object Loader extends App {
       val config: Config = Config.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        val tests = extractTests(data.iterator, ignoreBnStates = true)
+        val tests = extractTests(data, ignoreBnStates = true)
         val results: Map[RobotId, Seq[TestRun]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
 
         results.map {
