@@ -36,8 +36,17 @@ class BnHang {
 
                 if(overriddenOutputFunctions != nullptr) {
                     overriddenOutputFunctions[i] = new bool[bn->K2];
-                    for(int k = 0; k < bn->K2; k++) {
-                        overriddenOutputFunctions[i][k] = ((double)rand() / RAND_MAX) < p;
+
+                    //50-50 distribution
+                    std::vector<int> toAssign(bn->K2);
+                    std::iota(std::begin(toAssign), std::end(toAssign), 0);
+                    for(int k = 0; k < bn->K2 / 2; k++) {
+                        int extracted = toAssign[rand() % toAssign.size()];
+                        toAssign.erase(std::remove(toAssign.begin(), toAssign.end(), extracted), toAssign.end());
+                        overriddenOutputFunctions[i][extracted] = true;
+                    }
+                    for(int k = 0; k < bn->K2 / 2; k++) {
+                        overriddenOutputFunctions[i][toAssign[k]] = false;
                     }
                 }
             }
@@ -70,8 +79,9 @@ class BnHang {
             if(overriddenOutputFunctions == nullptr) return bn->GetNodeState(outputNodes[index]);
             else {
                 int truthTableColumns = 0;
+                int nodeIndex = outputNodes[index];
                 for (int k = 0; k < bn->K; k++) {
-                    int connection = bn->GetConnectionIndex(outputNodes[index], k);
+                    int connection = bn->GetConnectionIndex(nodeIndex, k);
                     truthTableColumns += (1 << k) * (bn->GetOldNodeState(connection) ? 1 : 0);
                 }
                 return overriddenOutputFunctions[index][truthTableColumns];

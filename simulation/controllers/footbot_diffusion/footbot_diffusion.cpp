@@ -156,29 +156,29 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
 void CFootBotDiffusion::RunAndEvaluateNetwork() {
 
-   //Feed network
+   // Feed network
    const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
    int proximityInputCount = NETWORK_INPUT_COUNT - (FEED_POSITION ? 1 : 0);
    Real maxProximityValue = 0;
    int proximityGroupSize = proximityReadings.size() / proximityInputCount;
    for(int i = 0; i < proximityInputCount; i++) {
-      Real sum = 0;
-      for(size_t c = 0; c < proximityGroupSize; c++) {
-         sum += proximityReadings[i * proximityGroupSize + c].Value;
-         if(proximityReadings[i * proximityGroupSize + c].Value > maxProximityValue) maxProximityValue = proximityReadings[i * proximityGroupSize + c].Value;
+      Real max = 0;
+      for(int c = 0; c < proximityGroupSize; c++) {
+         Real value = proximityReadings[i * proximityGroupSize + c].Value;
+         max = max > value ? max : value;
+         maxProximityValue = maxProximityValue > value ? maxProximityValue : value;
       }
-      sum = sum / proximityGroupSize;
-      testHang->PushInput(testBn, i, sum > PROXIMITY_THRESHOLD);
+      testHang->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
    }
    bool isInCorrectHalf = stay_upper == (m_pcPositioning->GetReading().Position.GetX() > 0);
    if(FEED_POSITION) {
       testHang->PushInput(testBn, NETWORK_INPUT_COUNT - 1, isInCorrectHalf);
    }
 
-   //Run network
+   // Run network
    testBn->Step();
 
-   //Run motors with output
+   // Run motors with output
    Real left = testHang->GetOutput(testBn, 0) ? MAX_WHEELS_SPEED : 0;
    Real right = testHang->GetOutput(testBn, 1) ? MAX_WHEELS_SPEED : 0;
    m_pcWheels->SetLinearVelocity(left, right);
@@ -193,7 +193,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
       Real straightFactor = (1 - sqrt(abs(left - right)));
       Real proximityFactor = (1 - maxProximityValue);
       Real totalFactor = speedFactor * straightFactor * proximityFactor;
-      testNetworkFitness += 100 * totalFactor / 400;
+      testNetworkFitness += 100 * totalFactor / NETWORK_TEST_STEPS;
    }
 }
 
@@ -204,13 +204,21 @@ void CFootBotDiffusion::ControlStep() {
          bestBn->CopyFrom(testBn);
          bestHang->CopyFrom(testHang, bestBn);
          bestNetworkFitness = testNetworkFitness;
+      } else { //rollback to previous best network
+         testBn->CopyFrom(bestBn);
+         testHang->CopyFrom(bestHang, bestBn);
       }
       //if(variation is X) ...
-      int inputRewires = 0;
-      for(int i = 0; i < MAX_INPUT_REWIRES; i++) inputRewires += ((double)rand() / RAND_MAX) < INPUT_REWIRES_PROBABILITY ? 1 : 0;
-      int outputRewires = 0;
-      for(int i = 0; i < MAX_OUTPUT_REWIRES; i++) outputRewires += ((double)rand() / RAND_MAX) < OUTPUT_REWIRES_PROBABILITY ? 1 : 0;
-      testHang->Rewires(testBn, inputRewires, outputRewires, IO_NODE_OVERLAP);
+      int inputRewires;
+      int outputRewires;
+      do {
+         inputRewires = 0;
+         outputRewires = 0;
+         for(int i = 0; i < MAX_INPUT_REWIRES; i++) inputRewires += ((double)rand() / RAND_MAX) < INPUT_REWIRES_PROBABILITY ? 1 : 0;
+         for(int i = 0; i < MAX_OUTPUT_REWIRES; i++) outputRewires += ((double)rand() / RAND_MAX) < OUTPUT_REWIRES_PROBABILITY ? 1 : 0;
+      } while(inputRewires == 0 && outputRewires == 0);
+      testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP);
+      testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP);
       currentStep = 0;
       testNetworkFitness = 0;
    }
