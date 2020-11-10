@@ -33,7 +33,8 @@ object Analyzer extends App {
   })
 
   /** Groups the raw data by configuration. */
-  lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy(resultSorted)
+  lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
+    rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
     case (config, _) =>

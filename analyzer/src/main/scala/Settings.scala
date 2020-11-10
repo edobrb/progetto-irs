@@ -71,7 +71,13 @@ object Settings {
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
     /** Configuration repetitions for statistical accuracy. * */
-    configurations.flatMap(config => REPETITIONS.map(i =>
-      (config.filename + "-" + i, config.setSimulationSeed(Some(i)).setControllersSeed(Some(i)), i)))
+    configurations.zipWithIndex.flatMap({
+      case (config, index) =>
+        def c(i: Int): Configuration = config
+          .setSimulationSeed(Some(i + index * configurations.size))
+          .setControllersSeed(Some(i + index * configurations.size + configurations.size * REPETITIONS.size))
+
+        REPETITIONS.map(i => (config.filename + "-" + i, c(i), i))
+    })
   }
 }
