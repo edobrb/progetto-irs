@@ -1,8 +1,8 @@
-package model.config
+package model.Config
 
 import play.api.libs.json.{Json, OFormat, _}
 
-object Config {
+object ConfigOld {
 
   case class Simulation(ticks_per_seconds: Int, //TODO: seed
                         experiment_length: Int,
@@ -41,9 +41,9 @@ object Config {
   object JsonFormats {
 
 
-    implicit def f1: OFormat[Config.Simulation] = Json.format[Config.Simulation]
+    implicit def f1: OFormat[ConfigOld.Simulation] = Json.format[ConfigOld.Simulation]
 
-    implicit def f2: OFormat[Config.Robot] = new OFormat[Config.Robot] {
+    implicit def f2: OFormat[ConfigOld.Robot] = new OFormat[ConfigOld.Robot] {
       override def reads(json: JsValue): JsResult[Robot] = json match {
         case JsObject(obj) =>
           (obj.get("proximity_threshold"), obj.get("max_wheel_speed"), obj.get("stay_on_half"), obj.get("feed_position")) match {
@@ -63,68 +63,56 @@ object Config {
         "feed_position" -> JsBoolean(o.feed_position)))
     }
 
-    implicit def f3: OFormat[Config.BooleanNetwork.Options] = Json.format[Config.BooleanNetwork.Options]
+    implicit def f3: OFormat[ConfigOld.BooleanNetwork.Options] = Json.format[ConfigOld.BooleanNetwork.Options]
 
-    implicit def f4: OFormat[Config.BooleanNetwork] = Json.format[Config.BooleanNetwork]
+    implicit def f4: OFormat[ConfigOld.BooleanNetwork] = Json.format[ConfigOld.BooleanNetwork]
 
     implicit def f5: OFormat[model.BooleanNetwork.Schema] = Json.format[model.BooleanNetwork.Schema]
 
-    implicit def f6: OFormat[Config] = Json.format[Config]
+    implicit def f6: OFormat[ConfigOld] = Json.format[ConfigOld]
   }
 
-  def fromJson(json: String): Config = {
+  def fromJson(json: String): ConfigOld = {
     import JsonFormats._
-    Json.fromJson[Config](Json.parse(json)).get
+    Json.fromJson[ConfigOld](Json.parse(json)).get
   }
 }
 
 
-case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config.BooleanNetwork) {
+case class ConfigOld(simulation: ConfigOld.Simulation, robot: ConfigOld.Robot, bn: ConfigOld.BooleanNetwork) {
   def toJson: String = {
-    import Config.JsonFormats._
+    import ConfigOld.JsonFormats._
     Json.toJson(this).toString()
   }
 
   def expectedLines: Int = {
     val argosInfoPrints = 0
-    val initialConfigPrints = 1
+    val initialConfigOldPrints = 1
     val stepPrints = simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count
-    val initialBnConfigPrints = stepPrints / simulation.network_test_steps
-    stepPrints + argosInfoPrints + initialConfigPrints + initialBnConfigPrints
+    val initialBnConfigOldPrints = stepPrints / simulation.network_test_steps
+    stepPrints + argosInfoPrints + initialConfigOldPrints + initialBnConfigOldPrints
   }
 
-  def combine(variations: Seq[Seq[Config => Config]]): Seq[Config] = {
-    /** Generates configurations starting with a seq of basic configuration and a sequence of configuration variations. * */
-    @scala.annotation.tailrec
-    def combineConfigVariations(configs: Seq[Config], variations: Seq[Seq[Config => Config]]): Seq[Config] = {
-      variations match {
-        case Nil => configs
-        case variation :: tail =>
-          val newConfigs = configs.flatMap(config => variation.map(_.apply(config)))
-          combineConfigVariations(newConfigs, tail)
-      }
-    }
+  def combine(variations: Seq[Seq[ConfigOld => ConfigOld]]): Seq[ConfigOld] =
+    utils.Combiner(this, variations)
 
-    combineConfigVariations(Seq(this), variations)
-  }
-
-  /** Map configuration to the respective filename */
+  /** Map ConfigOlduration to the respective filename */
   def filename: String = {
 
-    case class P[T](f: Config => T, default: Option[T], name: String, ts: T => String) {
-      def isDefined(config: Config): Boolean = default match {
-        case Some(value) => f(config) != value
+    case class P[T](f: ConfigOld => T, default: Option[T], name: String, ts: T => String) {
+      def isDefined(ConfigOld: ConfigOld): Boolean = default match {
+        case Some(value) => f(ConfigOld) != value
         case None => true
       }
 
-      def name(config: Config): String = s"$name=${f.andThen(ts).apply(config)}"
+      def name(ConfigOld: ConfigOld): String = s"$name=${f.andThen(ts).apply(ConfigOld)}"
     }
     object P {
-      def apply[T](name: String, f: Config => T): P[T] = P(f, None, name, (v: T) => v.toString)
+      def apply[T](name: String, f: ConfigOld => T): P[T] = P(f, None, name, (v: T) => v.toString)
 
-      def apply[T](name: String, default: T, f: Config => T): P[T] = P(f, Some(default), name, (v: T) => v.toString)
+      def apply[T](name: String, default: T, f: ConfigOld => T): P[T] = P(f, Some(default), name, (v: T) => v.toString)
 
-      def apply[T](name: String, default: T, f: Config => T, ts: T => String): P[T] = P(f, Some(default), name, ts)
+      def apply[T](name: String, default: T, f: ConfigOld => T, ts: T => String): P[T] = P(f, Some(default), name, ts)
     }
 
     val parametersNames = Seq[P[_]](
@@ -150,7 +138,7 @@ case class Config(simulation: Config.Simulation, robot: Config.Robot, bn: Config
       P("mirp", 1.0, _.bn.input_rewires_probability),
       P("morp", 1.0, _.bn.output_rewires_probability),
       P("de", false, _.bn.use_dual_encoding),
-      P("ibn", None, (config: Config) => config.bn.initial, (_: Option[model.BooleanNetwork.Schema]) => "yes"),
+      P("ibn", None, (ConfigOld: ConfigOld) => ConfigOld.bn.initial, (_: Option[model.BooleanNetwork.Schema]) => "yes"),
     )
 
     val name = parametersNames.foldLeft("") {
