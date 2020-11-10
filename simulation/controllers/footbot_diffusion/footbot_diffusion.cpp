@@ -10,7 +10,13 @@
 #include "bn_handles.h"
 #include "bn.h"
 
+int extract(int n, Real p) {
+   int r = 0;
+   for(int i = 0; i < n; i++) r += ((double)rand() / RAND_MAX) < p ? 1 : 0;
+   return r;
+}
 #define round(v, d) ((int)(v * pow(10, d) + .5) / ((Real)pow(10, d)))
+#define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define LOG_DEBUG
 /****************************************/
 /****************************************/
@@ -64,8 +70,6 @@ bool SELF_LOOPS;
 bool OVERRIDE_OUTPUT_FUNCTIONS;
 double P_OVERRIDE;
 bool IO_NODE_OVERLAP;
-int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT; //total
-
 
 //OBJECTIVES
 //forwrding
@@ -80,7 +84,7 @@ int REGION_NODES = 0;
 Real PENALTY_FACTOR = 0;
 bool RESET_REGION_EVERY_EPOCH = false;
 
-
+int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
 
 void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
@@ -237,16 +241,18 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
             }
          }
       }
+      #ifdef LOG_DEBUG 
+      printf("[DEBUG] [BOT %s] loaded initial netowrk schema\n", GetId().c_str()); 
+      #endif
       if(config["network"]["initial_state"].is_array()) {
          nlohmann::json states = config["network"]["initial_state"];
          for(int n = 0; n < bestBn->N; n++) {
             bestBn->SetNodeState(n, states[n].get<int>());
          }
+         #ifdef LOG_DEBUG 
+         printf("[DEBUG] [BOT %s] loaded initial netowrk state\n", GetId().c_str()); 
+         #endif
       }
-      
-      #ifdef LOG_DEBUG 
-      printf("[DEBUG] [BOT %s] loaded initial bn\n", GetId().c_str()); 
-      #endif
    }
 
    testBn = new Bn(N, K, P, SELF_LOOPS);
@@ -254,7 +260,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    testHang = new BnHandles(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang->CopyFrom(bestHang, bestBn);
 
-   stayUpper = m_pcPositioning->GetReading().Position.GetX() > 0;
+   stayUpper = isUpper();
    if(stayUpper && STAY_ON_HALF) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
    }
@@ -281,7 +287,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
       }
       testHang->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
    }
-   bool isInCorrectHalf = stayUpper == (m_pcPositioning->GetReading().Position.GetX() > 0);
+   bool isInCorrectHalf = stayUpper == isUpper();
    for(int i = 0; i < REGION_NODES; i++) {
       testHang->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
    }
@@ -328,16 +334,15 @@ void CFootBotDiffusion::ControlStep() {
          testHang->CopyFrom(bestHang, bestBn);
       }
 
+      //NETWORK MUTATION
+      int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
+      int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
+      testBn->RewiresConnections(connectionRewires);
+      testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
 
       //IO REWIRES
-      int inputRewires;
-      int outputRewires;
-      do {
-         inputRewires = 0;
-         outputRewires = 0;
-         for(int i = 0; i < MAX_INPUT_REWIRES; i++) inputRewires += ((double)rand() / RAND_MAX) < INPUT_REWIRE_PROBABILITY ? 1 : 0;
-         for(int i = 0; i < MAX_OUTPUT_REWIRES; i++) outputRewires += ((double)rand() / RAND_MAX) < OUTPUT_REWIRE_PROBABILITY ? 1 : 0;
-      } while(inputRewires == 0 && outputRewires == 0);
+      int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
+      int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
       testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
       testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
 
@@ -346,7 +351,7 @@ void CFootBotDiffusion::ControlStep() {
       currentStep = 0;
       testNetworkFitness = 0;
       if(RESET_REGION_EVERY_EPOCH) {
-         stayUpper = m_pcPositioning->GetReading().Position.GetX() > 0;
+         stayUpper = isUpper();
       }
    }
 

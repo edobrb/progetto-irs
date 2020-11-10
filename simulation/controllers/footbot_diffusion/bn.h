@@ -52,6 +52,48 @@ class Bn {
             for (int n = 0; n < N; n++) for (int k = 0; k < K; k++) SetConnectionIndex(n, k, other->GetConnectionIndex(n, k));
             for (int n = 0; n < N; n++) for (int k = 0; k < K2; k++) SetTruthTableEntry(n, k, other->GetTruthTableEntry(n, k));
         }
+        void RewiresConnections(int count) {
+            std::vector<int> edited(count);
+            for(int i = 0; i < count; i++) {
+                int n = rand() % N;
+                int k = rand() % K;
+                bool alreadyEdited = false;
+                for(int j = 0; j < i && !alreadyEdited; j++) {
+                    alreadyEdited = edited[j] == n * K + k;
+                }
+                if(alreadyEdited) i--; //retry
+                else {
+                    SetConnectionIndex(n, k, rand() % N);
+                    edited[i] = n * K + k;
+                }
+            }          
+        }
+        void MutesFunctions(int count, bool keepBalanced) {
+            std::vector<int> edited(count);
+            for(int i = 0; i < count; i++) {
+                int n = rand() % N;
+                int k = rand() % K2;
+                bool alreadyEdited = false;
+                for(int j = 0; j < i && !alreadyEdited; j++) {
+                    alreadyEdited = edited[j] == n * K2 + k;
+                }
+                if(alreadyEdited) i--; //retry
+                else {
+                    bool value = (rand() % 2) == 0;
+                    SetTruthTableEntry(n, k, value);
+                    if(keepBalanced) {
+                        for(int j = 0; j < K2 - 1; j++) {
+                            if(GetTruthTableEntry(n, (j + k) % K2) != value) {
+                                SetTruthTableEntry(n, (j + k) % K2, !value);
+                                break;
+                            }
+                        }
+                    }
+                    edited[i] = n * K2 + k;
+                }
+            }   
+        }
+
         inline bool GetOldNodeState(int index) {
             return oldStates[index];
         }
