@@ -1,4 +1,4 @@
-import model.config.Config
+import model.config.Configuration
 import play.api.libs.json.Json
 import utils.Parallel.Parallel
 
@@ -11,12 +11,16 @@ object Checker extends App {
 
   implicit val arguments: Array[String] = args
 
+  val config = Configuration().copy(objective = Configuration.Objective(half_region_variation = Some(Configuration.HalfRegionVariation(1, 0, false))))
+    .setControllersSeed(Some(123)).setSimulationSeed(Some(234))
+  println(config.toJson)
+
   Loader.INPUT_FILENAMES.parForeach(threads = Settings.PARALLELISM_DEGREE, file => {
     utils.File.readGzippedLines(file) match {
       case Failure(exception) => //println(s"$file [FAILURE] Error: ${exception.getMessage}") //file not exists probably
       case Success((content, source)) =>
         Try {
-          val config: Config = Config.fromJson(content.next())
+          val config: Configuration = Configuration.fromJson(content.next())
           (content.length + 1, config)
         } match {
           case Failure(exception) => println(s"$file [FAILURE] Error: ${exception.getMessage}")

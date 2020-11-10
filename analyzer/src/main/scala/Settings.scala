@@ -1,4 +1,5 @@
-import model.config.Config
+import model.config.Configuration
+import model.config.Configuration.{HalfRegionVariation, ObstacleAvoidance}
 
 import scala.util.Try
 
@@ -6,6 +7,7 @@ object Settings {
 
   def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
     argOrException(argName, f, Some(default))(args)
+
   def argOrException[T](argName: String, f: String => Option[T], default: Option[T] = None)(args: Array[String]): T =
     args.find(a => Try {
       a.split('=')(0) == argName
@@ -31,77 +33,45 @@ object Settings {
     argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
-  def DEFAULT_CONFIG: Config = {
-    def simulation = Config.Simulation(
-      ticks_per_seconds = 10,
-      experiment_length = 7200,
-      network_test_steps = 400,
-      override_robot_count = None,
-      print_analytics = true)
+  def DEFAULT_CONFIG: Configuration = Configuration()
 
-    def robot = Config.Robot(
-      proximity_threshold = 0.1,
-      max_wheel_speed = 5,
-      stay_on_half = false,
-      feed_position = false)
-
-    def bnOptions = Config.BooleanNetwork.Options(
-      node_count = 100,
-      nodes_input_count = 3,
-      bias = 0.79,
-      network_inputs_count = 24,
-      network_outputs_count = 2,
-      self_loops = false,
-      override_output_nodes_bias = true)
-
-    def bn = Config.BooleanNetwork(
-      max_input_rewires = 2,
-      input_rewires_probability = 1,
-      max_output_rewires = 0,
-      output_rewires_probability = 1,
-      use_dual_encoding = false,
-      options = bnOptions,
-      initial = None)
-
-    Config(simulation, robot, bn)
-  }
-
-  def configurations: Seq[Config] = {
+  def configurations: Seq[Configuration] = {
     /** Configuration variations */
-    def biasVariation: Seq[Config => Config] = Seq(
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.1))),
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.5))),
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(bias = 0.79)))
+    def biasVariation: Seq[Configuration => Configuration] = Seq(
+      c => c.copy(network = c.network.copy(p = 0.1)),
+      c => c.copy(network = c.network.copy(p = 0.5)),
+      c => c.copy(network = c.network.copy(p = 0.79)),
     )
 
-    def outputRewiresVariation: Seq[Config => Config] = Seq(
-      c => c.copy(bn = c.bn.copy(max_output_rewires = 1)),
-      c => c.copy(bn = c.bn.copy(max_output_rewires = 0))
+    def outputRewiresVariation: Seq[Configuration => Configuration] = Seq(
+      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = c.adaptation.network_io_mutation.copy(max_output_rewires = 1))),
+      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = c.adaptation.network_io_mutation.copy(max_output_rewires = 0))),
     )
 
-    def selfLoopVariation: Seq[Config => Config] = Seq(
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = false)))
+    def selfLoopVariation: Seq[Configuration => Configuration] = Seq(
+      c => c.copy(network = c.network.copy(self_loops = true)),
+      c => c.copy(network = c.network.copy(self_loops = false)),
     )
 
-    def stayOnHalfVariation: Seq[Config => Config] = Seq(
-      //c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
-      c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
-      c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
+    def stayOnHalfVariation: Seq[Configuration => Configuration] = Seq(
+      c => c.copy(objective = c.objective.copy(half_region_variation = None)),
+      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 1)))),
+      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 0)))),
     )
 
-    def networkInputCountVariation: Seq[Config => Config] = Seq(
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 8))),
-      c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(network_inputs_count = 24)))
+    def networkInputCountVariation: Seq[Configuration => Configuration] = Seq(
+      c => c.copy(objective = c.objective.copy(obstacle_avoidance = c.objective.obstacle_avoidance.copy(proximity_nodes = 8))),
+      c => c.copy(objective = c.objective.copy(obstacle_avoidance = c.objective.obstacle_avoidance.copy(proximity_nodes = 24))),
     )
 
     val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
-    DEFAULT_CONFIG.combine(variations)
+    utils.Combiner(DEFAULT_CONFIG, variations)
   }
 
   /** Filenames of experiments and the relative config */
-  def experiments(implicit args: Array[String]): Seq[(String, Config, Int)] = {
+  def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
     /** Configuration repetitions for statistical accuracy. * */
-    configurations.flatMap(config => REPETITIONS.map(i => (config.filename + "-" + i, config, i)))
+    configurations.flatMap(config => REPETITIONS.map(i =>
+      (config.filename + "-" + i, config.setSimulationSeed(Some(i)).setControllersSeed(Some(i)), i)))
   }
 }

@@ -1,6 +1,6 @@
 package model
 
-import model.Types.{Fitness, Location, RobotId, Rotation}
+import model.Types.{Fitness, Location, RobotId}
 
 /**
  * The basic information that every robot of the simulation generates every step.

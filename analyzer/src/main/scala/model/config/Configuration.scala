@@ -71,7 +71,7 @@ object Configuration {
                        obstacle_avoidance: ObstacleAvoidance = ObstacleAvoidance(),
                        half_region_variation: Option[HalfRegionVariation] = None)
 
-  case class Forwarding(max_wheel_speed: Double = 50,
+  case class Forwarding(max_wheel_speed: Double = 5,
                         wheels_nodes: Int = 2)
 
   case class ObstacleAvoidance(proximity_threshold: Double = 0.1,

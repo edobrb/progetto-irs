@@ -1,5 +1,5 @@
-import model.config.Config
-import model.config.Config.JsonFormats._
+import model.config.Configuration
+import model.config.Configuration.JsonFormats._
 import play.api.libs.json.Json
 import utils.Parallel._
 import utils.RichIterator._
@@ -12,7 +12,7 @@ object Experiments extends App {
   implicit val arguments: Array[String] = args
 
   /** Simulation standard output (by lines) */
-  def runSimulation(config: Config, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
+  def runSimulation(config: Configuration, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
     Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), Settings.SIMULATION_FILE(args), config, visualization)
 
   /** Running experiments */
@@ -28,10 +28,10 @@ object Experiments extends App {
           //println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
           if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
-            val lines:Seq[String] = out.to(LazyList)
+            val lines: Seq[String] = out.to(LazyList)
             (1 to 2).parMap(2, {
               case 1 => Loader.load(lines.iterator, filename + ".json") match {
-                case Failure(exception) => println(s"Error while loading ${filename + ".json"}: ${exception.getMessage}")
+                case Failure(exception) => println(s"Error while loading ${filename + ".gzip"}: ${exception.getMessage}")
                 case Success(timeLoad) => //println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
               }
               case 2 => utils.File.writeGzippedLines(output_filename, lines.iterator)

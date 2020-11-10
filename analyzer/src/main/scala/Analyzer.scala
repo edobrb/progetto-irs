@@ -2,7 +2,7 @@ import java.awt.Font
 
 import Loader.dataFormat
 import model.RobotData
-import model.config.Config
+import model.config.Configuration
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart._
 import org.knowm.xchart.style.BoxStyler.BoxplotCalCulationMethod
@@ -33,20 +33,20 @@ object Analyzer extends App {
   })
 
   /** Groups the raw data by configuration. */
-  lazy val experimentsResults: Seq[(Config, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy(resultSorted)
+  lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] = rawData.groupBy(_.config).toList.sortBy(resultSorted)
 
-  def resultSorted: ((Config, Iterable[RobotData])) => Int = {
+  def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
     case (config, _) =>
-      val bias = config.bn.options.bias
-      val outputRewires = config.bn.max_output_rewires
-      val selfLoops = config.bn.options.self_loops
-      val nic = config.bn.options.network_inputs_count
-      val fp = if (config.robot.feed_position) 1 else 0
-      val soh = if (config.robot.stay_on_half) 1 else 0
+      val bias = config.network.p
+      val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
+      val selfLoops = config.network.self_loops
+      val nic = config.objective.obstacle_avoidance.proximity_nodes
+      val fp = if (config.objective.half_region_variation.exists(_.region_nodes > 0)) 1 else 0
+      val soh = if (config.objective.half_region_variation.isDefined) 1 else 0
       soh * 10000000 + fp * 1000000 + nic * 10000 + (bias * 1000).toInt + outputRewires * 10 + (if (selfLoops) 1 else 0)
   }
 
-  def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
+  def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("edits").yAxisTitle("average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
     chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
@@ -64,7 +64,7 @@ object Analyzer extends App {
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
   }
 
-  def showBoxPlot(chartName: String, experimentsResults: Seq[(Config, Iterable[RobotData])], name: Config => String): Unit = {
+  def showBoxPlot(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("variation").yAxisTitle("fitness")
       .title(s"Final fitness of each robot").width(1920).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
@@ -85,13 +85,13 @@ object Analyzer extends App {
    * Groups the results into groups, for every group a boxplot and a xy chart will be generated.
    * For each group the sub-results are grouped for series and the merged.
    */
-  def makeCharts[G, S](experimentsResults: Seq[(Config, Iterable[RobotData])],
-                       series: Config => S,
+  def makeCharts[G, S](experimentsResults: Seq[(Configuration, Iterable[RobotData])],
+                       series: Configuration => S,
                        chartName: G => String,
-                       legend: (Config, G, S) => String,
-                       groups: Config => G)(implicit classTag: ClassTag[G]): Unit = {
+                       legend: (Configuration, G, S) => String,
+                       groups: Configuration => G)(implicit classTag: ClassTag[G]): Unit = {
     experimentsResults.groupBy(v => groups(v._1)).foreach {
-      case (group: G, groupResult: Seq[(Config, Iterable[RobotData])]) =>
+      case (group: G, groupResult: Seq[(Configuration, Iterable[RobotData])]) =>
         val results = groupResult.groupBy(v => series(v._1)).map {
           case (_, seq) => (seq.head._1, seq.flatMap(v => v._2))
         }.toSeq
@@ -101,42 +101,42 @@ object Analyzer extends App {
   }
 
   /** Plots charts */
-  makeCharts[(Boolean, Boolean), Config](experimentsResults,
-    groups = config => (config.robot.stay_on_half, config.robot.feed_position),
-    series = c => c.copy(bn = c.bn.copy(options = c.bn.options.copy(self_loops = true))),
+  makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
+    groups = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
+    series = c => c.copy(network = c.network.copy(self_loops = true)),
     chartName = {
       case (sh, fp) => s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}overall"
     },
     legend = {
       case (config, _, _) =>
-        val bias = config.bn.options.bias
-        val outputRewires = config.bn.max_output_rewires
-        val nic = config.bn.options.network_inputs_count
+        val bias = config.network.p
+        val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
+        val nic = config.objective.obstacle_avoidance.proximity_nodes
         s"B=$bias,OR=$outputRewires,NIC=$nic"
     })
   makeCharts[Unit, Double](experimentsResults,
     groups = _ => (),
-    series = _.bn.options.bias,
+    series = _.network.p,
     chartName = _ => "bias",
-    legend = (c, _, _) => s"bias=${c.bn.options.bias}")
+    legend = (c, _, _) => s"bias=${c.network.p}")
   makeCharts[Unit, Int](experimentsResults,
     groups = _ => (),
-    series = _.bn.options.network_inputs_count,
+    series = _.objective.obstacle_avoidance.proximity_nodes,
     chartName = _ => "nic",
-    legend = (c, _, _) => s"input-node=${c.bn.options.network_inputs_count}")
+    legend = (c, _, _) => s"input-node=${c.objective.obstacle_avoidance.proximity_nodes}")
   makeCharts[Unit, Int](experimentsResults,
     groups = _ => (),
-    series = _.bn.max_output_rewires,
+    series = _.adaptation.network_io_mutation.max_output_rewires,
     chartName = _ => "or",
-    legend = (c, _, _) => s"output-rewires=${c.bn.max_output_rewires}")
+    legend = (c, _, _) => s"output-rewires=${c.adaptation.network_io_mutation.max_output_rewires}")
   makeCharts[Unit, Boolean](experimentsResults,
     groups = _ => (),
-    series = _.bn.options.self_loops,
+    series = _.network.self_loops,
     chartName = _ => "self-loops",
-    legend = (c, _, _) => if (c.bn.options.self_loops) "self loops" else "no self loops")
+    legend = (c, _, _) => if (c.network.self_loops) "self loops" else "no self loops")
   makeCharts[Unit, (Boolean, Boolean)](experimentsResults,
     groups = _ => (),
-    series = config => (config.robot.stay_on_half, config.robot.feed_position),
+    series = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
     chartName = _ => "variation",
     legend = {
       case (_, _, (false, _)) => "whole arena"
@@ -146,19 +146,17 @@ object Analyzer extends App {
 
 
   /** Run a simulation where each robot has the best boolean network. */
-  def runSimulationWithBestRobot(filter: Config => Boolean): Unit = {
+  def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
     val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
     val bestConfig = bestRobot.config
     println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
-    val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 720000, print_analytics = false),
-      bn = bestConfig.bn.copy(initial = Some(bestRobot.best_network)))
+    val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
+      network = bestConfig.network.copy(initial_schema = Some(bestRobot.best_network)))
     println(config)
-    //val initial = config.bn.initial.map(v => v.copy(connections = v.connections.map(_.map(_-1)), inputs = v.inputs.map(_-1), outputs = v.outputs.map(_-1)))
-    Experiments.runSimulation(config.copy(bn = config.bn.copy(initial = config.bn.initial
-    )), visualization = true).foreach(println)
+    Experiments.runSimulation(config, visualization = true).foreach(println)
   }
 
-  runSimulationWithBestRobot(config => config.bn.options.bias == 0.79 && !config.robot.stay_on_half && !config.robot.feed_position)
+  runSimulationWithBestRobot(config => true)
 
   println("done")
 }

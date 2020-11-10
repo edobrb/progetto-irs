@@ -2,7 +2,7 @@ package utils
 
 import java.io.{BufferedReader, File, InputStream, InputStreamReader}
 
-import model.config.Config
+import model.config.Configuration
 
 import scala.jdk.CollectionConverters._
 import scala.sys.process.{Process, ProcessIO}
@@ -12,7 +12,7 @@ object Argos {
   def runSimulation(workingDir: String, simulationFile: String): LazyList[String] =
     Process(s"argos3 -c $simulationFile", new File(workingDir)).lazyLines
 
-  def runConfiguredSimulation(workingDir: String, simulationFile: String, config: Config, visualization: Boolean): Iterator[String] = {
+  def runConfiguredSimulation(workingDir: String, simulationFile: String, config: Configuration, visualization: Boolean): Iterator[String] = {
     val escapedConfig = "\\\'" + config.toJson.replace("\"", "\\\"") + "\\\'"
 
     var output: InputStream = null
@@ -32,6 +32,7 @@ object Argos {
       s"--TICKS=${config.simulation.ticks_per_seconds}",
       s"--LENGTH=${config.simulation.experiment_length}",
       s"--ROBOT_COUNT=${config.simulation.robot_count}",
+      s"--RANDOM_SEED=${config.simulation.simulation_random_seed.map("random_seed=" + _).getOrElse("none")}",
       s"--VISUAL=${if (visualization) "visualization" else "none"}"),
       new File(workingDir)).run(io)
 

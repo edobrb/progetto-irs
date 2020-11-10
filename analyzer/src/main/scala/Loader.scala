@@ -1,15 +1,15 @@
 import model.Types.RobotId
-import model.config.Config
-import model.{RobotData, StepInfo, TestRun}
+import model.config.Configuration
+import model.{RobotData, StepInfo, Epoch}
 import play.api.libs.json._
 import utils.Benchmark
 import utils.Parallel._
-import Config.JsonFormats._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import com.github.plokhotnyuk.jsoniter_scala.core._
+import model.config.Configuration.JsonFormats._
 import utils.RichIterator.RichIterator
 
 object Loader extends App {
@@ -35,15 +35,15 @@ object Loader extends App {
   }
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
-  def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[TestRun]] =
+  def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[Epoch]] =
     data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).to(LazyList).groupBy(_.id).map {
       case (robotId, robotSteps) =>
-        val (_, performedTests) = robotSteps.foldLeft((-1, Seq[TestRun]())) {
+        val (_, performedTests) = robotSteps.foldLeft((-1, Seq[Epoch]())) {
           case ((oldStep, _), StepInfo(step, _, _, _, _, _)) if oldStep >= step => throw new Exception("Unordered steps")
           case ((_, l :+ last), StepInfo(step, _, None, states, fitness, position)) =>
             (step, l :+ last.add(states, fitness, position))
           case ((_, tests), StepInfo(step, _, Some(bn), states, fitness, position)) =>
-            (step, tests :+ TestRun(bn, states, fitness, position))
+            (step, tests :+ Epoch(bn, states, fitness, position))
         }
         (robotId, performedTests)
     }
@@ -51,15 +51,17 @@ object Loader extends App {
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
     Try {
       implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
-      val config: Config = Config.fromJson(content.next())
+      val config: Configuration = Configuration.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        val tests = extractTests(data, ignoreBnStates = true)
-        val results: Map[RobotId, Seq[TestRun]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.simulation.network_test_steps)) }
+        val tests = extractTests(data, ignoreBnStates = false)
+        val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
 
         results.map {
-          case (robotId, tests) =>
-            RobotData("", config, robotId, tests.map(_.fitnessValues.last) /*, tests.flatMap(_.positions)*/ , tests.maxBy(_.fitnessValues.last).bn)
+          case (robotId, epochs: Seq[Epoch]) =>
+            RobotData("", robotId, config, epochs.map(_.fitnessValues.last),
+              epochs.maxBy(_.fitnessValues.last).bn, epochs.maxBy(_.fitnessValues.last).bnStates.last,
+              /*epochs.flatMap(_.locations)*/)
         }
       }
       utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))

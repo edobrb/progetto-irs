@@ -6,7 +6,7 @@
   <!-- ************************* -->
   <framework>
     <system threads="0" />
-    <experiment length=${LENGTH} ticks_per_second=${TICKS} />
+    <experiment length=${LENGTH} ticks_per_second=${TICKS} ${RANDOM_SEED} />
   </framework>
 
   <!-- *************** -->
