@@ -78,13 +78,13 @@ class BnHang {
         inline bool GetOutput(Bn* bn, int index) {
             if(overriddenOutputFunctions == nullptr) return bn->GetNodeState(outputNodes[index]);
             else {
-                int truthTableColumns = 0;
+                int truthTableColumn = 0;
                 int nodeIndex = outputNodes[index];
                 for (int k = 0; k < bn->K; k++) {
                     int connection = bn->GetConnectionIndex(nodeIndex, k);
-                    truthTableColumns += (1 << k) * (bn->GetOldNodeState(connection) ? 1 : 0);
+                    truthTableColumn += (1 << k) * (bn->GetOldNodeState(connection) ? 1 : 0);
                 }
-                return overriddenOutputFunctions[index][truthTableColumns];
+                return overriddenOutputFunctions[index][truthTableColumn];
             }
         }
         void Rewires(Bn* bn, int inputRewires, int outputRewires, bool nodeOverlap) {

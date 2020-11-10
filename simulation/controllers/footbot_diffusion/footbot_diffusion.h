@@ -100,6 +100,9 @@ private:
    BnHang* bestHang;
    BnHang* testHang;
 
+   
+   bool stayUpper;
+
    CCI_DifferentialSteeringActuator* m_pcWheels;
    CCI_FootBotProximitySensor* m_pcProximity;
    CCI_PositioningSensor* m_pcPositioning;

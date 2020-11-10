@@ -10,6 +10,8 @@
 #include "bn_hang.h"
 #include "bn.h"
 
+#define round(v, d) ((int)(v * pow(10, d) + .5) / ((Real)pow(10, d)))
+#define LOG_DEBUG
 /****************************************/
 /****************************************/
 
@@ -25,11 +27,13 @@ CFootBotDiffusion::CFootBotDiffusion() :
    bestBn(NULL),
    testBn(NULL),
    bestHang(NULL),
-   testHang(NULL) {}
+   testHang(NULL),
+   stayUpper(false) {}
 
 /****************************************/
 /****************************************/
 
+bool configurationLoaded = false;
 int TICKS_PER_SECOND;
 int EXPERIMENT_LENGTH;
 int NETWORK_TEST_STEPS;
@@ -39,7 +43,6 @@ Real PROXIMITY_THRESHOLD;
 Real MAX_WHEELS_SPEED;
 bool STAY_ON_HALF;
 bool FEED_POSITION;
-bool stay_upper = true;
 
 int MAX_INPUT_REWIRES;
 Real INPUT_REWIRES_PROBABILITY;
@@ -53,6 +56,18 @@ bool SELF_LOOPS, OVERRIDE_OUTPUT_FUNCTIONS;
 double P_OVERRIDE;
 bool IO_NODE_OVERLAP;
 
+int VARIATIONS;
+#define VARIATION(n) ((VARIATIONS & n) > 0))
+#define OBSTACLE_AVOIDANCE        VARIATION(1)
+#define WALK_STRAIGHT_LINE        VARIATION(2)
+#define RESTRICT_TO_HALF_ARENA    VARIATION(4)
+#define FEED_HALF_ARENA_POSITION  VARIATION(8)
+#define EVOLVE_BN_HANGS           VARIATION(128)
+#define EVOLVE_BN_FUNCTIONS       VARIATION(256)
+#define EVOLVE_BN_CONNECTION      VARIATION(512)
+
+
+
 void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
@@ -63,43 +78,78 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    /*
     * Parse the configuration json
     */
-   std::string configStr = "null";
-   GetNodeAttributeOrDefault(t_node, "CONFIG", configStr, configStr);
-   config = nlohmann::json::parse(configStr);
+   if(!configurationLoaded) {
+      std::string configStr = "null";
+      GetNodeAttributeOrDefault(t_node, "CONFIG", configStr, configStr);
+      config = nlohmann::json::parse(configStr);
 
-   TICKS_PER_SECOND = config["simulation"]["ticks_per_seconds"].get<int>();
-   EXPERIMENT_LENGTH = config["simulation"]["experiment_length"].get<int>();
-   PRINT_ANALYTICS = config["simulation"]["print_analytics"].get<bool>();
-   NETWORK_TEST_STEPS = config["simulation"]["network_test_steps"].get<int>(); //TODO: into task variation
-   
+      TICKS_PER_SECOND = config["simulation"]["ticks_per_seconds"].get<int>();
+      EXPERIMENT_LENGTH = config["simulation"]["experiment_length"].get<int>();
+      PRINT_ANALYTICS = config["simulation"]["print_analytics"].get<bool>();
+      NETWORK_TEST_STEPS = config["simulation"]["network_test_steps"].get<int>(); //TODO: into task variation
+      
 
-   PROXIMITY_THRESHOLD = config["robot"]["proximity_threshold"].get<Real>();
-   MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>() * TICKS_PER_SECOND;
-   STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();                      //TODO: into task variation
-   FEED_POSITION = STAY_ON_HALF && config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
+      PROXIMITY_THRESHOLD = config["robot"]["proximity_threshold"].get<Real>();
+      MAX_WHEELS_SPEED = config["robot"]["max_wheel_speed"].get<Real>() * TICKS_PER_SECOND;
+      STAY_ON_HALF = config["robot"]["stay_on_half"].get<bool>();                      //TODO: into task variation
+      FEED_POSITION = STAY_ON_HALF && config["robot"]["feed_position"].get<bool>();     //TODO: into task variation
 
-   //TODO: into task variation
-   MAX_INPUT_REWIRES = config["bn"]["max_input_rewires"].get<int>();
-   INPUT_REWIRES_PROBABILITY = config["bn"]["input_rewires_probability"].get<Real>();
-   MAX_OUTPUT_REWIRES = config["bn"]["max_output_rewires"].get<int>();
-   OUTPUT_REWIRES_PROBABILITY = config["bn"]["output_rewires_probability"].get<Real>();
+      //TODO: into task variation
+      MAX_INPUT_REWIRES = config["bn"]["max_input_rewires"].get<int>();
+      INPUT_REWIRES_PROBABILITY = config["bn"]["input_rewires_probability"].get<Real>();
+      MAX_OUTPUT_REWIRES = config["bn"]["max_output_rewires"].get<int>();
+      OUTPUT_REWIRES_PROBABILITY = config["bn"]["output_rewires_probability"].get<Real>();
 
-   
-   N = config["bn"]["options"]["node_count"].get<int>();
-   K = config["bn"]["options"]["nodes_input_count"].get<int>();
-   P = config["bn"]["options"]["bias"].get<double>();
-   NETWORK_INPUT_COUNT = config["bn"]["options"]["network_inputs_count"].get<int>() + (FEED_POSITION ? 1 : 0);
-   NETWORK_OUTPUT_COUNT = config["bn"]["options"]["network_outputs_count"].get<int>();
-   SELF_LOOPS = config["bn"]["options"]["self_loops"].get<bool>();
-   OVERRIDE_OUTPUT_FUNCTIONS = config["bn"]["options"]["override_output_nodes_bias"].get<bool>();
-   P_OVERRIDE = 0.5;
-   IO_NODE_OVERLAP = false;
+      
+      N = config["bn"]["options"]["node_count"].get<int>();
+      K = config["bn"]["options"]["nodes_input_count"].get<int>();
+      P = config["bn"]["options"]["bias"].get<double>();
+      NETWORK_INPUT_COUNT = config["bn"]["options"]["network_inputs_count"].get<int>() + (FEED_POSITION ? 1 : 0);
+      NETWORK_OUTPUT_COUNT = config["bn"]["options"]["network_outputs_count"].get<int>();
+      SELF_LOOPS = config["bn"]["options"]["self_loops"].get<bool>();
+      OVERRIDE_OUTPUT_FUNCTIONS = config["bn"]["options"]["override_output_nodes_bias"].get<bool>();
+      P_OVERRIDE = 0.5;
+      IO_NODE_OVERLAP = false;
 
 
-   
-
-   if(GetId() == "fb0") {
-      srand (time(NULL));
+      //Select random seed
+      uint seed = 0;
+      if(config["simulation"]["controllers_random_seed"].is_number_unsigned()) {
+         seed = config["simulation"]["controllers_random_seed"].get<uint>();
+         #ifdef LOG_DEBUG 
+         printf("[DEBUG] using given value as random seed (%d)\n", seed); 
+         #endif
+         
+      } else {
+         seed = time(NULL);
+         #ifdef LOG_DEBUG 
+         printf("[DEBUG] using random value as random seed (%d)\n", seed); 
+         #endif
+      }
+      srand(seed);
+      configurationLoaded = true;
+      #ifdef LOG_DEBUG 
+      printf("[DEBUG] configuration loaded:\n"); 
+      printf("[DEBUG]\t TICKS_PER_SECOND = %d\n", TICKS_PER_SECOND); 
+      printf("[DEBUG]\t EXPERIMENT_LENGTH = %d\n", EXPERIMENT_LENGTH); 
+      printf("[DEBUG]\t PRINT_ANALYTICS = %d\n", PRINT_ANALYTICS); 
+      printf("[DEBUG]\t NETWORK_TEST_STEPS = %d\n", NETWORK_TEST_STEPS); 
+      printf("[DEBUG]\t PROXIMITY_THRESHOLD = %f\n", PROXIMITY_THRESHOLD); 
+      printf("[DEBUG]\t MAX_WHEELS_SPEED = %f\n", MAX_WHEELS_SPEED); 
+      printf("[DEBUG]\t STAY_ON_HALF = %d\n", STAY_ON_HALF); 
+      printf("[DEBUG]\t FEED_POSITION = %d\n", FEED_POSITION); 
+      printf("[DEBUG]\t MAX_INPUT_REWIRES = %d\n", MAX_INPUT_REWIRES); 
+      printf("[DEBUG]\t INPUT_REWIRES_PROBABILITY = %f\n", INPUT_REWIRES_PROBABILITY); 
+      printf("[DEBUG]\t MAX_OUTPUT_REWIRES = %d\n", MAX_OUTPUT_REWIRES); 
+      printf("[DEBUG]\t OUTPUT_REWIRES_PROBABILITY = %f\n", OUTPUT_REWIRES_PROBABILITY); 
+      printf("[DEBUG]\t N = %d\n", N); 
+      printf("[DEBUG]\t K = %d\n", K); 
+      printf("[DEBUG]\t P = %f\n", P);
+      printf("[DEBUG]\t NETWORK_INPUT_COUNT = %d\n", NETWORK_INPUT_COUNT); 
+      printf("[DEBUG]\t NETWORK_OUTPUT_COUNT = %d\n", NETWORK_OUTPUT_COUNT); 
+      printf("[DEBUG]\t SELF_LOOPS = %d\n", SELF_LOOPS); 
+      printf("[DEBUG]\t OVERRIDE_OUTPUT_FUNCTIONS = %d\n", OVERRIDE_OUTPUT_FUNCTIONS);  
+      #endif
    }
 
    bestBn = new Bn(N, K, P, SELF_LOOPS);
@@ -117,7 +167,6 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
             bestBn->SetTruthTableEntry(n, k, functions[n][k].get<bool>());
          }
       }
-
       nlohmann::json inputs = config["bn"]["initial"]["inputs"];
       for(int n = 0; n < bestHang->InputCount; n++) {
          bestHang->SetInputIndex(n, inputs[n].get<int>());
@@ -138,6 +187,9 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       for(int n = 0; n < bestBn->N; n++) {
          //bestBn->SetNodeState(n, states[n].get<int>());
       }
+      #ifdef LOG_DEBUG 
+      printf("[DEBUG] [BOT %s] loaded initial bn\n", GetId().c_str()); 
+      #endif
    }
 
    testBn = new Bn(N, K, P, SELF_LOOPS);
@@ -145,10 +197,13 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang->CopyFrom(bestHang, bestBn);
 
-   stay_upper = m_pcPositioning->GetReading().Position.GetX() > 0;
-   if(stay_upper && STAY_ON_HALF) {
+   stayUpper = m_pcPositioning->GetReading().Position.GetX() > 0;
+   if(stayUpper && STAY_ON_HALF) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
    }
+   #ifdef LOG_DEBUG 
+   printf("[DEBUG] [BOT %s] initialized!\n", GetId().c_str()); 
+   #endif
 }
 
 /****************************************/
@@ -170,7 +225,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
       }
       testHang->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
    }
-   bool isInCorrectHalf = stay_upper == (m_pcPositioning->GetReading().Position.GetX() > 0);
+   bool isInCorrectHalf = stayUpper == (m_pcPositioning->GetReading().Position.GetX() > 0);
    if(FEED_POSITION) {
       testHang->PushInput(testBn, NETWORK_INPUT_COUNT - 1, isInCorrectHalf);
    }
@@ -178,12 +233,12 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
    // Run network
    testBn->Step();
 
-   // Run motors with output
+   // Run motors with outputs
    Real left = testHang->GetOutput(testBn, 0) ? MAX_WHEELS_SPEED : 0;
    Real right = testHang->GetOutput(testBn, 1) ? MAX_WHEELS_SPEED : 0;
    m_pcWheels->SetLinearVelocity(left, right);
 
-   // Fitness function
+   // Evaluate fitness function
    if(STAY_ON_HALF && !isInCorrectHalf) {
       testNetworkFitness += 0;
    } else {
@@ -231,6 +286,9 @@ void CFootBotDiffusion::ControlStep() {
 }
 
 void CFootBotDiffusion::Destroy() {
+   #ifdef LOG_DEBUG 
+   printf("[DEBUG] [BOT %s] destroyed!\n", GetId().c_str()); 
+   #endif
    if(currentStep > 0) { //can be called when a robot initialization fails
       if(PRINT_ANALYTICS) PrintAnalytics(true);
       fflush(stdout);
@@ -239,6 +297,7 @@ void CFootBotDiffusion::Destroy() {
 
 void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
+   const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    //const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    const Real w = tPosReading.Orientation.GetW();
    const Real z = tPosReading.Orientation.GetZ();
@@ -249,17 +308,17 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    nlohmann::json j;
    j["id"] = GetId();
    j["step"] = printStep;
-   j["fitness"] = testNetworkFitness;
+   j["fitness"] = round(testNetworkFitness, 4);
    nlohmann::json jStates = nlohmann::json::array();
    for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
    j["states"] = jStates;
-   j["position"] = { tPosReading.Position.GetX(), tPosReading.Position.GetY() };
-   j["orientation"] = zAngle;
+   j["position"] = { round(tPosReading.Position.GetX(), 4), round(tPosReading.Position.GetY(), 4) };
+   j["orientation"] = round(zAngle, 4);
 
-   //can be derived from arena, robot size, position and orientation if needed
-   //nlohmann::json jProximity;
-   //for(int i = 0 ; i < tProxReads.size(); i++) jProximity.push_back(tProxReads[i].Value);
-   //j["proximity"] = jProximity;
+
+  /* nlohmann::json jProximity;
+   for(int i = 0 ; i < tProxReads.size(); i++) jProximity.push_back(round(tProxReads[i].Value, 2));
+   j["proximity"] = jProximity;*/
 
    if(printBnSchema) {
       j["boolean_network"] = nullptr;

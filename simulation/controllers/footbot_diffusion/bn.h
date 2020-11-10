@@ -29,10 +29,10 @@ class Bn {
         void Step() {
             for (int n = 0; n < N; n++) oldStates[n] = states[n];
             for (int n = 0; n < N; n++) {
-                int truthTableColumns = 0;
-                int* nodeConnection = connections[n];
-                for (int k = 0; k < K; k++) truthTableColumns += (1 << k) & (-oldStates[nodeConnection[k]]);
-                states[n] = functions[n][truthTableColumns];
+                int truthTableColumn = 0;
+                int* nodeConnections = connections[n];
+                for (int k = 0; k < K; k++) truthTableColumn += (1 << k) & (-oldStates[nodeConnections[k]]);
+                states[n] = functions[n][truthTableColumn];
             }
         }
         ~Bn(){
