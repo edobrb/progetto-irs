@@ -7,7 +7,7 @@
 #include "json.hpp"
 #include <iostream>
 #include <cmath>
-#include "bn_hang.h"
+#include "bn_handles.h"
 #include "bn.h"
 
 #define round(v, d) ((int)(v * pow(10, d) + .5) / ((Real)pow(10, d)))
@@ -56,6 +56,7 @@ bool SELF_LOOPS, OVERRIDE_OUTPUT_FUNCTIONS;
 double P_OVERRIDE;
 bool IO_NODE_OVERLAP;
 
+//VARIATIONS
 int VARIATIONS;
 #define VARIATION(n) ((VARIATIONS & n) > 0))
 #define OBSTACLE_AVOIDANCE        VARIATION(1)
@@ -153,7 +154,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
    }
 
    bestBn = new Bn(N, K, P, SELF_LOOPS);
-   bestHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   bestHang = new BnHandles(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    if(config["bn"]["initial"].is_object()) {
       nlohmann::json connections = config["bn"]["initial"]["connections"];
       for(int n = 0; n < bestBn->N; n++) {
@@ -194,7 +195,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
    testBn = new Bn(N, K, P, SELF_LOOPS);
    testBn->CopyFrom(bestBn);
-   testHang = new BnHang(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testHang = new BnHandles(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testHang->CopyFrom(bestHang, bestBn);
 
    stayUpper = m_pcPositioning->GetReading().Position.GetX() > 0;
@@ -312,8 +313,7 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    nlohmann::json jStates = nlohmann::json::array();
    for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
    j["states"] = jStates;
-   j["position"] = { round(tPosReading.Position.GetX(), 4), round(tPosReading.Position.GetY(), 4) };
-   j["orientation"] = round(zAngle, 4);
+   j["location"] = { round(tPosReading.Position.GetX(), 4), round(tPosReading.Position.GetY(), 4), round(zAngle, 4) };
 
 
   /* nlohmann::json jProximity;

@@ -4,5 +4,7 @@ object Types {
   type Fitness = Double
   type ProximityValues = Seq[Double]
   type RobotId = String
-  type Position = (Double, Double)
+
+  //(X,Y,Z angle)
+  type Location = (Double, Double, Double)
 }

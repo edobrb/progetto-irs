@@ -34,7 +34,7 @@
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
 
 #include "json.hpp"
-#include "bn_hang.h"
+#include "bn_handles.h"
 #include "bn.h"
 
 /*
@@ -97,10 +97,10 @@ private:
    nlohmann::json config;
    Bn* bestBn;
    Bn* testBn;
-   BnHang* bestHang;
-   BnHang* testHang;
+   BnHandles* bestHang;
+   BnHandles* testHang;
 
-   
+
    bool stayUpper;
 
    CCI_DifferentialSteeringActuator* m_pcWheels;

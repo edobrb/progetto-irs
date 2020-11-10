@@ -85,7 +85,7 @@ object Settings {
     )
 
     def stayOnHalfVariation: Seq[Config => Config] = Seq(
-      c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
+      //c => c.copy(robot = c.robot.copy(stay_on_half = false, feed_position = false)),
       c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = false)),
       c => c.copy(robot = c.robot.copy(stay_on_half = true, feed_position = true))
     )

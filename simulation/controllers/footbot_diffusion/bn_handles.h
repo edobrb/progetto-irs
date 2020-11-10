@@ -1,12 +1,12 @@
-#ifndef BN_HANG_H
-#define BN_HANG_H
+#ifndef BN_HANDLES_H
+#define BN_HANDLES_H
 
 #include "bn.h"
 #include <algorithm>
 
-class BnHang {
+class BnHandles {
     public:
-        BnHang(int inputCount, int outputCount, Bn* bn, bool nodeOverlap, bool overrideOutputFunctions, double p) {
+        BnHandles(int inputCount, int outputCount, Bn* bn, bool nodeOverlap, bool overrideOutputFunctions, double p) {
             InputCount = inputCount;
             OutputCount = outputCount;
             inputNodes = new int[InputCount];
@@ -52,7 +52,7 @@ class BnHang {
             }
             
         }
-        ~BnHang(){
+        ~BnHandles(){
             if(overriddenOutputFunctions != nullptr) {
                 for (int i = 0; i < OutputCount; ++i) {
                     delete [] overriddenOutputFunctions[i];
@@ -128,7 +128,7 @@ class BnHang {
                 outputNodes[outputToRewires[i]] = nodeOverlap ? rand() % bn->N : extracted;
             }
         }
-        void CopyFrom(BnHang* hang, Bn* bn) {
+        void CopyFrom(BnHandles* hang, Bn* bn) {
             for(int i = 0; i < InputCount; i++) inputNodes[i] = hang->inputNodes[i];
             for(int i = 0; i < OutputCount; i++) outputNodes[i] = hang->outputNodes[i];
             for(int i = 0; i < OutputCount; i++) for(int k = 0; k < bn->K2; k++) overriddenOutputFunctions[i][k] = hang->overriddenOutputFunctions[i][k];

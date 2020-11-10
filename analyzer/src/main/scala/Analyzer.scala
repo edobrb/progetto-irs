@@ -151,7 +151,7 @@ object Analyzer extends App {
     val bestConfig = bestRobot.config
     println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(network_test_steps = 720000, print_analytics = false),
-      bn = bestConfig.bn.copy(initial = Some(bestRobot.bestBn)))
+      bn = bestConfig.bn.copy(initial = Some(bestRobot.best_network)))
     println(config)
     //val initial = config.bn.initial.map(v => v.copy(connections = v.connections.map(_.map(_-1)), inputs = v.inputs.map(_-1), outputs = v.outputs.map(_-1)))
     Experiments.runSimulation(config.copy(bn = config.bn.copy(initial = config.bn.initial
