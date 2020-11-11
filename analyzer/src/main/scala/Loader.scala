@@ -48,21 +48,45 @@ object Loader extends App {
         (robotId, performedTests)
     }
 
+  def extractTests2(data: Iterator[StepInfo], configuration: Configuration, ignoreBnStates: Boolean): Seq[RobotData] = {
+
+    data.foldLeft(Map[RobotId, (RobotData, Option[model.BooleanNetwork.Schema])]())({
+      case (map, StepInfo(step, id, None, states, fitness, position)) if map.contains(id) =>
+        val (oldData, currentBn) = map(id)
+        val newFitnessValues = oldData.fitness_values.dropRight(1) :+ Math.max(oldData.fitness_values.last, fitness)
+        val data = oldData.copy(fitness_values = newFitnessValues/*, location = oldData.location :+ step.location*/)
+        val data2 = if(currentBn.isDefined && !currentBn.contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
+          data.copy(best_network = currentBn.get)
+        } else {
+          data
+        }
+        map.updated(id, (data2, currentBn))
+      case (map, StepInfo(step, id, Some(bn), states, fitness, position)) if map.contains(id) =>
+        val (oldData, _) = map(id)
+        val data = oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
+        map.updated(id, (data, Some(bn)))
+      case (map, StepInfo(step, id, Some(bn), states, fitness, position)) =>
+        val data = RobotData("", id, configuration, Seq(fitness), bn, Nil, Nil)
+        map.updated(id, (data, None))
+    }).values.map(_._1).toSeq
+
+  }
+
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
     Try {
       implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
       val config: Configuration = Configuration.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        val tests = extractTests(data, ignoreBnStates = false)
-        val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
+        extractTests2(data, config, ignoreBnStates = false)
+        /*val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
 
         results.map {
           case (robotId, epochs: Seq[Epoch]) =>
             RobotData("", robotId, config, epochs.map(_.fitnessValues.last),
               epochs.maxBy(_.fitnessValues.last).bn, epochs.maxBy(_.fitnessValues.last).bnStates.last,
               /*epochs.flatMap(_.locations)*/)
-        }
+        }*/
       }
       utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       time
@@ -71,7 +95,7 @@ object Loader extends App {
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
-  FILENAMES.toList.sortBy(_._1).parForeach(threads = Settings.PARALLELISM_DEGREE, {
+  FILENAMES.toList.parForeach(threads = Settings.PARALLELISM_DEGREE, {
     case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
       println(s"Loading $input_filename ... ")
       utils.File.readGzippedLinesAndMap(input_filename) {
