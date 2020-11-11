@@ -1,5 +1,5 @@
 import model.config.Configuration
-import model.config.Configuration.{HalfRegionVariation, NetworkIOMutation, NetworkMutation, ObstacleAvoidance}
+import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, Network, NetworkIO, NetworkIOMutation, NetworkMutation, Objective, ObstacleAvoidance, Simulation}
 
 import scala.util.Try
 
@@ -33,7 +33,17 @@ object Settings {
     argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
-  def DEFAULT_CONFIG: Configuration = Configuration()
+  def DEFAULT_CONFIG: Configuration = Configuration(
+    Simulation(ticks_per_seconds = 10, experiment_length = 7200, robot_count = 10, print_analytics = true),
+    Adaptation(epoch_length = 400,
+      NetworkMutation(max_connection_rewires = 0, connection_rewire_probability = 1, max_function_bit_flips = 0, function_bit_flips_probability = 1, keep_p_balance = false),
+      NetworkIOMutation(max_input_rewires = 2, input_rewire_probability = 1, max_output_rewires = 1, output_rewire_probability = 1, allow_io_node_overlap = false)),
+    Network(n = 100, k = 3, p = 0.79, self_loops = true,
+      io = NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false),
+      initial_schema = None,
+      initial_state = None),
+    Objective(Forwarding(5, 2), ObstacleAvoidance(0.1, 8), None)
+  )
 
   def configurations: Seq[Configuration] = {
     /** Configuration variations */

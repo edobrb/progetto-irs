@@ -353,6 +353,13 @@ void CFootBotDiffusion::ControlStep() {
       testNetworkFitness = 0;
       if(RESET_REGION_EVERY_EPOCH) {
          stayUpper = isUpper();
+         #ifdef LOG_DEBUG 
+         if(stayUpper && STAY_ON_HALF) {
+            m_pcLEDs->SetAllColors(CColor::GREEN);
+         } else {
+            m_pcLEDs->SetAllColors(CColor::RED);
+         }
+         #endif
       }
    }
 
@@ -368,7 +375,7 @@ void CFootBotDiffusion::Destroy() {
    printf("[DEBUG] [BOT %d] destroyed!\n", myId); 
    #endif
    if(currentStep > 0) { //can be called when a robot initialization fails
-      if(PRINT_ANALYTICS) PrintAnalytics(true);
+      if(PRINT_ANALYTICS) PrintAnalytics(false);
       fflush(stdout);
    }
 }

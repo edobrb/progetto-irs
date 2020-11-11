@@ -49,14 +49,14 @@ object Loader extends App {
     }
 
   def extractTests2(data: Iterator[StepInfo], configuration: Configuration, ignoreBnStates: Boolean): Seq[RobotData] = {
-
-    data.foldLeft(Map[RobotId, (RobotData, Option[model.BooleanNetwork.Schema])]())({
+    data.foldLeft(Map[RobotId, (RobotData, Option[(model.BooleanNetwork.Schema, model.BooleanNetwork.State)])]())({
       case (map, StepInfo(step, id, None, states, fitness, position)) if map.contains(id) =>
         val (oldData, currentBn) = map(id)
         val newFitnessValues = oldData.fitness_values.dropRight(1) :+ Math.max(oldData.fitness_values.last, fitness)
         val data = oldData.copy(fitness_values = newFitnessValues/*, location = oldData.location :+ step.location*/)
-        val data2 = if(currentBn.isDefined && !currentBn.contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
-          data.copy(best_network = currentBn.get)
+        val data2 = if(currentBn.isDefined && !currentBn.map(_._1).contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
+          val (schema, _) = currentBn.get
+          data.copy(best_network = schema, best_network_state = states)
         } else {
           data
         }
@@ -64,12 +64,11 @@ object Loader extends App {
       case (map, StepInfo(step, id, Some(bn), states, fitness, position)) if map.contains(id) =>
         val (oldData, _) = map(id)
         val data = oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
-        map.updated(id, (data, Some(bn)))
+        map.updated(id, (data, Some((bn, Nil))))
       case (map, StepInfo(step, id, Some(bn), states, fitness, position)) =>
         val data = RobotData("", id, configuration, Seq(fitness), bn, Nil, Nil)
         map.updated(id, (data, None))
     }).values.map(_._1).toSeq
-
   }
 
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
