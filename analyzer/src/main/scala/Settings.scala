@@ -73,11 +73,14 @@ object Settings {
     /** Configuration repetitions for statistical accuracy. * */
     configurations.zipWithIndex.flatMap({
       case (config, index) =>
-        def c(i: Int): Configuration = config
-          .setSimulationSeed(Some(i + index * configurations.size))
-          .setControllersSeed(Some(i + index * configurations.size + configurations.size * REPETITIONS.size))
+        def setSeed(i: Int): Configuration = {
+          val name = config.filename + "-" + i
+          config
+            .setSimulationSeed(Some(Math.abs((name + "-simulation").hashCode)))
+            .setControllersSeed(Some(Math.abs((name + "-controller").hashCode)))
+        }
 
-        REPETITIONS.map(i => (config.filename + "-" + i, c(i), i))
+        REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
     })
   }
 }
