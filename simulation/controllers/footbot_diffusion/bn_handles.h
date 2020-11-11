@@ -37,15 +37,15 @@ class BnHandles {
                 if(overriddenOutputFunctions != nullptr) {
                     overriddenOutputFunctions[i] = new bool[bn->K2];
 
-                    //50-50 distribution
+                    //p-(1-p) distribution
                     std::vector<int> toAssign(bn->K2);
                     std::iota(std::begin(toAssign), std::end(toAssign), 0);
-                    for(int k = 0; k < bn->K2 / 2; k++) {
+                    for(int k = 0; k < (int)(bn->K2 * p + .5); k++) {
                         int extracted = toAssign[rand() % toAssign.size()];
                         toAssign.erase(std::remove(toAssign.begin(), toAssign.end(), extracted), toAssign.end());
                         overriddenOutputFunctions[i][extracted] = true;
                     }
-                    for(int k = 0; k < bn->K2 / 2; k++) {
+                    for(int k = 0; k < (int)(bn->K2 * (1 - p)); k++) {
                         overriddenOutputFunctions[i][toAssign[k]] = false;
                     }
                 }
@@ -131,7 +131,8 @@ class BnHandles {
         void CopyFrom(BnHandles* hang, Bn* bn) {
             for(int i = 0; i < InputCount; i++) inputNodes[i] = hang->inputNodes[i];
             for(int i = 0; i < OutputCount; i++) outputNodes[i] = hang->outputNodes[i];
-            for(int i = 0; i < OutputCount; i++) for(int k = 0; k < bn->K2; k++) overriddenOutputFunctions[i][k] = hang->overriddenOutputFunctions[i][k];
+            if(overriddenOutputFunctions != nullptr)
+                for(int i = 0; i < OutputCount; i++) for(int k = 0; k < bn->K2; k++) overriddenOutputFunctions[i][k] = hang->overriddenOutputFunctions[i][k];
         }
         
         int InputCount, OutputCount;
@@ -143,6 +144,9 @@ class BnHandles {
         }
         inline bool GetOverriddenOutputFunctions(int n, int k) {
             return overriddenOutputFunctions[n][k];
+        }
+        inline bool HasOverriddenOutputFunctions() {
+            return overriddenOutputFunctions != nullptr;
         }
     private:
         int* inputNodes;

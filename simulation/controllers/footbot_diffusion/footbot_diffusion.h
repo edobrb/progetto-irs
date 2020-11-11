@@ -102,6 +102,7 @@ private:
 
 
    bool stayUpper;
+   int myId;
 
    CCI_DifferentialSteeringActuator* m_pcWheels;
    CCI_FootBotProximitySensor* m_pcProximity;

@@ -59,7 +59,7 @@ class Bn {
                 int k = rand() % K;
                 bool alreadyEdited = false;
                 for(int j = 0; j < i && !alreadyEdited; j++) {
-                    alreadyEdited = edited[j] == n * K + k;
+                    alreadyEdited = (edited[j] == (n * K + k));
                 }
                 if(alreadyEdited) i--; //retry
                 else {
@@ -69,21 +69,22 @@ class Bn {
             }          
         }
         void MutesFunctions(int count, bool keepBalanced) {
+            
             std::vector<int> edited(count);
             for(int i = 0; i < count; i++) {
                 int n = rand() % N;
                 int k = rand() % K2;
                 bool alreadyEdited = false;
                 for(int j = 0; j < i && !alreadyEdited; j++) {
-                    alreadyEdited = edited[j] == n * K2 + k;
+                    alreadyEdited = (edited[j] == (n * K2 + k));
                 }
                 if(alreadyEdited) i--; //retry
                 else {
-                    bool value = (rand() % 2) == 0;
+                    bool value = !GetTruthTableEntry(n, k);
                     SetTruthTableEntry(n, k, value);
                     if(keepBalanced) {
-                        for(int j = 0; j < K2 - 1; j++) {
-                            if(GetTruthTableEntry(n, (j + k) % K2) != value) {
+                        for(int j = 1; j < K2; j++) {
+                            if(GetTruthTableEntry(n, (j + k) % K2) == value) {
                                 SetTruthTableEntry(n, (j + k) % K2, !value);
                                 break;
                             }
