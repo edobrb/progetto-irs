@@ -94,7 +94,7 @@ private:
 
    Real bestNetworkFitness, testNetworkFitness;
    long printStep, currentStep;
-   nlohmann::json config;
+   
    Bn* bestBn;
    Bn* testBn;
    BnHandles* bestHang;

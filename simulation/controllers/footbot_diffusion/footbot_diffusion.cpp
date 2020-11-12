@@ -80,6 +80,7 @@ Real PENALTY_FACTOR = 0;
 bool RESET_REGION_EVERY_EPOCH = false;
 
 int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
+nlohmann::json config;
 //Bn** sharedBn;
 //BnHandles** sharedBnIo;
 
@@ -95,6 +96,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
    /* Load the configuration */
    if(!configurationLoaded) {
+      
       std::string configStr = "null";
       GetNodeAttributeOrDefault(t_node, "CONFIG", configStr, configStr);
       config = nlohmann::json::parse(configStr);
@@ -268,6 +270,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
    }
    printf("[DEBUG] [BOT %d] initialized!\n", myId); 
+   fflush(stdout);
    #endif
 }
 
@@ -292,6 +295,17 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
    for(int i = 0; i < REGION_NODES; i++) {
       testHang->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
    }
+   #ifdef LOG_DEBUG
+   if(STAY_ON_HALF && isInCorrectHalf && stayUpper) {
+      m_pcLEDs->SetAllColors(CColor::GREEN);
+   } else if(STAY_ON_HALF && !isInCorrectHalf && stayUpper) {
+      m_pcLEDs->SetAllColors(CColor::YELLOW);
+   } else if(STAY_ON_HALF && isInCorrectHalf && !stayUpper) {
+      m_pcLEDs->SetAllColors(CColor::RED);
+   } else if(STAY_ON_HALF && !isInCorrectHalf && !stayUpper) {
+      m_pcLEDs->SetAllColors(CColor::ORANGE);
+   }
+   #endif
 
    // Run network
    testBn->Step();
@@ -371,6 +385,10 @@ void CFootBotDiffusion::ControlStep() {
 
    RunAndEvaluateNetwork();
    currentStep++;
+
+   if(myId == 0) {
+      fflush(stdout);
+   }
 }
 
 void CFootBotDiffusion::Destroy() {
