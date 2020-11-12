@@ -52,7 +52,7 @@ class Bn {
             for (int n = 0; n < N; n++) for (int k = 0; k < K; k++) SetConnectionIndex(n, k, other->GetConnectionIndex(n, k));
             for (int n = 0; n < N; n++) for (int k = 0; k < K2; k++) SetTruthTableEntry(n, k, other->GetTruthTableEntry(n, k));
         }
-        void RewiresConnections(int count) {
+        void RewiresConnections(int count, bool selfLoops) {
             std::vector<int> edited(count);
             for(int i = 0; i < count; i++) {
                 int n = rand() % N;
@@ -63,7 +63,11 @@ class Bn {
                 }
                 if(alreadyEdited) i--; //retry
                 else {
-                    SetConnectionIndex(n, k, rand() % N);
+                    int node;
+                    do {
+                        node = rand() % N;
+                    } while(!selfLoops && node == n);
+                    SetConnectionIndex(n, k, node);
                     edited[i] = n * K + k;
                 }
             }          

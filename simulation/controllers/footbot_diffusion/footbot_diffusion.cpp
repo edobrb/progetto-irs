@@ -52,6 +52,7 @@ bool IO_NODE_OVERLAP_ON_REWIRE;
 //netowrk
 int MAX_CONNECTION_REWIRES;
 Real CONNECTION_REWIRE_PROBABILITY;
+bool CONNECTION_REWIRE_SELF_LOOPS;
 int MAX_FUNCTION_BIT_FLIPS;
 Real FUNCTION_BIT_FLIP_PROBABILITY;
 bool KEEP_P_BALANCE;
@@ -115,6 +116,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       IO_NODE_OVERLAP_ON_REWIRE     = config["adaptation"]["network_io_mutation"]["allow_io_node_overlap"].get<bool>();
       MAX_CONNECTION_REWIRES        = config["adaptation"]["network_mutation"]["max_connection_rewires"].get<int>();
       CONNECTION_REWIRE_PROBABILITY = config["adaptation"]["network_mutation"]["connection_rewire_probability"].get<Real>();
+      CONNECTION_REWIRE_SELF_LOOPS  = config["adaptation"]["network_mutation"]["self_loops"].get<bool>();
       MAX_FUNCTION_BIT_FLIPS        = config["adaptation"]["network_mutation"]["max_function_bit_flips"].get<int>();
       FUNCTION_BIT_FLIP_PROBABILITY = config["adaptation"]["network_mutation"]["function_bit_flips_probability"].get<Real>();
       KEEP_P_BALANCE                = config["adaptation"]["network_mutation"]["keep_p_balance"].get<bool>();
@@ -130,7 +132,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       IO_NODE_OVERLAP               = config["network"]["io"]["allow_io_node_overlap"].get<bool>();
 
       //forwarding objective
-      MAX_WHEELS_SPEED              = config["objective"]["forwarding"]["max_wheel_speed"].get<Real>() * TICKS_PER_SECOND;
+      MAX_WHEELS_SPEED              = config["objective"]["forwarding"]["max_wheel_speed"].get<Real>();
       WHEELS_NODES                  = config["objective"]["forwarding"]["wheels_nodes"].get<int>();
       //obstacle avoidance objective
       PROXIMITY_THRESHOLD           = config["objective"]["obstacle_avoidance"]["proximity_threshold"].get<Real>();
@@ -174,6 +176,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t EPOCH_LENGTH = %d\n", EPOCH_LENGTH); 
       printf("[DEBUG]\t MAX_CONNECTION_REWIRES = %d\n", MAX_CONNECTION_REWIRES); 
       printf("[DEBUG]\t CONNECTION_REWIRE_PROBABILITY = %f\n", CONNECTION_REWIRE_PROBABILITY); 
+      printf("[DEBUG]\t CONNECTION_REWIRE_SELF_LOOPS = %d\n", CONNECTION_REWIRE_SELF_LOOPS); 
       printf("[DEBUG]\t MAX_FUNCTION_BIT_FLIPS = %d\n", MAX_FUNCTION_BIT_FLIPS); 
       printf("[DEBUG]\t FUNCTION_BIT_FLIP_PROBABILITY = %f\n", FUNCTION_BIT_FLIP_PROBABILITY); 
       printf("[DEBUG]\t KEEP_P_BALANCE = %d\n", KEEP_P_BALANCE); 
@@ -338,7 +341,7 @@ void CFootBotDiffusion::ControlStep() {
       //NETWORK MUTATION
       int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
       int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
-      testBn->RewiresConnections(connectionRewires);
+      testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS);
       testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
 
       //NETWORK IO REWIRES

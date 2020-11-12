@@ -3,10 +3,10 @@ package model.config
 import model.config.Configuration._
 import play.api.libs.json.{Json, OFormat}
 
-case class Configuration(simulation: Simulation = Simulation(),
-                         adaptation: Adaptation = Adaptation(),
-                         network: Network = Network(),
-                         objective: Objective = Objective()) {
+case class Configuration(simulation: Simulation,
+                         adaptation: Adaptation,
+                         network: Network,
+                         objective: Objective) {
   def toJson: String = {
     import JsonFormats._
     Json.toJson(this).toString()
@@ -32,54 +32,55 @@ case class Configuration(simulation: Simulation = Simulation(),
 
 object Configuration {
 
-  case class Simulation(ticks_per_seconds: Int = 10,
-                        experiment_length: Int = 7200,
-                        robot_count: Int = 10,
+  case class Simulation(ticks_per_seconds: Int,
+                        experiment_length: Int,
+                        robot_count: Int,
                         print_analytics: Boolean = true,
                         controllers_random_seed: Option[Int] = None,
                         simulation_random_seed: Option[Int] = None)
 
-  case class Adaptation(epoch_length: Int = 400,
-                        network_mutation: NetworkMutation = NetworkMutation(), //selection, crossover?
-                        network_io_mutation: NetworkIOMutation = NetworkIOMutation())
+  case class Adaptation(epoch_length: Int,
+                        network_mutation: NetworkMutation, //selection, crossover?
+                        network_io_mutation: NetworkIOMutation)
 
-  case class NetworkMutation(max_connection_rewires: Int = 0,
-                             connection_rewire_probability: Double = 1,
-                             max_function_bit_flips: Int = 0,
-                             function_bit_flips_probability: Double = 1,
-                             keep_p_balance: Boolean = false)
+  case class NetworkMutation(max_connection_rewires: Int,
+                             connection_rewire_probability: Double,
+                             self_loops: Boolean,
+                             max_function_bit_flips: Int,
+                             function_bit_flips_probability: Double,
+                             keep_p_balance: Boolean)
 
-  case class NetworkIOMutation(max_input_rewires: Int = 2,
-                               input_rewire_probability: Double = 1,
-                               max_output_rewires: Int = 1,
-                               output_rewire_probability: Double = 1,
+  case class NetworkIOMutation(max_input_rewires: Int,
+                               input_rewire_probability: Double,
+                               max_output_rewires: Int,
+                               output_rewire_probability: Double,
                                allow_io_node_overlap: Boolean = false)
 
-  case class Network(n: Int = 100,
-                     k: Int = 3,
-                     p: Double = 0.79,
-                     self_loops: Boolean = true,
-                     io: NetworkIO = NetworkIO(),
+  case class Network(n: Int,
+                     k: Int,
+                     p: Double,
+                     self_loops: Boolean,
+                     io: NetworkIO,
                      initial_schema: Option[model.BooleanNetwork.Schema] = None,
                      initial_state: Option[model.BooleanNetwork.State] = None)
 
-  case class NetworkIO(override_output_nodes: Boolean = true,
-                       override_outputs_p: Double = 0.5,
-                       allow_io_node_overlap: Boolean = false)
+  case class NetworkIO(override_output_nodes: Boolean,
+                       override_outputs_p: Double,
+                       allow_io_node_overlap: Boolean)
 
-  case class Objective(forwarding: Forwarding = Forwarding(),
-                       obstacle_avoidance: ObstacleAvoidance = ObstacleAvoidance(),
-                       half_region_variation: Option[HalfRegionVariation] = None)
+  case class Objective(forwarding: Forwarding,
+                       obstacle_avoidance: ObstacleAvoidance,
+                       half_region_variation: Option[HalfRegionVariation])
 
-  case class Forwarding(max_wheel_speed: Double = 5,
-                        wheels_nodes: Int = 2)
+  case class Forwarding(max_wheel_speed: Double,
+                        wheels_nodes: Int)
 
-  case class ObstacleAvoidance(proximity_threshold: Double = 0.1,
-                               proximity_nodes: Int = 8)
+  case class ObstacleAvoidance(proximity_threshold: Double,
+                               proximity_nodes: Int)
 
-  case class HalfRegionVariation(region_nodes: Int = 1,
+  case class HalfRegionVariation(region_nodes: Int,
                                  penalty_factor: Double = 0,
-                                 reset_region_every_epoch: Boolean = false)
+                                 reset_region_every_epoch: Boolean)
 
 
   def fromJson(json: String): Configuration = {

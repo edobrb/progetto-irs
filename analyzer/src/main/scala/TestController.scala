@@ -8,100 +8,106 @@ object TestController extends App {
   val configurations: Seq[(Configuration,String)] = Seq(
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(1), Some(2)),
-      Adaptation(epoch_length = 400, NetworkMutation(0, 1, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "dc640545b118f52da240cda041f2e2c5d57ed26b73f5049c724472905bfdf7ae"),
+    ), "5577153557ac03f9201c8f4def31cc1c7fcbf57a56433b0adbdffcbf84624147"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(15), Some(16)),
-      Adaptation(epoch_length = 400, NetworkMutation(0, 1, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = false, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "576a24df0d5b7178d48399c325aaf7612176fad8f1db55975e86475772c3459d"),
+    ), "d6bd6df16426448b4adfe4454a624d1d8ef9ff1970520b37802b74d8c2d29812"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(3), Some(4)),
-      Adaptation(epoch_length = 400, NetworkMutation(0, 1, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = true)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = true)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "46465a4004dff9bf07594b3e39093c71af2cbaa4caad3f80c6484862dc1dfc76"),
+    ), "7f794451892a766f76bb10b0b0a87e8b5eda2ec8dbfe0231a2af726ad7fdab91"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(5), Some(6)),
-      Adaptation(epoch_length = 400, NetworkMutation(0, 1, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = true)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "ee911933bf251a738c609735fb8877d87a50679e9cc70c03c6897ab20bd44dbc"),
+    ), "a926ecd7273090d729ea3f59557c62c9da4ddaff6568dc0f397f4e4083125d41"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(7), Some(8)),
-      Adaptation(epoch_length = 400, NetworkMutation(0, 1, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = true)))
-    ), "d513e68538d41b2bb33e3821ca99d624c9ce58a71681bef2ce558ebd607882a5"),
+    ), "18cc55d7bc2fb2496345b097cea2ac4b4170951024c9a8a65213c1c3d9981ebd"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(9), Some(10)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = false), NetworkIOMutation(0, 0, 0, 0, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = false), NetworkIOMutation(0, 0, 0, 0, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "eab5d9625014a307357fcb2bffcf97fa8ab94691a3883276411ad99325f1ced8"),
+    ), "10825855de61b2cce932676c70fd7c048e94fbb27688011b8498a39ce6818c25"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(11), Some(12)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(0, 0, 0, 0, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(0, 0, 0, 0, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "bb3ca09152379e3fbaad0c9b8218143684b3bfa6f633244fdb7114542eb6d71e"),
+    ), "41aef79ad7cb58a7292a1eb967d9f2288029d478cac2dd3e64b038daa115a312"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(13), Some(14)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.25, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "ac471253a02be2900ad4a653029c75b16f9823392c97ac65989b1a655cdd9fe9"),
+    ), "3e81146b7cea4325c4d26e2562d90b025c16e979f30fbe3ed75d8eab0b11a569"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(17), Some(18)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = false, override_outputs_p = 0.25, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "9f6c6ec928d117e01fb14bff886b0922049c33b7b59ee84d49962956e5052b2f"),
+    ), "764729550527694ac47579ac576065f0f9710e0d8d52c756271b9e4cf620d44e"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(19), Some(20)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 2), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
-    ), "e9c672e1d29b6a060fd2542471eb1e14ff3240f50dc1d1656f00d03350a69bf1"),
+    ), "bb70dd09169e696c5dfd5b3995117be75727473520a17c9a28995d5727e48f42"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
-    ), "99f92f4c16e2bb948f1d1ee6948bee107b18ff8ac311d407aaf50e3244bd29f6"),
+    ), "a75d052ab9577d13f02379afeb97afbc44bedc8274293d26e703d808297c24f8"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 0.9, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 0.9, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
-    ), "6c03c9d1213862324c8ab6ff72f742fa3fb85895fe2203931a482b9a12c9dce5"),
+    ), "2446594f972be9d5c7d80c7f1b6397f18448fe7a3b5a427589804c6dcac2c86c"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 0.9, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 0.9, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
-    ), "5872f7222c22044c90f9c57f71dcb9e34b924453a5c77a8433d2eb2431daf33a"),
+    ), "6d7af56dc9849acd02dbdf5434e013faade75deb313b597fcb7520d56211ff90"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.4, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.4, self_loops = false, 10, 0.5, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
-    ), "b0b315332ccb911548b9277db9cf49e96176aa1a31874d84a19abea70b672c68"),
+    ), "5400c2f87afe0602f9d4ac03e6752c60d1b0088ca3ca4b6d7dc183b5b3f67e39"),
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
-      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, 10, 0.4, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = false, 10, 0.4, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
-    ), "5f8ba57b0d084f0de4b32289828303ffdf37ed897ae0bc8182c8e15a85e4a333")
+    ), "2ba441d3a2ec4553a160d99f8257f92324f1c5662fd3bea46afa7524bb0e5a74"),
+    (Configuration(
+      Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 12, print_analytics = true, Some(21), Some(22)),
+      Adaptation(epoch_length = 400, NetworkMutation(10, 0.5, self_loops = true, 10, 0.4, keep_p_balance = true), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
+      Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(2, 0, reset_region_every_epoch = false)))
+    ), "3f4a176f535352424b0f1a997f0d502b91aac77348127b73b754fa77bf0cb903")
   )
 
   configurations.drop(0).zipWithIndex.foreach {
     case ((config, hash), i) =>
       print(s"Executing test $i... ")
-      val exp1 = Experiments.runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
+      val exp1 = Experiments.runSimulation(config, visualization = false).filter(_.headOption.contains('{')).drop(1)
       val result = utils.Hash.sha256(exp1)
       println(result + " == "+ hash + (if(result == hash) " [SUCCESS]" else " [FAILURE]"))
   }

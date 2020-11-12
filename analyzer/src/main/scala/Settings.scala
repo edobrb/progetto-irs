@@ -34,15 +34,35 @@ object Settings {
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Configuration = Configuration(
-    Simulation(ticks_per_seconds = 10, experiment_length = 7200, robot_count = 10, print_analytics = true),
+    Simulation(
+      ticks_per_seconds = 10,
+      experiment_length = 7200,
+      robot_count = 10,
+      print_analytics = true),
     Adaptation(epoch_length = 400,
-      NetworkMutation(max_connection_rewires = 0, connection_rewire_probability = 1, max_function_bit_flips = 0, function_bit_flips_probability = 1, keep_p_balance = false),
-      NetworkIOMutation(max_input_rewires = 2, input_rewire_probability = 1, max_output_rewires = 1, output_rewire_probability = 1, allow_io_node_overlap = false)),
+      NetworkMutation(
+        max_connection_rewires = 0,
+        connection_rewire_probability = 1,
+        self_loops = false,
+        max_function_bit_flips = 0,
+        function_bit_flips_probability = 1,
+        keep_p_balance = false),
+      NetworkIOMutation(max_input_rewires = 2,
+        input_rewire_probability = 1,
+        max_output_rewires = 1,
+        output_rewire_probability = 1,
+        allow_io_node_overlap = false)),
     Network(n = 100, k = 3, p = 0.79, self_loops = true,
-      io = NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false),
+      io = NetworkIO(
+        override_output_nodes = true,
+        override_outputs_p = 0.5,
+        allow_io_node_overlap = false),
       initial_schema = None,
       initial_state = None),
-    Objective(Forwarding(5, 2), ObstacleAvoidance(0.1, 8), None)
+    Objective(
+      Forwarding(max_wheel_speed = 50, wheels_nodes = 2),
+      ObstacleAvoidance(proximity_threshold = 0.1, proximity_nodes = 8),
+      None)
   )
 
   def configurations: Seq[Configuration] = {
@@ -59,8 +79,8 @@ object Settings {
     )
 
     def networkMutation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, 40, 0.5, false))),
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, 40, 0.5, true))),
+      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, false, 40, 0.5, false))),
+      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, false, 40, 0.5, true))),
     )
 
     def selfLoopVariation: Seq[Configuration => Configuration] = Seq(
@@ -70,8 +90,8 @@ object Settings {
 
     def stayOnHalfVariation: Seq[Configuration => Configuration] = Seq(
       c => c.copy(objective = c.objective.copy(half_region_variation = None)),
-      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 1)))),
-      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 0)))),
+      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)))),
+      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false)))),
     )
 
     def networkInputCountVariation: Seq[Configuration => Configuration] = Seq(
