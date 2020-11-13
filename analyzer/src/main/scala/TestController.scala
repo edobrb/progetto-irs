@@ -8,6 +8,12 @@ object TestController extends App {
   val configurations: Seq[(Configuration,String)] = Seq(
     (Configuration(
       Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(1), Some(2)),
+      Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 1, 2, 1, allow_io_node_overlap = false)),
+      Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
+      Objective(Forwarding(50, 2), ObstacleAvoidance(0.1, 8), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
+    ), "4a4d355b1c2f8eddaf1e9fce04dfcb1fc294d6c02fe7c5ac011f1e5f7111e0fe"),
+      (Configuration(
+      Simulation(ticks_per_seconds = 10, experiment_length = 1200, robot_count = 10, print_analytics = true, Some(1), Some(2)),
       Adaptation(epoch_length = 400, NetworkMutation(0, 1, self_loops = false, 0, 1, keep_p_balance = false), NetworkIOMutation(2, 0.5, 2, 0.5, allow_io_node_overlap = false)),
       Network(n = 100, k = 3, p = 0.79, self_loops = true, NetworkIO(override_output_nodes = true, override_outputs_p = 0.5, allow_io_node_overlap = false)),
       Objective(Forwarding(5, 4), ObstacleAvoidance(0.1, 6), Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))

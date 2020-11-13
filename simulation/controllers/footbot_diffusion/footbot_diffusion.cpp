@@ -294,6 +294,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
    for(int i = 0; i < REGION_NODES; i++) {
       testHang->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
    }
+
    #ifdef LOG_DEBUG
    if(STAY_ON_HALF && isInCorrectHalf && stayUpper) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
@@ -362,7 +363,6 @@ void CFootBotDiffusion::ControlStep() {
       int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
       if(inputRewires > 0) testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
       if(outputRewires > 0) testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
-      
 
       //RESET
       currentStep = 0;

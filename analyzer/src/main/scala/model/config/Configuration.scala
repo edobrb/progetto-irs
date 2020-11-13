@@ -54,7 +54,7 @@ object Configuration {
                                input_rewire_probability: Double,
                                max_output_rewires: Int,
                                output_rewire_probability: Double,
-                               allow_io_node_overlap: Boolean = false)
+                               allow_io_node_overlap: Boolean)
 
   case class Network(n: Int,
                      k: Int,

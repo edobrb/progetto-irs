@@ -32,7 +32,7 @@ object Argos {
       s"--TICKS=${config.simulation.ticks_per_seconds}",
       s"--LENGTH=${config.simulation.experiment_length}",
       s"--ROBOT_COUNT=${config.simulation.robot_count}",
-      s"--RANDOM_SEED=${config.simulation.simulation_random_seed.map("random_seed=" + _).getOrElse("none")}",
+      s"--RANDOM_SEED=${config.simulation.simulation_random_seed.map("random_seed=" + _).getOrElse("")}",
       s"--VISUAL=${if (visualization) "visualization" else "none"}"),
       new File(workingDir)).run(io)
 

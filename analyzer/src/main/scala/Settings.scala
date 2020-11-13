@@ -78,11 +78,6 @@ object Settings {
       c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = c.adaptation.network_io_mutation.copy(max_output_rewires = 0))),
     )
 
-    def networkMutation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, false, 40, 0.5, false))),
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = NetworkIOMutation(0,0,0,0), network_mutation = NetworkMutation(20, 0.5, false, 40, 0.5, true))),
-    )
-
     def selfLoopVariation: Seq[Configuration => Configuration] = Seq(
       c => c.copy(network = c.network.copy(self_loops = true)),
       c => c.copy(network = c.network.copy(self_loops = false)),

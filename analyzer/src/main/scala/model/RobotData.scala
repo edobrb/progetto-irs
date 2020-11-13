@@ -25,6 +25,6 @@ case class RobotData(filename: String,
     fitness_values.scanLeft(0.0) {
       case (fitness, v) if v > fitness => v
       case (fitness, _) => fitness
-    } //.drop(1) //remove the initial 0.0
+    }.drop(1) //remove the initial 0.0
   }
 }
