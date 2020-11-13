@@ -59,11 +59,11 @@ bool KEEP_P_BALANCE;
 
 //NETOWRK
 int N, K;
-double P;
+Real P;
 bool SELF_LOOPS;
 //NETOWRK IO
 bool OVERRIDE_OUTPUT_FUNCTIONS;
-double P_OVERRIDE;
+Real P_OVERRIDE;
 bool IO_NODE_OVERLAP;
 
 //OBJECTIVES
@@ -126,7 +126,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       //netowrk
       N                             = config["network"]["n"].get<int>();
       K                             = config["network"]["k"].get<int>();
-      P                             = config["network"]["p"].get<double>();
+      P                             = config["network"]["p"].get<Real>();
       SELF_LOOPS                    = config["network"]["self_loops"].get<bool>();
       //netowrk io
       OVERRIDE_OUTPUT_FUNCTIONS     = config["network"]["io"]["override_output_nodes"].get<bool>();
@@ -159,7 +159,6 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
          #ifdef LOG_DEBUG 
          printf("[DEBUG] using given value as random seed (%d)\n", seed); 
          #endif
-         
       } else {
          seed = time(NULL);
          #ifdef LOG_DEBUG 
@@ -355,15 +354,15 @@ void CFootBotDiffusion::ControlStep() {
       //NETWORK MUTATION
       int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
       int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
-      testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS);
-      testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
+      if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS);
+      if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
 
       //NETWORK IO REWIRES
       int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
       int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
-      testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
-      testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
-
+      if(inputRewires > 0) testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
+      if(outputRewires > 0) testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
+      
 
       //RESET
       currentStep = 0;
