@@ -14,3 +14,10 @@ libraryDependencies ++= Seq(
   "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-core"   % "2.6.2",
   "com.github.plokhotnyuk.jsoniter-scala" %% "jsoniter-scala-macros" % "2.6.2" % "provided" // or "provided", but it is required only in compile-time
 )
+
+libraryDependencies ++= Seq(
+  "com.github.julien-truffaut" %% "monocle-core"  % "2.0.3",
+  "com.github.julien-truffaut" %% "monocle-macro" % "2.0.3",
+)
+
+scalacOptions in Global += "-Ymacro-annotations"

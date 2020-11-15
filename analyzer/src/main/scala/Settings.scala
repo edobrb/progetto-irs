@@ -1,36 +1,13 @@
+import model.config
 import model.config.Configuration
 import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, Network, NetworkIO, NetworkIOMutation, NetworkMutation, Objective, ObstacleAvoidance, Simulation}
-
+import monocle.Lens
+import monocle.macros.GenLens
+import utils.ConfigLens._
 import scala.util.Try
+import monocle.macros.syntax.lens._
 
 object Settings {
-
-  def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
-    argOrException(argName, f, Some(default))(args)
-
-  def argOrException[T](argName: String, f: String => Option[T], default: Option[T] = None)(args: Array[String]): T =
-    args.find(a => Try {
-      a.split('=')(0) == argName
-    }.toOption.contains(true)).flatMap(a => Try {
-      a.split('=')(1)
-    }.toOption).flatMap(f) match {
-      case Some(value) => value
-      case None => default match {
-        case Some(value) => value
-        case None => throw new Exception(s"Argument $argName not defined")
-      }
-    }
-
-  def WORKING_DIR(implicit args: Array[String]): String = argOrException("working_dir", Some.apply)(args)
-
-  def SIMULATION_FILE(implicit args: Array[String]): String = argOrException("argos", Some.apply)(args)
-
-  def DATA_FOLDER(implicit args: Array[String]): String = argOrException("data", Some.apply)(args)
-
-  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
-
-  def REPETITIONS(implicit args: Array[String]): Range =
-    argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Configuration = Configuration(
@@ -65,44 +42,54 @@ object Settings {
       None)
   )
 
-  def configurations: Seq[Configuration] = {
-    /** Configuration variations */
-    def biasVariation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(network = c.network.copy(p = 0.1)),
-      c => c.copy(network = c.network.copy(p = 0.5)),
-      c => c.copy(network = c.network.copy(p = 0.79)),
-    )
 
-    def outputRewiresVariation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = c.adaptation.network_io_mutation.copy(max_output_rewires = 1))),
-      c => c.copy(adaptation = c.adaptation.copy(network_io_mutation = c.adaptation.network_io_mutation.copy(max_output_rewires = 0))),
-    )
+  /** Configuration variations */
+  def variations: Seq[Seq[Configuration => Configuration]] = Seq(
+    Seq(0.1, 0.5, 0.79).lensMap(lens(_.network.p)),
+    Seq(0, 1).lensMap(lens(_.adaptation.network_io_mutation.max_output_rewires)),
+    Seq(true, false).lensMap(lens(_.network.self_loops)),
+    Seq(8, 24).lensMap(lens(_.objective.obstacle_avoidance.proximity_nodes)),
+    Seq(None,
+      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)),
+      Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false)))
+      .lensMap(lens(_.objective.half_region_variation)))
 
-    def selfLoopVariation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(network = c.network.copy(self_loops = true)),
-      c => c.copy(network = c.network.copy(self_loops = false)),
-    )
+  def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
+    argOrException(argName, f, Some(default))(args)
 
-    def stayOnHalfVariation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(objective = c.objective.copy(half_region_variation = None)),
-      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)))),
-      c => c.copy(objective = c.objective.copy(half_region_variation = Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false)))),
-    )
+  def argOrException[T](argName: String, f: String => Option[T], default: Option[T] = None)(args: Array[String]): T =
+    args.find(a => Try {
+      a.split('=')(0) == argName
+    }.toOption.contains(true)).flatMap(a => Try {
+      a.split('=')(1)
+    }.toOption).flatMap(f) match {
+      case Some(value) => value
+      case None => default match {
+        case Some(value) => value
+        case None => throw new Exception(s"Argument $argName not defined")
+      }
+    }
 
-    def networkInputCountVariation: Seq[Configuration => Configuration] = Seq(
-      c => c.copy(objective = c.objective.copy(obstacle_avoidance = c.objective.obstacle_avoidance.copy(proximity_nodes = 8))),
-      c => c.copy(objective = c.objective.copy(obstacle_avoidance = c.objective.obstacle_avoidance.copy(proximity_nodes = 24))),
-    )
+  def WORKING_DIR(implicit args: Array[String]): String = argOrException("working_dir", Some.apply)(args)
 
-    val variations = Seq(biasVariation, outputRewiresVariation, selfLoopVariation, stayOnHalfVariation, networkInputCountVariation)
+  def SIMULATION_FILE(implicit args: Array[String]): String = argOrException("argos", Some.apply)(args)
+
+  def DATA_FOLDER(implicit args: Array[String]): String = argOrException("data", Some.apply)(args)
+
+  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
+
+  def REPETITIONS(implicit args: Array[String]): Range =
+    argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
+
+  /** All configuration combinations */
+  def configurations: Seq[Configuration] =
     utils.Combiner(DEFAULT_CONFIG, variations)
-  }
 
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
-    /** Configuration repetitions for statistical accuracy. * */
-    configurations.zipWithIndex.flatMap({
-      case (config, index) =>
+    /** Configuration repetitions for statistical accuracy. */
+    configurations.flatMap {
+      config =>
         def setSeed(i: Int): Configuration = {
           val name = config.filename + "-" + i
           config
@@ -111,6 +98,6 @@ object Settings {
         }
 
         REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
-    })
+    }
   }
 }

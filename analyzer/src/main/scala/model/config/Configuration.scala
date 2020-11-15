@@ -35,7 +35,7 @@ object Configuration {
   case class Simulation(ticks_per_seconds: Int,
                         experiment_length: Int,
                         robot_count: Int,
-                        print_analytics: Boolean = true,
+                        print_analytics: Boolean,
                         controllers_random_seed: Option[Int] = None,
                         simulation_random_seed: Option[Int] = None)
 
