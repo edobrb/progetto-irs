@@ -1,4 +1,4 @@
-#include "footbot_diffusion.h"
+#include "footbot_controller.h"
 #include <argos3/core/utility/configuration/argos_configuration.h>
 #include <argos3/core/utility/math/vector2.h>
 #include "json.hpp"
@@ -11,7 +11,7 @@
 #define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 
-CFootBotDiffusion::CFootBotDiffusion() :
+CFootBotBn::CFootBotBn() :
    bestNetworkFitness(-1),
    testNetworkFitness(0),
    currentStep(0),
@@ -82,7 +82,7 @@ nlohmann::json config;
 
 
 /* Controller initialization */
-void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
+void CFootBotBn::Init(TConfigurationNode& t_node) {
    myId = std::stoi(GetId());
    m_pcWheels = GetActuator<CCI_DifferentialSteeringActuator>("differential_steering");
    m_pcProximity = GetSensor<CCI_FootBotProximitySensor>("footbot_proximity");
@@ -271,7 +271,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
 
 /* Feed run and evaluate the test network */
-void CFootBotDiffusion::RunAndEvaluateNetwork() {
+void CFootBotBn::RunAndEvaluateNetwork() {
 
    // Feed network
    const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
@@ -332,7 +332,7 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
 }
 
 /* Controller step */
-void CFootBotDiffusion::ControlStep() {
+void CFootBotBn::ControlStep() {
    /* End of an epoch */
    if(currentStep >= EPOCH_LENGTH) {
       if(PRINT_ANALYTICS) PrintAnalytics(false);
@@ -386,7 +386,7 @@ void CFootBotDiffusion::ControlStep() {
    }
 }
 
-void CFootBotDiffusion::Destroy() {
+void CFootBotBn::Destroy() {
    #ifdef LOG_DEBUG 
    printf("[DEBUG] [BOT %d] destroyed!\n", myId); 
    #endif
@@ -396,7 +396,7 @@ void CFootBotDiffusion::Destroy() {
    }
 }
 
-void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
+void CFootBotBn::PrintAnalytics(bool printBnSchema) {
    const CCI_PositioningSensor::SReading& tPosReading = m_pcPositioning->GetReading();
    const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
    //const CCI_FootBotProximitySensor::TReadings& tProxReads = m_pcProximity->GetReadings();
@@ -463,15 +463,15 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
    printStep++;
 }
 
-CFootBotDiffusion::~CFootBotDiffusion() {
+CFootBotBn::~CFootBotBn() {
    delete bestBn;
    delete testBn;
    delete bestIO;
    delete testIO;
 }
 
-void CFootBotDiffusion::Reset() {
+void CFootBotBn::Reset() {
    
 }
 
-REGISTER_CONTROLLER(CFootBotDiffusion, "footbot_controller")
+REGISTER_CONTROLLER(CFootBotBn, "footbot_controller")

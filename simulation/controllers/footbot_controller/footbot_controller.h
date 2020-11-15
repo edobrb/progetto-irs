@@ -1,5 +1,5 @@
-#ifndef FOOTBOT_DIFFUSION_H
-#define FOOTBOT_DIFFUSION_H
+#ifndef FOOTBOT_CONTROLLER_H
+#define FOOTBOT_CONTROLLER_H
 
 
 #include <argos3/core/control_interface/ci_controller.h>
@@ -13,11 +13,11 @@
 
 using namespace argos;
 
-class CFootBotDiffusion : public CCI_Controller {
+class CFootBotBn : public CCI_Controller {
 
 public:
-   CFootBotDiffusion();
-   ~CFootBotDiffusion();
+   CFootBotBn();
+   ~CFootBotBn();
    void Init(TConfigurationNode& t_node);
    void ControlStep();
    void Reset();
