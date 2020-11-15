@@ -1,20 +1,16 @@
-/* Include the controller definition */
 #include "footbot_diffusion.h"
-/* Function definitions for XML parsing */
 #include <argos3/core/utility/configuration/argos_configuration.h>
-/* 2D vector definition */
 #include <argos3/core/utility/math/vector2.h>
 #include "json.hpp"
 #include <iostream>
 #include <cmath>
-#include "bn_handles.h"
+#include "bn_io.h"
 #include "bn.h"
 #include "utils.h"
 
 #define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 
-/* Init class fields */
 CFootBotDiffusion::CFootBotDiffusion() :
    bestNetworkFitness(-1),
    testNetworkFitness(0),
@@ -26,8 +22,8 @@ CFootBotDiffusion::CFootBotDiffusion() :
    m_pcLEDs(NULL),
    bestBn(NULL),
    testBn(NULL),
-   bestHang(NULL),
-   testHang(NULL),
+   bestIO(NULL),
+   testIO(NULL),
    stayUpper(false),
    myId(-1) {}
 
@@ -82,7 +78,7 @@ bool RESET_REGION_EVERY_EPOCH = false;
 int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
 nlohmann::json config;
 //Bn** sharedBn;
-//BnHandles** sharedBnIo;
+//BnIO** sharedBnIo;
 
 
 /* Controller initialization */
@@ -107,7 +103,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
       PRINT_ANALYTICS               = config["simulation"]["print_analytics"].get<bool>();
       ROBOT_COUNT                   = config["simulation"]["robot_count"].get<int>();
       //sharedBn = new Bn*[ROBOT_COUNT];
-      //sharedBnIo = new BnHandles*[ROBOT_COUNT];
+      //sharedBnIo = new BnIO*[ROBOT_COUNT];
 
       //adaptation
       EPOCH_LENGTH                  = config["adaptation"]["epoch_length"].get<int>();
@@ -211,7 +207,7 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
    /* Network creation */
    bestBn = new Bn(N, K, P, SELF_LOOPS);
-   bestHang = new BnHandles(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   bestIO = new BnIO(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
 
    /* Load given network schema */
    if(config["network"]["initial_schema"].is_object()) {
@@ -228,18 +224,18 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
          }
       }
       nlohmann::json inputs = config["network"]["initial_schema"]["inputs"];
-      for(int n = 0; n < bestHang->InputCount; n++) {
-         bestHang->SetInputIndex(n, inputs[n].get<int>());
+      for(int n = 0; n < bestIO->InputCount; n++) {
+         bestIO->SetInputIndex(n, inputs[n].get<int>());
       }
       nlohmann::json outputs = config["network"]["initial_schema"]["outputs"];
-      for(int n = 0; n < bestHang->OutputCount; n++) {
-         bestHang->SetOutputIndex(n, outputs[n].get<int>());
+      for(int n = 0; n < bestIO->OutputCount; n++) {
+         bestIO->SetOutputIndex(n, outputs[n].get<int>());
       }
       nlohmann::json overriddenFunctions = config["network"]["initial_schema"]["overridden_output_functions"];
       if(overriddenFunctions.is_array()) {
-         for(int n = 0; n < bestHang->OutputCount; n++) {
+         for(int n = 0; n < bestIO->OutputCount; n++) {
             for(int k = 0; k < bestBn->K2; k++) {
-               bestHang->SetOverriddenTruthTableEntry(n, k, overriddenFunctions[n][k].get<bool>());
+               bestIO->SetOverriddenTruthTableEntry(n, k, overriddenFunctions[n][k].get<bool>());
             }
          }
       }
@@ -260,8 +256,8 @@ void CFootBotDiffusion::Init(TConfigurationNode& t_node) {
 
    testBn = new Bn(N, K, P, SELF_LOOPS);
    testBn->CopyFrom(bestBn);
-   testHang = new BnHandles(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
-   testHang->CopyFrom(bestHang, bestBn);
+   testIO = new BnIO(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   testIO->CopyFrom(bestIO, bestBn);
 
    stayUpper = isUpper();
    #ifdef LOG_DEBUG 
@@ -288,11 +284,11 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
          max = max > value ? max : value;
          maxProximityValue = maxProximityValue > value ? maxProximityValue : value;
       }
-      testHang->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
+      testIO->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
    }
    bool isInCorrectHalf = stayUpper == isUpper();
    for(int i = 0; i < REGION_NODES; i++) {
-      testHang->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
+      testIO->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
    }
 
    #ifdef LOG_DEBUG
@@ -313,10 +309,10 @@ void CFootBotDiffusion::RunAndEvaluateNetwork() {
    // Run motors with outputs
    Real left = 0, right = 0;
    for(int i = 0; i < WHEELS_NODES / 2; i++) {
-      left += testHang->GetOutput(testBn, i) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
+      left += testIO->GetOutput(testBn, i) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
    }
    for(int i = 0; i < WHEELS_NODES / 2; i++) {
-      right += testHang->GetOutput(testBn, i + WHEELS_NODES / 2) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
+      right += testIO->GetOutput(testBn, i + WHEELS_NODES / 2) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
    }
    m_pcWheels->SetLinearVelocity(left, right);
    
@@ -344,11 +340,11 @@ void CFootBotDiffusion::ControlStep() {
       //SELECTION
       if(testNetworkFitness >= bestNetworkFitness) {
          bestBn->CopyFrom(testBn);
-         bestHang->CopyFrom(testHang, bestBn);
+         bestIO->CopyFrom(testIO, bestBn);
          bestNetworkFitness = testNetworkFitness;
       } else { //rollback to previous best network
          testBn->CopyFrom(bestBn);
-         testHang->CopyFrom(bestHang, bestBn);
+         testIO->CopyFrom(bestIO, bestBn);
       }
       //TODO reset states with p 0.5?
 
@@ -361,8 +357,8 @@ void CFootBotDiffusion::ControlStep() {
       //NETWORK IO REWIRES
       int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
       int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
-      if(inputRewires > 0) testHang->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
-      if(outputRewires > 0) testHang->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
+      if(inputRewires > 0) testIO->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
+      if(outputRewires > 0) testIO->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
 
       //RESET
       currentStep = 0;
@@ -445,18 +441,18 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
       j["boolean_network"]["connections"] = jConnections;
 
       nlohmann::json jInput = nlohmann::json::array();
-      for(int i = 0; i < NETWORK_INPUT_COUNT; i++) jInput.push_back(testHang->GetInputNodeIndex(i));
+      for(int i = 0; i < NETWORK_INPUT_COUNT; i++) jInput.push_back(testIO->GetInputNodeIndex(i));
       j["boolean_network"]["inputs"] = jInput;
       nlohmann::json jOutputs = nlohmann::json::array();
-      for(int i = 0; i < NETWORK_OUTPUT_COUNT; i++) jOutputs.push_back(testHang->GetOutputNodeIndex(i));
+      for(int i = 0; i < NETWORK_OUTPUT_COUNT; i++) jOutputs.push_back(testIO->GetOutputNodeIndex(i));
       j["boolean_network"]["outputs"] = jOutputs;
 
-      if(testHang->HasOverriddenOutputFunctions()) {
+      if(testIO->HasOverriddenOutputFunctions()) {
          nlohmann::json jOverriddenFunctions = nlohmann::json::array();
          for(int n = 0; n < NETWORK_OUTPUT_COUNT; n++) {
             nlohmann::json jTruthTable = nlohmann::json::array();
             for(int k = 0; k < testBn->K2; k++)
-               jTruthTable.push_back(testHang->GetOverriddenOutputFunctions(n, k));
+               jTruthTable.push_back(testIO->GetOverriddenOutputFunctions(n, k));
             jOverriddenFunctions.push_back(jTruthTable);
          }
          j["boolean_network"]["overridden_output_functions"] = jOverriddenFunctions;
@@ -470,8 +466,8 @@ void CFootBotDiffusion::PrintAnalytics(bool printBnSchema) {
 CFootBotDiffusion::~CFootBotDiffusion() {
    delete bestBn;
    delete testBn;
-   delete bestHang;
-   delete testHang;
+   delete bestIO;
+   delete testIO;
 }
 
 void CFootBotDiffusion::Reset() {
