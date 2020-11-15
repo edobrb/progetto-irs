@@ -112,10 +112,13 @@ object TestController extends App {
 
   configurations.drop(0).zipWithIndex.foreach {
     case ((config, hash), i) =>
-      print(s"Executing test $i... ")
-      val exp1 = Experiments.runSimulation(config, visualization = false).filter(_.headOption.contains('{')).drop(1)
-      val result = utils.Hash.sha256(exp1)
-      println(result + " == "+ hash + (if(result == hash) " [SUCCESS]" else " [FAILURE]"))
+      val (_, time) = utils.Benchmark.time {
+        print(s"Executing test $i... ")
+        val exp1 = Experiments.runSimulation(config, visualization = false).filter(_.headOption.contains('{')).drop(1)
+        val result = utils.Hash.sha256(exp1)
+        print(result + " == "+ hash + (if(result == hash) " [SUCCESS]" else " [FAILURE]"))
+      }
+      println(s" ($time)")
   }
 
 }
