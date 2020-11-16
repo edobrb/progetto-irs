@@ -102,7 +102,16 @@ object Analyzer extends App {
   }
 
   /** Plots charts */
-  makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
+  Settings.variations.foreach { v =>
+    makeCharts[Unit, Any](experimentsResults,
+      groups = _ => (),
+      series = c => v.lens.get(c),
+      chartName = _ => v.name,
+      legend = (c, _, _) => s"${v.desc(c)}")
+  }
+
+  //TODO: remove
+  Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
     groups = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
     series = c => c.copy(network = c.network.copy(self_loops = true)),
     chartName = {
@@ -114,36 +123,7 @@ object Analyzer extends App {
         val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
         val nic = config.objective.obstacle_avoidance.proximity_nodes
         s"B=$bias,OR=$outputRewires,NIC=$nic"
-    })
-  makeCharts[Unit, Double](experimentsResults,
-    groups = _ => (),
-    series = _.network.p,
-    chartName = _ => "bias",
-    legend = (c, _, _) => s"bias=${c.network.p}")
-  makeCharts[Unit, Int](experimentsResults,
-    groups = _ => (),
-    series = _.objective.obstacle_avoidance.proximity_nodes,
-    chartName = _ => "nic",
-    legend = (c, _, _) => s"input-node=${c.objective.obstacle_avoidance.proximity_nodes}")
-  makeCharts[Unit, Int](experimentsResults,
-    groups = _ => (),
-    series = _.adaptation.network_io_mutation.max_output_rewires,
-    chartName = _ => "or",
-    legend = (c, _, _) => s"output-rewires=${c.adaptation.network_io_mutation.max_output_rewires}")
-  makeCharts[Unit, Boolean](experimentsResults,
-    groups = _ => (),
-    series = _.network.self_loops,
-    chartName = _ => "self-loops",
-    legend = (c, _, _) => if (c.network.self_loops) "self loops" else "no self loops")
-  makeCharts[Unit, (Boolean, Boolean)](experimentsResults,
-    groups = _ => (),
-    series = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
-    chartName = _ => "variation",
-    legend = {
-      case (_, _, (false, _)) => "whole arena"
-      case (_, _, (true, false)) => "half arena - no feed"
-      case (_, _, (true, true)) => "half arena - feed"
-    })
+    }))
 
 
   /** Run a simulation where each robot has the best boolean network. */

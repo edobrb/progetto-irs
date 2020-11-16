@@ -13,7 +13,7 @@ object Settings {
   def DEFAULT_CONFIG: Configuration = Configuration(
     Simulation(
       ticks_per_seconds = 10,
-      experiment_length = 7200,
+      experiment_length = 7200 * 3,
       robot_count = 10,
       print_analytics = true),
     Adaptation(epoch_length = 400,
@@ -42,17 +42,27 @@ object Settings {
       None)
   )
 
+  case class Variation[K, T](variations: Seq[T], lens: Lens[K, T], name: String, description: T => String = (v: T) => v.toString) {
+    def apply: Seq[K => K] = variations.lensMap(lens)
+
+    def desc(k: K): String = description(lens.get(k))
+  }
 
   /** Configuration variations */
-  def variations: Seq[Seq[Configuration => Configuration]] = Seq(
-    Seq(0.1, 0.5, 0.79).lensMap(lens(_.network.p)),
-    Seq(0, 1).lensMap(lens(_.adaptation.network_io_mutation.max_output_rewires)),
-    Seq(true, false).lensMap(lens(_.network.self_loops)),
-    Seq(8, 24).lensMap(lens(_.objective.obstacle_avoidance.proximity_nodes)),
-    Seq(None,
+  def variations: Seq[Variation[Configuration, _]] = Seq(
+    Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
+    Variation(Seq(0, 1), lens(_.adaptation.network_io_mutation.max_output_rewires), "or"),
+    Variation(Seq(true, false), lens(_.network.self_loops), "sl"),
+    Variation(Seq(8, 24), lens(_.objective.obstacle_avoidance.proximity_nodes), "pn"),
+    Variation(Seq(None,
       Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)),
-      Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false)))
-      .lensMap(lens(_.objective.half_region_variation)))
+      Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false))),
+      lens(_.objective.half_region_variation), "v", (v: Option[HalfRegionVariation]) => v match {
+        case None => "whole arena"
+        case Some(HalfRegionVariation(1, _, _)) => "half arena - feed"
+        case Some(HalfRegionVariation(0, _, _)) => "half arena - no feed"
+      }),
+  )
 
   def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
     argOrException(argName, f, Some(default))(args)
@@ -83,7 +93,7 @@ object Settings {
 
   /** All configuration combinations */
   def configurations: Seq[Configuration] =
-    utils.Combiner(DEFAULT_CONFIG, variations)
+    utils.Combiner(DEFAULT_CONFIG, variations.map(_.apply))
 
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
