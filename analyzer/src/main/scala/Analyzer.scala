@@ -13,24 +13,32 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import com.github.plokhotnyuk.jsoniter_scala.core._
+import model.config.Configuration.HalfRegionVariation
 
 object Analyzer extends App {
 
   implicit val arguments: Array[String] = args
 
+  val SHOW_CHARTS = Settings.argOrDefault("show", v => Try(v.toBoolean).toOption, false)(arguments)
+
   def RESULT_FOLDER(implicit args: Array[String]): String = Settings.DATA_FOLDER(args) + "/results"
 
   implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
-  lazy val rawData: Iterable[RobotData] = Loader.OUTPUT_FILENAMES.parFlatmap(Settings.PARALLELISM_DEGREE, { filename =>
-    utils.File.read(filename).map { str =>
-      println(s"Parsing $filename (${str.length} chars)")
-      Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
-    } match {
-      case Failure(exception) => println(s"Error while loading $filename: $exception"); Nil
-      case Success(value) => value
-    }
-  })
+  lazy val rawData: Iterable[RobotData] = {
+    var loaded = 0
+    val result = Loader.OUTPUT_FILENAMES.parFlatmap(Settings.PARALLELISM_DEGREE, { filename =>
+      utils.File.read(filename).map { str =>
+        println(s"Parsing $filename (${str.length} chars)")
+        Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
+      } match {
+        case Failure(exception) => Nil //println(s"Error while loading $filename: $exception"); Nil
+        case Success(value) => loaded = loaded + 1; value
+      }
+    })
+    println(s"Loaded $loaded experiments")
+    result
+  }
 
   /** Groups the raw data by configuration. */
   lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
@@ -57,6 +65,7 @@ object Analyzer extends App {
         chart.addSeries(name(config), totalFitnessCurve.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
+    if (SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   def showBoxPlot(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
@@ -74,6 +83,7 @@ object Analyzer extends App {
         chart.addSeries(name(config), result.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
+    if (SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   /**
@@ -82,7 +92,7 @@ object Analyzer extends App {
    */
   def makeCharts[G, S](experimentsResults: Seq[(Configuration, Iterable[RobotData])],
                        series: Configuration => S,
-                       chartName: G => String,
+                       chartName: (Configuration, G) => String,
                        legend: (Configuration, G, S) => String,
                        groups: Configuration => G)(implicit classTag: ClassTag[G]): Unit = {
     experimentsResults.groupBy(v => groups(v._1)).foreach {
@@ -90,44 +100,35 @@ object Analyzer extends App {
         val results = groupResult.groupBy(v => series(v._1)).map {
           case (_, seq) => (seq.head._1, seq.flatMap(v => v._2))
         }.toSeq
-        showAveragedFitnessCharts(s"${chartName(group)}-fitness-curve", results, config => s"${legend(config, group, series(config))}")
-        showBoxPlot(s"${chartName(group)}-boxplot", results, config => s"${legend(config, group, series(config))}")
+        showAveragedFitnessCharts(s"${chartName(groupResult.head._1, group)}-fitness-curve", results, config => s"${legend(config, group, series(config))}")
+        showBoxPlot(s"${chartName(groupResult.head._1, group)}-boxplot", results, config => s"${legend(config, group, series(config))}")
     }
   }
 
   /** Plots charts */
-  Settings.variations.foreach { v =>
-    makeCharts[Unit, Any](experimentsResults,
-      groups = _ => (),
-      series = c => v.lens.get(c),
-      chartName = _ => v.name,
-      legend = (c, _, _) => s"${v.desc(c)}")
+  if (Settings.argOrDefault("chart", v => Try(v.toBoolean).toOption, false)(arguments)) {
+    println("Plotting charts...")
+    Settings.variations.foreach { v =>
+      makeCharts[Unit, Any](experimentsResults,
+        groups = _ => (),
+        series = c => v.lens.get(c),
+        chartName = (_, _) => v.name,
+        legend = (c, _, _) => s"${v.name}=${v.desc(c)}")
+    }
+
+    Settings.variations.filter(!_.collapse).foreach { v =>
+      makeCharts[Any, Any](experimentsResults,
+        groups = c => v.lens.get(c),
+        series = c => Settings.variations.filter(!_.collapse).map(v => v.lens.get(c)),
+        chartName = (c, _) => s"group-${v.name}-${v.desc(c)}",
+        legend = (c, _, _) => Settings.variations.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+    }
+
   }
-
-  makeCharts[Unit, Any](experimentsResults,
-    groups = _ => (),
-    series = c => Settings.variations.map(v => v.lens.get(c)),
-    chartName = _ => "all",
-    legend = (c, _, _) => Settings.variations.map(v => v.desc(c)).mkString("-"))
-
-  //TODO: remove
-  Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
-    groups = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
-    series = c => c.copy(network = c.network.copy(self_loops = true)),
-    chartName = {
-      case (sh, fp) => s"${if (sh) "half-" else ""}${if (fp) "feed-" else ""}overall"
-    },
-    legend = {
-      case (config, _, _) =>
-        val bias = config.network.p
-        val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
-        val nic = config.objective.obstacle_avoidance.proximity_nodes
-        s"B=$bias,OR=$outputRewires,NIC=$nic"
-    }))
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitness_values.sum)
     val bestConfig = bestRobot.config
     println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
@@ -136,7 +137,7 @@ object Analyzer extends App {
     Experiments.runSimulation(config, visualization = true).foreach(println)
   }
 
-  runSimulationWithBestRobot(config => true)
-
-  println("done")
+  if (Settings.argOrDefault("run", v => Try(v.toBoolean).toOption, false)(arguments)) {
+    runSimulationWithBestRobot(config => true)
+  }
 }

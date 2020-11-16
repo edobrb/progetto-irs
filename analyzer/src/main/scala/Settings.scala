@@ -1,9 +1,10 @@
 import model.config
-import model.config.Configuration
+import model.config.{Configuration, Variation}
 import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, Network, NetworkIO, NetworkIOMutation, NetworkMutation, Objective, ObstacleAvoidance, Simulation}
 import monocle.Lens
 import monocle.macros.GenLens
 import utils.ConfigLens._
+
 import scala.util.Try
 import monocle.macros.syntax.lens._
 
@@ -13,7 +14,7 @@ object Settings {
   def DEFAULT_CONFIG: Configuration = Configuration(
     Simulation(
       ticks_per_seconds = 10,
-      experiment_length = 7200 * 3,
+      experiment_length = 7200,
       robot_count = 10,
       print_analytics = true),
     Adaptation(epoch_length = 400,
@@ -42,17 +43,11 @@ object Settings {
       None)
   )
 
-  case class Variation[K, T](variations: Seq[T], lens: Lens[K, T], name: String, description: T => String = (v: T) => v.toString) {
-    def apply: Seq[K => K] = variations.lensMap(lens)
-
-    def desc(k: K): String = description(lens.get(k))
-  }
-
   /** Configuration variations */
   def variations: Seq[Variation[Configuration, _]] = Seq(
     Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
     Variation(Seq(0, 1), lens(_.adaptation.network_io_mutation.max_output_rewires), "or"),
-    Variation(Seq(true, false), lens(_.network.self_loops), "sl"),
+    Variation(Seq(true, false), lens(_.network.self_loops), "sl", collapse = true),
     Variation(Seq(8, 24), lens(_.objective.obstacle_avoidance.proximity_nodes), "pn"),
     Variation(Seq(None,
       Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)),
@@ -61,7 +56,7 @@ object Settings {
         case None => "whole arena"
         case Some(HalfRegionVariation(1, _, _)) => "half arena - feed"
         case Some(HalfRegionVariation(0, _, _)) => "half arena - no feed"
-      }),
+      })
   )
 
   def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
@@ -93,7 +88,7 @@ object Settings {
 
   /** All configuration combinations */
   def configurations: Seq[Configuration] =
-    utils.Combiner(DEFAULT_CONFIG, variations.map(_.apply))
+    utils.Combiner(DEFAULT_CONFIG, variations.map(_.apply)).distinct
 
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
