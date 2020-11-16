@@ -37,14 +37,8 @@ object Analyzer extends App {
     rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
-    case (config, _) =>
-      val bias = config.network.p
-      val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
-      val selfLoops = config.network.self_loops
-      val nic = config.objective.obstacle_avoidance.proximity_nodes
-      val fp = if (config.objective.half_region_variation.exists(_.region_nodes > 0)) 1 else 0
-      val soh = if (config.objective.half_region_variation.isDefined) 1 else 0
-      soh * 10000000 + fp * 1000000 + nic * 10000 + (bias * 1000).toInt + outputRewires * 10 + (if (selfLoops) 1 else 0)
+    case (config, data) =>
+      (data.map(_.fitnessCurve.last).sum / data.size * -1000).toInt
   }
 
   def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
@@ -113,11 +107,11 @@ object Analyzer extends App {
   makeCharts[Unit, Any](experimentsResults,
     groups = _ => (),
     series = c => Settings.variations.map(v => v.lens.get(c)),
-    chartName = _ => "overall",
+    chartName = _ => "all",
     legend = (c, _, _) => Settings.variations.map(v => v.desc(c)).mkString("-"))
 
   //TODO: remove
-  /*Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
+  Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
     groups = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
     series = c => c.copy(network = c.network.copy(self_loops = true)),
     chartName = {
@@ -129,7 +123,7 @@ object Analyzer extends App {
         val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
         val nic = config.objective.obstacle_avoidance.proximity_nodes
         s"B=$bias,OR=$outputRewires,NIC=$nic"
-    }))*/
+    }))
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
