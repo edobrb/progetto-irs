@@ -28,13 +28,13 @@ object Experiments extends App {
           //println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
           if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
-            val lines: Seq[String] = out.to(LazyList)
+            val (lines1, lines2) = out.copy(128)
             (1 to 2).parMap(2, {
-              case 1 => Loader.load(lines.iterator, filename + ".json") match {
+              case 1 => Loader.load(lines1, filename + ".json") match {
                 case Failure(exception) => println(s"Error while loading ${filename + ".gzip"}: ${exception.getMessage}")
                 case Success(timeLoad) => //println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
               }
-              case 2 => utils.File.writeGzippedLines(output_filename, lines.iterator)
+              case 2 => utils.File.writeGzippedLines(output_filename, lines2)
             }).last
           } else {
             utils.File.writeGzippedLines(output_filename, out)
