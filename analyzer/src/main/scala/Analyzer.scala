@@ -110,8 +110,14 @@ object Analyzer extends App {
       legend = (c, _, _) => s"${v.desc(c)}")
   }
 
+  makeCharts[Unit, Any](experimentsResults,
+    groups = _ => (),
+    series = c => Settings.variations.map(v => v.lens.get(c)),
+    chartName = _ => "overall",
+    legend = (c, _, _) => Settings.variations.map(v => v.desc(c)).mkString("-"))
+
   //TODO: remove
-  Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
+  /*Try(makeCharts[(Boolean, Boolean), Configuration](experimentsResults,
     groups = config => (config.objective.half_region_variation.isDefined, config.objective.half_region_variation.exists(_.region_nodes > 0)),
     series = c => c.copy(network = c.network.copy(self_loops = true)),
     chartName = {
@@ -123,8 +129,7 @@ object Analyzer extends App {
         val outputRewires = config.adaptation.network_io_mutation.max_output_rewires
         val nic = config.objective.obstacle_avoidance.proximity_nodes
         s"B=$bias,OR=$outputRewires,NIC=$nic"
-    }))
-
+    }))*/
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
