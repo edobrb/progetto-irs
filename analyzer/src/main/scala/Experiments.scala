@@ -13,16 +13,13 @@ object Experiments extends App {
 
   /** Simulation standard output (by lines) */
   def runSimulation(config: Configuration, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
-    Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), config, visualization)
-
-  private val LOAD = utils.Arguments.boolOrDefault("load", default = false)(arguments)
-  private val WRITE = utils.Arguments.boolOrDefault("write", default = true)(arguments)
+    Argos.runConfiguredSimulation(Args.WORKING_DIR(args), config, visualization)
 
   /** Running experiments */
   println(s"Running ${Settings.experiments.size} experiments...")
-  Settings.experiments.toList.sortBy(_._3).parForeach(threads = Settings.PARALLELISM_DEGREE, {
+  Settings.experiments.toList.sortBy(_._3).parForeach(threads = Args.PARALLELISM_DEGREE, {
     case (experimentName, config, _) =>
-      val filename = Settings.DATA_FOLDER + "/" + experimentName
+      val filename = Args.DATA_FOLDER + "/" + experimentName
       val output_filename = filename + ".gzip"
       if (!utils.File.exists(output_filename)) {
         Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
@@ -30,7 +27,7 @@ object Experiments extends App {
         Benchmark.time {
           //println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
-          (LOAD, WRITE) match {
+          (Args.LOAD_OUTPUT, Args.WRITE_OUTPUT) match {
             case (false, true) => utils.File.writeGzippedLines(output_filename, out)
             case (true, false) =>
               var lines: Long = 0

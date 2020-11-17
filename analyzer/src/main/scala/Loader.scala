@@ -16,7 +16,7 @@ object Loader extends App {
 
   implicit val arguments: Array[String] = args
 
-  def BASE_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments(args).sortBy(_._3).map(_._1).map(Settings.DATA_FOLDER(args) + "/" + _)
+  def BASE_FILENAMES(implicit args: Array[String]): Iterable[String] = Settings.experiments(args).sortBy(_._3).map(_._1).map(Args.DATA_FOLDER(args) + "/" + _)
 
   def INPUT_FILENAMES(implicit args: Array[String]): Iterable[String] = FILENAMES(args).map(_._1)
 
@@ -94,7 +94,7 @@ object Loader extends App {
 
   /** Run the loader. Foreach experiments executes "extractTests" then map each experiment into a sequence of
    * RobotData and then writes it into a json file */
-  FILENAMES.toList.parForeach(threads = Settings.PARALLELISM_DEGREE, {
+  FILENAMES.toList.parForeach(threads = Args.PARALLELISM_DEGREE, {
     case (input_filename, output_filename) if !utils.File.exists(output_filename) && utils.File.exists(input_filename) =>
       println(s"Loading $input_filename ... ")
       utils.File.readGzippedLinesAndMap(input_filename) {

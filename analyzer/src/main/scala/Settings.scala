@@ -76,17 +76,7 @@ object Settings {
             .setControllersSeed(Some(Math.abs((name + "-controller").hashCode)))
         }
 
-        REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
+        Args.REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
     }
   }
-
-
-  def WORKING_DIR(implicit args: Array[String]): String = utils.Arguments.argOrException("working_dir", Some.apply)(args)
-
-  def DATA_FOLDER(implicit args: Array[String]): String = utils.Arguments.argOrException("data", Some.apply)(args)
-
-  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = utils.Arguments.argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
-
-  def REPETITIONS(implicit args: Array[String]): Range =
-    utils.Arguments.argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to utils.Arguments.argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 }

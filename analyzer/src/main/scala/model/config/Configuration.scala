@@ -2,6 +2,7 @@ package model.config
 
 import model.config.Configuration._
 import play.api.libs.json.{Json, OFormat}
+import utils.ConfigLens.lens
 
 case class Configuration(simulation: Simulation,
                          adaptation: Adaptation,
@@ -24,10 +25,10 @@ case class Configuration(simulation: Simulation,
     utils.Hash.sha256(setSimulationSeed(None).setControllersSeed(None).toString)
 
   def setSimulationSeed(seed: Option[Int]): Configuration =
-    copy(simulation = simulation.copy(simulation_random_seed = seed))
+    lens(_.simulation.simulation_random_seed).set(seed)(this)
 
   def setControllersSeed(seed: Option[Int]): Configuration =
-    copy(simulation = simulation.copy(controllers_random_seed = seed))
+    lens(_.simulation.controllers_random_seed).set(seed)(this)
 }
 
 object Configuration {

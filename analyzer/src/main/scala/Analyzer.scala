@@ -13,21 +13,18 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import com.github.plokhotnyuk.jsoniter_scala.core._
-import model.config.Configuration.HalfRegionVariation
 
 object Analyzer extends App {
 
   implicit val arguments: Array[String] = args
 
-  private val SHOW_CHARTS = utils.Arguments.boolOrDefault("show", default = false)(arguments)
-
-  def RESULT_FOLDER(implicit args: Array[String]): String = Settings.DATA_FOLDER(args) + "/results"
+  def RESULT_FOLDER(implicit args: Array[String]): String = Args.DATA_FOLDER(args) + "/results"
 
   implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
   lazy val rawData: Iterable[RobotData] = {
     var loaded = 0
-    val result = Loader.OUTPUT_FILENAMES.parFlatmap(Settings.PARALLELISM_DEGREE, { filename =>
+    val result = Loader.OUTPUT_FILENAMES.parFlatmap(Args.PARALLELISM_DEGREE, { filename =>
       utils.File.read(filename).map { str =>
         println(s"Parsing $filename (${str.length} chars)")
         Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
@@ -45,7 +42,7 @@ object Analyzer extends App {
     rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
-    case (config, data) =>
+    case (_, data) =>
       (data.map(_.fitnessCurve.last).sum / data.size * -1000).toInt
   }
 
@@ -65,7 +62,7 @@ object Analyzer extends App {
         chart.addSeries(name(config), totalFitnessCurve.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
-    if (SHOW_CHARTS) new SwingWrapper(chart).displayChart
+    if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   def showBoxPlot(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
@@ -83,7 +80,7 @@ object Analyzer extends App {
         chart.addSeries(name(config), result.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
-    if (SHOW_CHARTS) new SwingWrapper(chart).displayChart
+    if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   /**
@@ -106,7 +103,7 @@ object Analyzer extends App {
   }
 
   /** Plots charts */
-  if (utils.Arguments.boolOrDefault("chart", default = false)(arguments)) {
+  if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
     Settings.variations.foreach { v =>
       makeCharts[Unit, Any](experimentsResults,
@@ -137,7 +134,7 @@ object Analyzer extends App {
     Experiments.runSimulation(config, visualization = true).foreach(println)
   }
 
-  if (utils.Arguments.boolOrDefault("run", default = false)(arguments)) {
-    runSimulationWithBestRobot(config => config.objective.half_region_variation.isDefined)
+  if (Args.RUN_BEST) {
+    runSimulationWithBestRobot(config => config.objective.half_region_variation.isEmpty)
   }
 }
