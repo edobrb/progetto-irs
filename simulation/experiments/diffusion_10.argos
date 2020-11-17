@@ -16,7 +16,7 @@
   <!-- *************** -->
   <controllers>
 
-    <footbot_controller id="fdc" library="build/controllers/footbot_diffusion/libfootbot_diffusion.so">
+    <footbot_controller id="fdc" library="build/controllers/footbot_controller/libfootbot_controller.so">
       <actuators>
         <differential_steering implementation="default" noise_level="0.03" />
         <leds implementation="default" medium="leds" />

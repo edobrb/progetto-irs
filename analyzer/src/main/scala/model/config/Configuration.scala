@@ -50,7 +50,9 @@ object Configuration {
                              self_loops: Boolean,
                              max_function_bit_flips: Int,
                              function_bit_flips_probability: Double,
-                             keep_p_balance: Boolean)
+                             keep_p_balance: Boolean,
+                             sync: Boolean,
+                             selection_mechanism: String)
 
   case class NetworkIOMutation(max_input_rewires: Int,
                                input_rewire_probability: Double,

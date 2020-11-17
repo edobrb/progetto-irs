@@ -27,7 +27,6 @@ CFootBotBn::CFootBotBn() :
    stayUpper(false),
    myId(-1) {}
 
-
 /* Global parameters */
 bool configurationLoaded = false;
 
@@ -106,7 +105,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       //sharedBnIo = new BnIO*[ROBOT_COUNT];
 
       //adaptation
-      EPOCH_LENGTH                  = config["adaptation"]["epoch_length"].get<int>();
+      EPOCH_LENGTH                  = config["adaptation"]["epoch_length"].get<int>() * TICKS_PER_SECOND;
       MAX_INPUT_REWIRES             = config["adaptation"]["network_io_mutation"]["max_input_rewires"].get<int>();
       INPUT_REWIRE_PROBABILITY      = config["adaptation"]["network_io_mutation"]["input_rewire_probability"].get<Real>();
       MAX_OUTPUT_REWIRES            = config["adaptation"]["network_io_mutation"]["max_output_rewires"].get<int>();
