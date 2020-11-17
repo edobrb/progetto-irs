@@ -13,6 +13,7 @@ object Settings {
   /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
   def DEFAULT_CONFIG: Configuration = Configuration(
     Simulation(
+      argos = "experiments/parametrized.argos",
       ticks_per_seconds = 10,
       experiment_length = 7200,
       robot_count = 10,
@@ -59,33 +60,6 @@ object Settings {
       })
   )
 
-  def argOrDefault[T](argName: String, f: String => Option[T], default: T)(args: Array[String]): T =
-    argOrException(argName, f, Some(default))(args)
-
-  def argOrException[T](argName: String, f: String => Option[T], default: Option[T] = None)(args: Array[String]): T =
-    args.find(a => Try {
-      a.split('=')(0) == argName
-    }.toOption.contains(true)).flatMap(a => Try {
-      a.split('=')(1)
-    }.toOption).flatMap(f) match {
-      case Some(value) => value
-      case None => default match {
-        case Some(value) => value
-        case None => throw new Exception(s"Argument $argName not defined")
-      }
-    }
-
-  def WORKING_DIR(implicit args: Array[String]): String = argOrException("working_dir", Some.apply)(args)
-
-  def SIMULATION_FILE(implicit args: Array[String]): String = argOrException("argos", Some.apply)(args)
-
-  def DATA_FOLDER(implicit args: Array[String]): String = argOrException("data", Some.apply)(args)
-
-  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
-
-  def REPETITIONS(implicit args: Array[String]): Range =
-    argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
-
   /** All configuration combinations */
   def configurations: Seq[Configuration] =
     utils.Combiner(DEFAULT_CONFIG, variations.map(_.apply)).distinct
@@ -105,4 +79,14 @@ object Settings {
         REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
     }
   }
+
+
+  def WORKING_DIR(implicit args: Array[String]): String = utils.Arguments.argOrException("working_dir", Some.apply)(args)
+
+  def DATA_FOLDER(implicit args: Array[String]): String = utils.Arguments.argOrException("data", Some.apply)(args)
+
+  def PARALLELISM_DEGREE(implicit args: Array[String]): Int = utils.Arguments.argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)
+
+  def REPETITIONS(implicit args: Array[String]): Range =
+    utils.Arguments.argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to utils.Arguments.argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 }

@@ -13,7 +13,10 @@ object Experiments extends App {
 
   /** Simulation standard output (by lines) */
   def runSimulation(config: Configuration, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
-    Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), Settings.SIMULATION_FILE(args), config, visualization)
+    Argos.runConfiguredSimulation(Settings.WORKING_DIR(args), config, visualization)
+
+  private val LOAD = utils.Arguments.boolOrDefault("load", default = false)(arguments)
+  private val WRITE = utils.Arguments.boolOrDefault("write", default = true)(arguments)
 
   /** Running experiments */
   println(s"Running ${Settings.experiments.size} experiments...")
@@ -27,17 +30,19 @@ object Experiments extends App {
         Benchmark.time {
           //println(s"Started experiment $experimentName ...")
           val out = config.toJson +: runSimulation(config, visualization = false).filter(_.headOption.contains('{'))
-          if (Settings.argOrDefault("load", v => Try(v.toBoolean).toOption, false)(arguments)) { //Loading now
-            val (lines1, lines2) = out.copy(128)
-            (1 to 2).parMap(2, {
-              case 1 => Loader.load(lines1, filename + ".json") match {
-                case Failure(exception) => println(s"Error while loading ${filename + ".gzip"}: ${exception.getMessage}")
-                case Success(timeLoad) => //println(s"Loading of ${filename + ".json"} done in ${timeLoad.toSeconds})")
-              }
-              case 2 => utils.File.writeGzippedLines(output_filename, lines2)
-            }).last
-          } else {
-            utils.File.writeGzippedLines(output_filename, out)
+          (LOAD, WRITE) match {
+            case (false, true) => utils.File.writeGzippedLines(output_filename, out)
+            case (true, false) =>
+              var lines: Long = 0
+              Loader.load(out.map { v => lines = lines + 1; v }, filename + ".json").map(_ => lines)
+            case (true, true) => val (lines1, lines2) = out.copy(128)
+              (1 to 2).parMap(2, {
+                case 1 => Loader.load(lines1, filename + ".json") match {
+                  case Failure(exception) => println(s"Error while loading ${filename + ".gzip"}: ${exception.getMessage}")
+                  case Success(timeLoad) =>
+                }
+                case 2 => utils.File.writeGzippedLines(output_filename, lines2)
+              }).last
           }
         } match {
           case (Success(lines), time) if lines == expectedLines =>

@@ -19,7 +19,7 @@ object Analyzer extends App {
 
   implicit val arguments: Array[String] = args
 
-  val SHOW_CHARTS = Settings.argOrDefault("show", v => Try(v.toBoolean).toOption, false)(arguments)
+  private val SHOW_CHARTS = utils.Arguments.boolOrDefault("show", default = false)(arguments)
 
   def RESULT_FOLDER(implicit args: Array[String]): String = Settings.DATA_FOLDER(args) + "/results"
 
@@ -106,7 +106,7 @@ object Analyzer extends App {
   }
 
   /** Plots charts */
-  if (Settings.argOrDefault("chart", v => Try(v.toBoolean).toOption, false)(arguments)) {
+  if (utils.Arguments.boolOrDefault("chart", default = false)(arguments)) {
     println("Plotting charts...")
     Settings.variations.foreach { v =>
       makeCharts[Unit, Any](experimentsResults,
@@ -128,7 +128,7 @@ object Analyzer extends App {
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitness_values.sum)
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
     val bestConfig = bestRobot.config
     println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
@@ -137,7 +137,7 @@ object Analyzer extends App {
     Experiments.runSimulation(config, visualization = true).foreach(println)
   }
 
-  if (Settings.argOrDefault("run", v => Try(v.toBoolean).toOption, false)(arguments)) {
-    runSimulationWithBestRobot(config => true)
+  if (utils.Arguments.boolOrDefault("run", default = false)(arguments)) {
+    runSimulationWithBestRobot(config => config.objective.half_region_variation.isDefined)
   }
 }

@@ -32,7 +32,8 @@ case class Configuration(simulation: Simulation,
 
 object Configuration {
 
-  case class Simulation(ticks_per_seconds: Int,
+  case class Simulation(argos: String,
+                        ticks_per_seconds: Int,
                         experiment_length: Int,
                         robot_count: Int,
                         print_analytics: Boolean,
