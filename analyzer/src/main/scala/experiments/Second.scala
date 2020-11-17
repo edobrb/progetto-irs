@@ -8,7 +8,7 @@ object Second extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
-      argos = "experiments/parametrized.argos", //TODO: random arena
+      argos = "experiments/parametrized.argos",
       ticks_per_seconds = 10,
       experiment_length = 7200 * 2,
       robot_count = 10,
@@ -48,6 +48,7 @@ object Second extends ExperimentSettings {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
+      Variation(Seq("experiments/parametrized.argos", "parametrized-random-cylinder.argos"), lens(_.simulation.argos), "arena"),
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
       Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "m", {
         case ((2, 1), (0, 0)) => "io rewire"
