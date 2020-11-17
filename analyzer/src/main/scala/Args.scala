@@ -1,6 +1,8 @@
 import scala.util.Try
 
 object Args {
+  def CONFIGURATION(implicit args: Array[String]): String = utils.Arguments.argOrException("config", Some.apply)(args)
+
   def WORKING_DIR(implicit args: Array[String]): String = utils.Arguments.argOrException("working_dir", Some.apply)(args)
 
   def DATA_FOLDER(implicit args: Array[String]): String = utils.Arguments.argOrException("data", Some.apply)(args)

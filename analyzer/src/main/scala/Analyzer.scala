@@ -105,7 +105,7 @@ object Analyzer extends App {
   /** Plots charts */
   if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
-    Settings.variations.foreach { v =>
+    Settings.selectedExperiment.configVariation.foreach { v =>
       makeCharts[Unit, Any](experimentsResults,
         groups = _ => (),
         series = c => v.lens.get(c),
@@ -113,12 +113,12 @@ object Analyzer extends App {
         legend = (c, _, _) => s"${v.name}=${v.desc(c)}")
     }
 
-    Settings.variations.filter(!_.collapse).foreach { v =>
+    Settings.selectedExperiment.configVariation.filter(!_.collapse).foreach { v =>
       makeCharts[Any, Any](experimentsResults,
         groups = c => v.lens.get(c),
-        series = c => Settings.variations.filter(!_.collapse).map(v => v.lens.get(c)),
+        series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
         chartName = (c, _) => s"group-${v.name}-${v.desc(c)}",
-        legend = (c, _, _) => Settings.variations.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
     }
 
   }

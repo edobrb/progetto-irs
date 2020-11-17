@@ -1,70 +1,16 @@
+import experiments.ExperimentSettings
 import model.config.{Configuration, Variation}
 import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, Network, NetworkIO, NetworkIOMutation, NetworkMutation, Objective, ObstacleAvoidance, Simulation}
 import utils.ConfigLens._
 
 object Settings {
 
-  /** Default simulation configuration (will reflect on the .argos file and robots parameters) */
-  def DEFAULT_CONFIG: Configuration = Configuration(
-    Simulation(
-      argos = "experiments/parametrized.argos", //TODO: random arena
-      ticks_per_seconds = 10,
-      experiment_length = 7200 * 2,
-      robot_count = 10,
-      print_analytics = true),
-    Adaptation(epoch_length = 80,
-      NetworkMutation(
-        max_connection_rewires = 0,
-        connection_rewire_probability = 1,
-        self_loops = false,
-        max_function_bit_flips = 0,
-        function_bit_flips_probability = 1,
-        keep_p_balance = false,
-        sync = false, //not for now
-        selection_mechanism = ""),
-      NetworkIOMutation(
-        max_input_rewires = 0,
-        input_rewire_probability = 1,
-        max_output_rewires = 0,
-        output_rewire_probability = 1,
-        allow_io_node_overlap = false)),
-    Network(n = 100, k = 3, p = 0, self_loops = false,
-      io = NetworkIO(
-        override_output_nodes = true,
-        override_outputs_p = 0.5,
-        allow_io_node_overlap = false),
-      initial_schema = None,
-      initial_state = None),
-    Objective(
-      Forwarding(max_wheel_speed = 25, wheels_nodes = 2),
-      ObstacleAvoidance(proximity_threshold = 0.1, proximity_nodes = 8),
-      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)))
-  )
-
-
-  /** Configuration variations */
-  def variations: Seq[Variation[Configuration, _]] = {
-    val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
-    val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
-    Seq(
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
-      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "m", {
-        case ((2, 1), (0, 0)) => "io rewire"
-        case ((0, 0), (3, 8)) => "mutation"
-        case ((2, 1), (3, 8)) => "comb"
-      }),
-      Variation[Configuration, Option[HalfRegionVariation]](Seq(None,
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false))),
-        lens(_.objective.half_region_variation), "v", {
-          case None => "whole arena"
-          case Some(HalfRegionVariation(1, _, _)) => "half arena"
-        })
-    )
-  }
+  def selectedExperiment(implicit args: Array[String]): ExperimentSettings =
+    ExperimentSettings(Args.CONFIGURATION)
 
   /** All configuration combinations */
-  def configurations: Seq[Configuration] =
-    utils.Combiner(DEFAULT_CONFIG, variations.map(_.apply)).distinct
+  def configurations(implicit args: Array[String]): Seq[Configuration] =
+    utils.Combiner(selectedExperiment.defaultConfig, selectedExperiment.configVariation.map(_.apply)).distinct
 
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
