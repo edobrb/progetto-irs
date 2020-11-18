@@ -47,6 +47,7 @@ object First extends ExperimentSettings {
     Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
     Variation(Seq(0, 1), lens(_.adaptation.network_io_mutation.max_output_rewires), "or"),
     Variation(Seq(true, false), lens(_.network.self_loops), "sl", collapse = true),
+    Variation(Seq(true, false), lens(_.network.only_distinct_connections), "dc"),
     Variation(Seq(8, 24), lens(_.objective.obstacle_avoidance.proximity_nodes), "pn"),
     Variation(Seq(None,
       Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)),

@@ -11,7 +11,7 @@ trait ExperimentSettings {
 
 object ExperimentSettings {
   def apply(name: String): ExperimentSettings = Map[String, ExperimentSettings](
-    "first" -> First,
-    "second" -> Second
+    "1" -> First,
+    "2" -> Second
   )(name)
 }
