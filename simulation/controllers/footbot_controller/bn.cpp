@@ -3,7 +3,7 @@
 #include <cmath>
 #include <vector>
 
-Bn::Bn(int n, int k, double p, bool selfLoops) {
+Bn::Bn(int n, int k, double p, bool selfLoops, bool onlyDistinctConnection) {
     N = n;
     K = k;
     K2 = 1 << k;
@@ -19,10 +19,19 @@ Bn::Bn(int n, int k, double p, bool selfLoops) {
         functions[i] = new bool[K2];
         connections[i] = new int[k];
         for (int j = 0; j < K2; j++) functions[i][j] = ((double)rand() / RAND_MAX) < p; //p biased function
+        for (int j = 0; j < k; j++) connections[i][j] = -1;
         for (int j = 0; j < k; j++) {
+            bool repetition;
             do {
+                repetition = false;
                 connections[i][j] = rand() % n; //Random topology
-            } while(!selfLoops && connections[i][j] == i);
+                for(int l = 0; l < j; l++) {
+                    if(connections[i][j] == connections[i][l]) {
+                        repetition = true;
+                        break;
+                    }
+                }
+            } while((!selfLoops && connections[i][j] == i) || (repetition && onlyDistinctConnection));
         }
     }
 }
@@ -51,7 +60,7 @@ void Bn::CopyFrom(Bn* other) {
     for (int n = 0; n < N; n++) for (int k = 0; k < K; k++) SetConnectionIndex(n, k, other->GetConnectionIndex(n, k));
     for (int n = 0; n < N; n++) for (int k = 0; k < K2; k++) SetTruthTableEntry(n, k, other->GetTruthTableEntry(n, k));
 }
-void Bn::RewiresConnections(int count, bool selfLoops) {
+void Bn::RewiresConnections(int count, bool selfLoops, bool onlyDistinctConnection) {
     std::vector<int> edited(count);
     for(int i = 0; i < count; i++) {
         int n = rand() % N;
@@ -63,9 +72,17 @@ void Bn::RewiresConnections(int count, bool selfLoops) {
         if(alreadyEdited) i--; //retry
         else {
             int node;
+            bool repetition;
             do {
+                repetition = false;
                 node = rand() % N;
-            } while(!selfLoops && node == n);
+                for(int l = 0; l < k; l++) {
+                    if(l != k && GetConnectionIndex(n, l) == node) {
+                        repetition = true;
+                        break;
+                    }
+                }
+            } while((!selfLoops && node == n) || (repetition && onlyDistinctConnection));
             SetConnectionIndex(n, k, node);
             edited[i] = n * K + k;
         }

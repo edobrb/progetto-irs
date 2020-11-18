@@ -18,18 +18,17 @@ object First extends ExperimentSettings {
         max_connection_rewires = 0,
         connection_rewire_probability = 1,
         self_loops = false,
+        only_distinct_connections = true,
         max_function_bit_flips = 0,
         function_bit_flips_probability = 1,
-        keep_p_balance = false,
-        sync = false, //not for now
-        selection_mechanism = ""),
+        keep_p_balance = false),
       NetworkIOMutation(
         max_input_rewires = 2,
         input_rewire_probability = 1,
         max_output_rewires = 0,
         output_rewire_probability = 1,
         allow_io_node_overlap = false)),
-    Network(n = 100, k = 3, p = 0, self_loops = false,
+    Network(n = 100, k = 3, p = 0, self_loops = false, only_distinct_connections = true,
       io = NetworkIO(
         override_output_nodes = true,
         override_outputs_p = 0.5,

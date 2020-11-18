@@ -7,7 +7,8 @@ import utils.ConfigLens.lens
 case class Configuration(simulation: Simulation,
                          adaptation: Adaptation,
                          network: Network,
-                         objective: Objective) {
+                         objective: Objective,
+                         other: Map[String, String] = Map()) {
   def toJson: String = {
     import JsonFormats._
     Json.toJson(this).toString()
@@ -48,11 +49,10 @@ object Configuration {
   case class NetworkMutation(max_connection_rewires: Int,
                              connection_rewire_probability: Double,
                              self_loops: Boolean,
+                             only_distinct_connections: Boolean,
                              max_function_bit_flips: Int,
                              function_bit_flips_probability: Double,
-                             keep_p_balance: Boolean,
-                             sync: Boolean,
-                             selection_mechanism: String)
+                             keep_p_balance: Boolean)
 
   case class NetworkIOMutation(max_input_rewires: Int,
                                input_rewire_probability: Double,
@@ -64,6 +64,7 @@ object Configuration {
                      k: Int,
                      p: Double,
                      self_loops: Boolean,
+                     only_distinct_connections: Boolean,
                      io: NetworkIO,
                      initial_schema: Option[model.BooleanNetwork.Schema] = None,
                      initial_state: Option[model.BooleanNetwork.State] = None)

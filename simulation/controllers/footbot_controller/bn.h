@@ -3,7 +3,7 @@
 
 class Bn {
     public:
-        Bn(int n, int k, double p, bool selfLoops);
+        Bn(int n, int k, double p, bool selfLoops, bool onlyDistinctConnection);
         ~Bn();
         void CopyFrom(Bn* other);
 
@@ -11,7 +11,7 @@ class Bn {
         void Step();
 
         //Mutation
-        void RewiresConnections(int count, bool selfLoops);
+        void RewiresConnections(int count, bool selfLoops, bool onlyDistinctConnection);
         void MutesFunctions(int count, bool keepBalanced);
 
         //Interface

@@ -51,11 +51,13 @@ bool CONNECTION_REWIRE_SELF_LOOPS;
 int MAX_FUNCTION_BIT_FLIPS;
 Real FUNCTION_BIT_FLIP_PROBABILITY;
 bool KEEP_P_BALANCE;
+bool ONLY_DISTINCT_CONNECTIONS_ON_REWIRE = false;
 
 //NETOWRK
 int N, K;
 Real P;
 bool SELF_LOOPS;
+bool ONLY_DISTINCT_CONNECTIONS = false;
 //NETOWRK IO
 bool OVERRIDE_OUTPUT_FUNCTIONS;
 Real P_OVERRIDE;
@@ -114,6 +116,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       MAX_CONNECTION_REWIRES        = config["adaptation"]["network_mutation"]["max_connection_rewires"].get<int>();
       CONNECTION_REWIRE_PROBABILITY = config["adaptation"]["network_mutation"]["connection_rewire_probability"].get<Real>();
       CONNECTION_REWIRE_SELF_LOOPS  = config["adaptation"]["network_mutation"]["self_loops"].get<bool>();
+      ONLY_DISTINCT_CONNECTIONS_ON_REWIRE = config["adaptation"]["network_mutation"]["only_distinct_connections"].get<bool>();
       MAX_FUNCTION_BIT_FLIPS        = config["adaptation"]["network_mutation"]["max_function_bit_flips"].get<int>();
       FUNCTION_BIT_FLIP_PROBABILITY = config["adaptation"]["network_mutation"]["function_bit_flips_probability"].get<Real>();
       KEEP_P_BALANCE                = config["adaptation"]["network_mutation"]["keep_p_balance"].get<bool>();
@@ -123,6 +126,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       K                             = config["network"]["k"].get<int>();
       P                             = config["network"]["p"].get<Real>();
       SELF_LOOPS                    = config["network"]["self_loops"].get<bool>();
+      ONLY_DISTINCT_CONNECTIONS     = config["network"]["only_distinct_connections"].get<bool>();
       //netowrk io
       OVERRIDE_OUTPUT_FUNCTIONS     = config["network"]["io"]["override_output_nodes"].get<bool>();
       P_OVERRIDE                    = config["network"]["io"]["override_outputs_p"].get<Real>();
@@ -173,6 +177,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t MAX_CONNECTION_REWIRES = %d\n", MAX_CONNECTION_REWIRES); 
       printf("[DEBUG]\t CONNECTION_REWIRE_PROBABILITY = %f\n", CONNECTION_REWIRE_PROBABILITY); 
       printf("[DEBUG]\t CONNECTION_REWIRE_SELF_LOOPS = %d\n", CONNECTION_REWIRE_SELF_LOOPS); 
+      printf("[DEBUG]\t ONLY_DISTINCT_CONNECTIONS_ON_REWIRE = %d\n", ONLY_DISTINCT_CONNECTIONS_ON_REWIRE); 
       printf("[DEBUG]\t MAX_FUNCTION_BIT_FLIPS = %d\n", MAX_FUNCTION_BIT_FLIPS); 
       printf("[DEBUG]\t FUNCTION_BIT_FLIP_PROBABILITY = %f\n", FUNCTION_BIT_FLIP_PROBABILITY); 
       printf("[DEBUG]\t KEEP_P_BALANCE = %d\n", KEEP_P_BALANCE); 
@@ -186,6 +191,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t K = %d\n", K); 
       printf("[DEBUG]\t P = %f\n", P);
       printf("[DEBUG]\t SELF_LOOPS = %d\n", SELF_LOOPS); 
+      printf("[DEBUG]\t ONLY_DISTINCT_CONNECTIONS = %d\n", ONLY_DISTINCT_CONNECTIONS); 
       printf("[DEBUG]\t OVERRIDE_OUTPUT_FUNCTIONS = %d\n", OVERRIDE_OUTPUT_FUNCTIONS); 
       printf("[DEBUG]\t P_OVERRIDE = %f\n", P_OVERRIDE); 
       printf("[DEBUG]\t IO_NODE_OVERLAP = %d\n", IO_NODE_OVERLAP); 
@@ -205,7 +211,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
    } //end configuration loading
 
    /* Network creation */
-   bestBn = new Bn(N, K, P, SELF_LOOPS);
+   bestBn = new Bn(N, K, P, SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS);
    bestIO = new BnIO(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
 
    /* Load given network schema */
@@ -253,7 +259,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       #endif
    }
 
-   testBn = new Bn(N, K, P, SELF_LOOPS);
+   testBn = new Bn(N, K, P, SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS);
    testBn->CopyFrom(bestBn);
    testIO = new BnIO(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
    testIO->CopyFrom(bestIO, bestBn);
@@ -350,7 +356,7 @@ void CFootBotBn::ControlStep() {
       //NETWORK MUTATION
       int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
       int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
-      if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS);
+      if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS_ON_REWIRE);
       if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
 
       //NETWORK IO REWIRES

@@ -20,17 +20,16 @@ object TestController extends App {
         max_connection_rewires = 0,
         connection_rewire_probability = 0,
         self_loops = false,
+        only_distinct_connections = false,
         max_function_bit_flips = 0,
         function_bit_flips_probability = 0,
-        keep_p_balance = false,
-        sync = false,
-        selection_mechanism = ""),
+        keep_p_balance = false),
       NetworkIOMutation(max_input_rewires = 0,
         input_rewire_probability = 0,
         max_output_rewires = 0,
         output_rewire_probability = 0,
         allow_io_node_overlap = false)),
-    Network(n = 100, k = 3, p = 0.79, self_loops = true,
+    Network(n = 100, k = 3, p = 0.79, self_loops = true, only_distinct_connections = false,
       io = NetworkIO(
         override_output_nodes = true,
         override_outputs_p = 0.5,
@@ -57,8 +56,10 @@ object TestController extends App {
 
   val irLens = lens(_.adaptation.network_io_mutation.input_rewire_probability) and lens(_.adaptation.network_io_mutation.max_input_rewires)
   val orLens = lens(_.adaptation.network_io_mutation.output_rewire_probability) and lens(_.adaptation.network_io_mutation.max_output_rewires)
+  val crLens = lens(_.adaptation.network_mutation.connection_rewire_probability) and lens(_.adaptation.network_mutation.max_connection_rewires)
   val rOverlapLens = lens(_.adaptation.network_io_mutation.allow_io_node_overlap)
   val tests = Seq(
+    Test(crLens, (1.0, 20), "10fcad5ffd374cbccf8bc54dcdc42c13e78953c5d03fff1a06eb5f174c6bdc93"),
     Test(lens(_.adaptation.network_mutation.connection_rewire_probability), 1.0, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
     Test(lens(_.adaptation.network_mutation.function_bit_flips_probability), 1.0, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
     Test(lens(_.network.io.override_outputs_p), 0.25, "639271eb9fca73f31d9dcfa175ff1e32053c5e6a494a080042e0ae4b6bb425c4"),
@@ -89,5 +90,5 @@ object TestController extends App {
     Test(orLens, (0.6, 2), "4533a71d9f07f17b0288df88f18e7c29ae7347d6ff2b0c6f7a7d394e74bc4cc0"),
     Test(orLens, (0.5, 2), "f842ef0ae50d5249082b4e05d8eacd596fe2d29a8cc77dc3d60dc3d77a63993d"),
   )
-  tests.parForeach(1, _.run())
+  tests.parForeach(Args.PARALLELISM_DEGREE, _.run())
 }
