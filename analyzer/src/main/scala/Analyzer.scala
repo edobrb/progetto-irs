@@ -49,7 +49,7 @@ object Analyzer extends App {
   def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("edits").yAxisTitle("average fitness")
       .title(s"Average fitness curve").width(1920).height(1080).build()
-    chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
+    chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 18))
     chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
     chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
     chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
@@ -77,7 +77,7 @@ object Analyzer extends App {
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val result = values.map(_.fitnessCurve.last)
-        chart.addSeries(name(config), result.toArray)
+        chart.addSeries(name(config).replace(",", "\n"), result.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
@@ -105,21 +105,21 @@ object Analyzer extends App {
   /** Plots charts */
   if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
-    Settings.selectedExperiment.configVariation.foreach { v =>
+    Settings.selectedExperiment.configVariation.parForeach(Args.PARALLELISM_DEGREE, { v =>
       makeCharts[Unit, Any](experimentsResults,
         groups = _ => (),
         series = c => v.lens.get(c),
         chartName = (_, _) => v.name,
         legend = (c, _, _) => s"${v.name}=${v.desc(c)}")
-    }
+    })
 
-    Settings.selectedExperiment.configVariation.filter(!_.collapse).foreach { v =>
+    Settings.selectedExperiment.configVariation.filter(!_.collapse).parForeach(Args.PARALLELISM_DEGREE, { v =>
       makeCharts[Any, Any](experimentsResults,
         groups = c => v.lens.get(c),
         series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
         chartName = (c, _) => s"group-${v.name}-${v.desc(c)}",
-        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
-    }
+        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+    })
 
   }
 
