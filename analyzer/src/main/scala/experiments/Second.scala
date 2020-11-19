@@ -38,7 +38,7 @@ object Second extends ExperimentSettings {
     Objective(
       Forwarding(max_wheel_speed = 25, wheels_nodes = 2),
       ObstacleAvoidance(proximity_threshold = 0.1, proximity_nodes = 8),
-      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)))
+      None)
   )
 
 

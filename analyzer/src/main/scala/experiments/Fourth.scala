@@ -38,7 +38,7 @@ object Fourth extends ExperimentSettings {
     Objective(
       Forwarding(max_wheel_speed = 25, wheels_nodes = 2),
       ObstacleAvoidance(proximity_threshold = 0.1, proximity_nodes = 8),
-      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)))
+      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = -1)))
   )
 
 
@@ -47,12 +47,6 @@ object Fourth extends ExperimentSettings {
     val netLens = lens(_.network.p) and lens(_.network.k)
     Seq(
       Variation(Seq((0.1, 3), (0.79, 3), (0.1, 4), (0.852, 4)), netLens, "pk"),
-      Variation[Configuration, Option[HalfRegionVariation]](Seq(
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false))),
-        lens(_.objective.half_region_variation), "v", {
-          case None => "whole arena"
-          case Some(HalfRegionVariation(1, _, _)) => "half arena"
-        })
     )
   }
 }
