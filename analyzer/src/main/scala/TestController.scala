@@ -42,7 +42,7 @@ object TestController extends App {
       Some(HalfRegionVariation(1, 0.1, reset_region_every_epoch = false)))
   )
 
-  case class Test[T](lens: Lens[Configuration, T], value: T, result: String, simulationSeed: Int = 1, controllerSeed: Int = 2) {
+  case class Test[T](result: String, lens: Lens[Configuration, T], value: T, simulationSeed: Int = 1, controllerSeed: Int = 2) {
     def run(): Unit = {
       val (_, time) = utils.Benchmark.time {
         val c = lens.set(value)(DEFAULT_CONFIG).setControllersSeed(Some(controllerSeed)).setSimulationSeed(Some(simulationSeed))
@@ -59,36 +59,36 @@ object TestController extends App {
   val crLens = lens(_.adaptation.network_mutation.connection_rewire_probability) and lens(_.adaptation.network_mutation.max_connection_rewires)
   val rOverlapLens = lens(_.adaptation.network_io_mutation.allow_io_node_overlap)
   val tests = Seq(
-    Test(crLens, (1.0, 20), "10fcad5ffd374cbccf8bc54dcdc42c13e78953c5d03fff1a06eb5f174c6bdc93"),
-    Test(lens(_.adaptation.network_mutation.connection_rewire_probability), 1.0, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.adaptation.network_mutation.function_bit_flips_probability), 1.0, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.io.override_outputs_p), 0.25, "639271eb9fca73f31d9dcfa175ff1e32053c5e6a494a080042e0ae4b6bb425c4"),
-    Test(lens(_.network.io.override_outputs_p), 0.5, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.io.override_output_nodes), true, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.io.override_output_nodes), false, "4bcc93832943a10acf5cd4dcee5a8ec515ea3f576e2dd402486ba3cb35c62665"),
-    Test(lens(_.network.io.allow_io_node_overlap), true, "253313d3467db5aca8338970c7229fffef6ef1958d7a7bf2678eb379d6732834"),
-    Test(lens(_.network.io.allow_io_node_overlap), false, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.self_loops), true, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.self_loops), false, "7fbcc0d917199a3ba11bb6b2b2023b384c17b209762d8a4bb19cc0d0f7dfa753"),
-    Test(lens(_.network.k), 2, "54b9e8a22e483d051b3ccd7b4b202f3086ff4689d5452b4f098754190854b897"),
-    Test(lens(_.network.k), 4, "35813d172df51e2f5cb07ecdaa5f064eec6859f31fff73c5e67fa1ac5c0905ac"),
-    Test(lens(_.network.k), 3, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.n), 50, "130a6e29ceaebe05ab83871cc34b1ac259907cbbf1c01e93fefd1fee61c3569d"),
-    Test(lens(_.network.n), 150, "d928127807d2ed5e93ad96869fb35536df6ce3561bd75f16c87b1491d26345dd"),
-    Test(lens(_.network.n), 100, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(lens(_.network.p), 0.1, "6cce39befef6ed05fe662ba573d2fe06fb0a5d95283aa79cb9f8d156166c8b85"),
-    Test(lens(_.network.p), 0.5, "d93be49a019026b93e8dc56f1d7082a9d332cc207fd7d66308aae681f87190f1"),
-    Test(lens(_.network.p), 0.79, "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(orLens and rOverlapLens, ((0.5, 2), true), "8c98164f4f5087e8fa0a0ba57d35a261dd9bcc92cb0e69ffbb8d028e4a08fab1"),
-    Test(irLens and rOverlapLens, ((0.5, 2), true), "4eaa339c27e3cd9a9d60db156a2dc884d0bd4d2bd7c019e13a81caefebc2098e"),
-    Test(irLens, (1.0, 0), "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(irLens, (0.0, 0), "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(irLens, (0.6, 2), "83338984c7ad4d19f3679acdaa2b28075cecbaaf0872637f8d058c624bbd9786"),
-    Test(irLens, (0.5, 2), "d1b95bb35e0b72fed45052c0c1dc84baec9710277810389342925c748cfbae26"),
-    Test(orLens, (1.0, 0), "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(orLens, (0.0, 0), "4f84146b1fb051849a6c087e7a3f688d08b04728451b882ef89e1df5ba326703"),
-    Test(orLens, (0.6, 2), "4533a71d9f07f17b0288df88f18e7c29ae7347d6ff2b0c6f7a7d394e74bc4cc0"),
-    Test(orLens, (0.5, 2), "f842ef0ae50d5249082b4e05d8eacd596fe2d29a8cc77dc3d60dc3d77a63993d"),
+    Test("d77aa95002b5219852f913216bf705fd235ea557908c8bc7232c6ef9a4c08e72", crLens, (1.0, 20)),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.adaptation.network_mutation.connection_rewire_probability), 1.0),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.adaptation.network_mutation.function_bit_flips_probability), 1.0),
+    Test("a90b8fd0fa2ac74edee2a0e158d0d817718c34f1db3eddaa842d6f191a752feb", lens(_.network.io.override_outputs_p), 0.25),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.io.override_outputs_p), 0.5),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.io.override_output_nodes), true),
+    Test("8ed687852a7108b293ba135e4970ac7ed77bbba0acb0b96b35be9be2d1879895", lens(_.network.io.override_output_nodes), false),
+    Test("8d3b3f30423a1b0158c0a9cc06cc6af14289ffd58ff38a12ce8421deb719ba30", lens(_.network.io.allow_io_node_overlap), true),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.io.allow_io_node_overlap), false),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.self_loops), true),
+    Test("ffc9880ccd113b48d37d0ca9e98a3276cc8e3bc31cb83f043c08feabc97d3113", lens(_.network.self_loops), false),
+    Test("118fcdd1ce57537b1ddaa46443f533e2db48f68d5d42ff86e2c7b6deef379a7f", lens(_.network.k), 2),
+    Test("d2a80b52bc2ec76cecabc673f06b75ef2b54b75ee36f1926655a6cef0daafb79", lens(_.network.k), 4),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.k), 3),
+    Test("e927c99a5a7c70f24ced01d42d09e7f37aafd38ece40e70781e7fac6a6c5ff92", lens(_.network.n), 50),
+    Test("a607c4a9240e0991cd2906cd7314e6ced2775bd2b2b3f3eae88c542ea3b6f5cf", lens(_.network.n), 150),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.n), 100),
+    Test("fcba94072ddff1d995a559ba6508261ec68bdd53a24c7778e44e18623e229ad1", lens(_.network.p), 0.1),
+    Test("2dd75936a53d49773c7734e4a96db66cf8450d97c0f3a692a4e589abf5a48332", lens(_.network.p), 0.5),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", lens(_.network.p), 0.79),
+    Test("bfeb3c7f18478f0132ad1e0c21c4531448b74d0e09e7b2ca300b29962947ea93", orLens and rOverlapLens, ((0.5, 2), true)),
+    Test("2cdaa052282ec749b700a6efde9c69c82f9ceaf598efcf8b6c59d4616680f771", irLens and rOverlapLens, ((0.5, 2), true)),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", irLens, (1.0, 0)),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", irLens, (0.0, 0)),
+    Test("f2845602b80fe9a395431e69f9bd58218a2ef0e853ee26c8d1da18b5909dc8b3", irLens, (0.6, 2)),
+    Test("beb59b96899b443487b06df49ee2d1ed9b9d52c538893d580e167d55b82f3f83", irLens, (0.5, 2)),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", orLens, (1.0, 0)),
+    Test("5fd4dbf5e4d460a3850d43aca4ccf81ab5ea5b5d8da209f4559b00eb1ffbe6fa", orLens, (0.0, 0)),
+    Test("79a22be104eec9ab0a6fd2d025fdd83304322ef6648499274ae6f68952f323b5", orLens, (0.6, 2)),
+    Test("649d3d9aa61af56e3139cae65a998b35d1f8f862633e50331179153fc45f0e1d", orLens, (0.5, 2)),
   )
   tests.parForeach(Args.PARALLELISM_DEGREE, _.run())
 }
