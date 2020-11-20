@@ -45,9 +45,9 @@ object Third extends ExperimentSettings {
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
     val netLens = lens(_.network.p) and lens(_.network.k)
-    val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
+    val netMutationLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
-      Variation[Configuration, (Int, Int)](Seq((6, 16), (0, 0)), ioLens, "m", {
+      Variation[Configuration, (Int, Int)](Seq((6, 16), (0, 0)), netMutationLens, "m", {
         case (0, 0) => "io rewire"
         case (6, 16) => "comb"
       }),
