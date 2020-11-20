@@ -47,7 +47,7 @@ object Fourth extends ExperimentSettings {
     val netLens = lens(_.network.p) and lens(_.network.k)
     lens(_.objective.half_region_variation)
     Seq(
-      Variation(Seq(
+      Variation[Configuration, Option[HalfRegionVariation]](Seq(
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = 0)),
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)),
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = 0)),
