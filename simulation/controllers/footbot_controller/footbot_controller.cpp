@@ -415,18 +415,13 @@ void CFootBotBn::PrintAnalytics(bool printBnSchema) {
    j["id"] = GetId();
    j["step"] = printStep;
    j["fitness"] = round(testNetworkFitness, 4);
-   nlohmann::json jStates = nlohmann::json::array();
-   for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
-   j["states"] = jStates;
    j["location"] = { round(tPosReading.Position.GetX(), 4), round(tPosReading.Position.GetY(), 4), round(zAngle, 4) };
 
-   /* 
-   nlohmann::json jProximity;
-   for(int i = 0 ; i < tProxReads.size(); i++) jProximity.push_back(round(tProxReads[i].Value, 2));
-   j["proximity"] = jProximity;
-   */
-
-   if(printBnSchema) {
+   if(!printBnSchema) {
+      nlohmann::json jInputs = nlohmann::json::array();
+      for(int n = 0; n < testIO->InputCount; n++) jInputs.push_back(testBn->GetOldNodeState(testIO->GetInputNodeIndex(n)));
+      j["inputs"] = jInputs;
+   } else {
       j["boolean_network"] = nullptr;
       nlohmann::json jFunctions = nlohmann::json::array();
       for(int n = 0; n < testBn->N; n++) {
@@ -436,6 +431,11 @@ void CFootBotBn::PrintAnalytics(bool printBnSchema) {
          jFunctions.push_back(jTruthTable);
       }
       j["boolean_network"]["functions"] = jFunctions;
+
+      nlohmann::json jStates = nlohmann::json::array();
+      for(int n = 0; n < testBn->N; n++) jStates.push_back(testBn->GetNodeState(n));
+      j["boolean_network"]["states"] = jStates;
+
       nlohmann::json jConnections = nlohmann::json::array();
       for(int n = 0; n < testBn->N; n++) {
          nlohmann::json jNodeConnections = nlohmann::json::array();

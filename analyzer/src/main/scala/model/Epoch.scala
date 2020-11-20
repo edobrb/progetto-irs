@@ -8,19 +8,19 @@ import model.Types.{Fitness, Location}
  * (one for each simulation step).
  *
  * @param bn     the boolean network schema of this test run
- * @param states the sequence of the boolean network states, proximity values, fitness value
+ * @param states the sequence of the boolean network inputs, proximity values, fitness value
  */
-case class Epoch(bn: BooleanNetwork.Schema, states: Seq[(BooleanNetwork.State, Fitness, Location)]) {
-  def add(s: BooleanNetwork.State, f: Fitness, p: Location): Epoch =
-    copy(states = states :+ (s, f, p))
+case class Epoch(bn: BooleanNetwork, states: Seq[(Seq[Boolean], Fitness, Location)]) {
+  def add(i: Seq[Boolean], f: Fitness, p: Location): Epoch =
+    copy(states = states :+ (i, f, p))
 
   def fitnessValues: Seq[Fitness] = states.map(_._2)
 
-  def bnStates: Seq[BooleanNetwork.State] = states.map(_._1)
+  def bnInputs: Seq[Seq[Boolean]] = states.map(_._1)
 
   def locations: Seq[Location] = states.map(_._3)
 }
 
 object Epoch {
-  def apply(bn: BooleanNetwork.Schema, s: BooleanNetwork.State, f: Fitness, p: Location): Epoch = Epoch(bn, Nil).add(s, f, p)
+  def apply(bn: BooleanNetwork, i: Seq[Boolean], f: Fitness, p: Location): Epoch = Epoch(bn, Nil).add(i, f, p)
 }

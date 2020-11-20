@@ -1,6 +1,6 @@
 import model.Types.RobotId
 import model.config.Configuration
-import model.{RobotData, StepInfo, Epoch}
+import model.{BooleanNetwork, Epoch, RobotData, StepInfo}
 import play.api.libs.json._
 import utils.Benchmark
 import utils.Parallel._
@@ -35,38 +35,38 @@ object Loader extends App {
   }
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
-  def extractTests(data: Iterator[StepInfo], ignoreBnStates: Boolean): Map[RobotId, Seq[Epoch]] =
-    data.map(v => if (ignoreBnStates) v.copy(states = Nil) else v).to(LazyList).groupBy(_.id).map {
+  def extractTests(data: Iterator[StepInfo]): Map[RobotId, Seq[Epoch]] =
+    data.to(LazyList).groupBy(_.id).map {
       case (robotId, robotSteps) =>
         val (_, performedTests) = robotSteps.foldLeft((-1, Seq[Epoch]())) {
           case ((oldStep, _), StepInfo(step, _, _, _, _, _)) if oldStep >= step => throw new Exception("Unordered steps")
-          case ((_, l :+ last), StepInfo(step, _, None, states, fitness, position)) =>
-            (step, l :+ last.add(states, fitness, position))
-          case ((_, tests), StepInfo(step, _, Some(bn), states, fitness, position)) =>
-            (step, tests :+ Epoch(bn, states, fitness, position))
+          case ((_, l :+ last), StepInfo(step, _, None, inputs, fitness, position)) =>
+            (step, l :+ last.add(inputs, fitness, position))
+          case ((_, tests), StepInfo(step, _, Some(bn), inputs, fitness, position)) =>
+            (step, tests :+ Epoch(bn, inputs, fitness, position))
         }
         (robotId, performedTests)
     }
 
-  def extractTests2(data: Iterator[StepInfo], configuration: Configuration, ignoreBnStates: Boolean): Seq[RobotData] = {
-    data.foldLeft(Map[RobotId, (RobotData, Option[(model.BooleanNetwork.Schema, model.BooleanNetwork.State)])]())({
-      case (map, StepInfo(step, id, None, states, fitness, position)) if map.contains(id) =>
+  def extractTests2(data: Iterator[StepInfo], configuration: Configuration): Seq[RobotData] = {
+    data.foldLeft(Map[RobotId, (RobotData, Option[(BooleanNetwork, Seq[Boolean])])]())({
+      case (map, StepInfo(step, id, None, inputs, fitness, position)) if map.contains(id) =>
         val (oldData, currentBn) = map(id)
         val newFitnessValues = oldData.fitness_values.dropRight(1) :+ Math.max(oldData.fitness_values.last, fitness)
-        val data = oldData.copy(fitness_values = newFitnessValues/*, location = oldData.location :+ step.location*/)
-        val data2 = if(currentBn.isDefined && !currentBn.map(_._1).contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
+        val data = oldData.copy(fitness_values = newFitnessValues /*, location = oldData.location :+ step.location*/)
+        val data2 = if (currentBn.isDefined && !currentBn.map(_._1).contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
           val (schema, _) = currentBn.get
-          data.copy(best_network = schema, best_network_state = states)
+          data.copy(best_network = schema)
         } else {
           data
         }
         map.updated(id, (data2, currentBn))
-      case (map, StepInfo(step, id, Some(bn), states, fitness, position)) if map.contains(id) =>
+      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) if map.contains(id) =>
         val (oldData, _) = map(id)
         val data = oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
         map.updated(id, (data, Some((bn, Nil))))
-      case (map, StepInfo(step, id, Some(bn), states, fitness, position)) =>
-        val data = RobotData("", id, configuration, Seq(fitness), bn, Nil, Nil)
+      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) =>
+        val data = RobotData("", id, configuration, Seq(fitness), bn, Nil)
         map.updated(id, (data, None))
     }).values.map(_._1).toSeq
   }
@@ -77,7 +77,7 @@ object Loader extends App {
       val config: Configuration = Configuration.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        extractTests2(data, config, ignoreBnStates = false)
+        extractTests2(data, config)
         /*val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
 
         results.map {

@@ -24,7 +24,7 @@ object Experiments extends App {
       val loaded_output_filename = filename + ".json"
       val skip = Args.WRITE_OUTPUT && utils.File.exists(output_filename) || (!Args.WRITE_OUTPUT && Args.LOAD_OUTPUT && utils.File.exists(loaded_output_filename))
       if (!skip) {
-        Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
+        //Thread.sleep(Random.nextInt(100)) //In order to generate different seed for randon inside argos
         val expectedLines = config.expectedLines
         Benchmark.time {
           //println(s"Started experiment $experimentName ...")

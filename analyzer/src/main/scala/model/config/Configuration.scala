@@ -1,5 +1,6 @@
 package model.config
 
+import model.BooleanNetwork
 import model.config.Configuration._
 import play.api.libs.json.{Json, OFormat}
 import utils.ConfigLens.lens
@@ -66,8 +67,8 @@ object Configuration {
                      self_loops: Boolean,
                      only_distinct_connections: Boolean,
                      io: NetworkIO,
-                     initial_schema: Option[model.BooleanNetwork.Schema] = None,
-                     initial_state: Option[model.BooleanNetwork.State] = None)
+                     initial_schema: Option[BooleanNetwork] = None,
+                     initial_state: Option[Seq[Boolean]] = None)
 
   case class NetworkIO(override_output_nodes: Boolean,
                        override_outputs_p: Double,
@@ -94,7 +95,7 @@ object Configuration {
   }
 
   object JsonFormats {
-    implicit def f0: OFormat[model.BooleanNetwork.Schema] = Json.format[model.BooleanNetwork.Schema]
+    implicit def f0: OFormat[BooleanNetwork] = Json.format[BooleanNetwork]
 
     implicit def f1: OFormat[Configuration.HalfRegionVariation] = Json.format[Configuration.HalfRegionVariation]
 
