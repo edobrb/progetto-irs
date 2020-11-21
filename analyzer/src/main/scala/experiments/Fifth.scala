@@ -5,7 +5,7 @@ import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
 /**
- * Investigate the effect of override_output_nodes
+ * Investigate the effect of override_output_nodes and allow_io_node_overlap
  * in full arena, with critical networks.
  */
 object Fifth extends ExperimentSettings {
@@ -49,7 +49,8 @@ object Fifth extends ExperimentSettings {
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
     Seq(
-      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "oop")
+      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "oop"),
+      Variation(Seq(true, false), lens(_.network.io.allow_io_node_overlap), "overlap")
     )
   }
 }
