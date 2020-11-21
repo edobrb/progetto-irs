@@ -16,5 +16,6 @@ object ExperimentSettings {
     "3" -> Third,
     "4" -> Fourth,
     "5" -> Fifth,
+    "6" -> Sixth,
   )(name)
 }
