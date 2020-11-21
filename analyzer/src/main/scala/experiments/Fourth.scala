@@ -4,6 +4,10 @@ import model.config.Configuration._
 import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
+/**
+ * Investigate the effect of penalty_factor and reset_region_every_epoch
+ * in half arena with no mutation.
+ */
 object Fourth extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(

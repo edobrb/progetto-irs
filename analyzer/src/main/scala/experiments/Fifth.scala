@@ -6,6 +6,7 @@ import utils.ConfigLens._
 
 /**
  * Investigate the effect of override_output_nodes
+ * in full arena, with critical networks.
  */
 object Fifth extends ExperimentSettings {
 

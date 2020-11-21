@@ -22,7 +22,7 @@ object Analyzer extends App {
 
   implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
-  lazy val rawData: Iterable[RobotData] = {
+  val rawData: Iterable[RobotData] = {
     var loaded = 0
     val result = Loader.OUTPUT_FILENAMES.parFlatmap(Args.PARALLELISM_DEGREE, { filename =>
       utils.File.read(filename).map { str =>
@@ -38,7 +38,7 @@ object Analyzer extends App {
   }
 
   /** Groups the raw data by configuration. */
-  lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
+  val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
     rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
@@ -114,11 +114,11 @@ object Analyzer extends App {
     })
 
     Settings.selectedExperiment.configVariation.filter(!_.collapse).parForeach(Args.PARALLELISM_DEGREE, { v =>
-      makeCharts[Any, Any](experimentsResults,
+      Try(makeCharts[Any, Any](experimentsResults,
         groups = c => v.lens.get(c),
         series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
         chartName = (c, _) => s"group-${v.name}-${v.desc(c)}",
-        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(",")))
     })
 
   }
@@ -135,6 +135,6 @@ object Analyzer extends App {
   }
 
   if (Args.RUN_BEST) {
-    runSimulationWithBestRobot(config => config.objective.half_region_variation.isEmpty)
+    runSimulationWithBestRobot(config => config.objective.half_region_variation.get.penalty_factor == 0)
   }
 }

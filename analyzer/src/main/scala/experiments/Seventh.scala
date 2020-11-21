@@ -5,16 +5,16 @@ import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
 /**
- * Investigate the effect of n, p
+ * Investigate the effect of allow_io_node_overlap in io rewires
  * in full arena.
  */
-object Sixth extends ExperimentSettings {
+object Seventh extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
       argos = "experiments/parametrized.argos",
       ticks_per_seconds = 10,
-      experiment_length = 7200 * 2 * 10,
+      experiment_length = 7200 * 2 * 2,
       robot_count = 10,
       print_analytics = true),
     Adaptation(epoch_length = 80,
@@ -49,8 +49,7 @@ object Sixth extends ExperimentSettings {
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
     Seq(
-      Variation(Seq(50, 100, 200), lens(_.network.n), "n"),
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p")
+      Variation(Seq(true, false), lens(_.network.io.allow_io_node_overlap), "overlap")
     )
   }
 }

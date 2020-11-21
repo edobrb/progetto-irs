@@ -4,6 +4,10 @@ import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, 
 import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
+/**
+ * Investigate the effect of p, io rewires, network mutation and both
+ * in full and half arena.
+ */
 object Second extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(

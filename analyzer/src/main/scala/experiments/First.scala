@@ -4,6 +4,10 @@ import model.config.Configuration._
 import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
+/**
+ * Investigate the effect of p, max_output_rewires, self_loops, proximity_nodes
+ * in both full arena and half arena. No network mutation.
+ */
 object First extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
