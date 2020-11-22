@@ -14,7 +14,7 @@ object Fifth extends ExperimentSettings {
     Simulation(
       argos = "experiments/parametrized.argos",
       ticks_per_seconds = 10,
-      experiment_length = 7200 * 2 * 2,
+      experiment_length = 7200 * 2 * 10,
       robot_count = 10,
       print_analytics = true),
     Adaptation(epoch_length = 80,
