@@ -48,7 +48,6 @@ object Fourth extends ExperimentSettings {
 
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
-    val netLens = lens(_.network.p) and lens(_.network.k)
     lens(_.objective.half_region_variation)
     Seq(
       Variation[Configuration, Option[HalfRegionVariation]](Seq(
@@ -56,8 +55,8 @@ object Fourth extends ExperimentSettings {
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)),
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = 0)),
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = -1)),
-      ), lens(_.objective.half_region_variation), "v", {
-        case Some(HalfRegionVariation(_, f, reset)) => s"p=$f,reset=$reset"
+      ), lens(_.objective.half_region_variation), "", {
+        case Some(HalfRegionVariation(_, f, reset)) => s"penalty=$f,reset=$reset"
       }),
     )
   }

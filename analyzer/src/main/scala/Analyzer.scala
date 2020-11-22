@@ -46,9 +46,9 @@ object Analyzer extends App {
       (data.map(_.fitnessCurve.last).sum / data.size * -1000).toInt
   }
 
-  def showAveragedFitnessCharts(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
+  def showAveragedFitnessCharts(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new XYChartBuilder().xAxisTitle("edits").yAxisTitle("average fitness")
-      .title(s"Average fitness curve").width(1920).height(1080).build()
+      .title(s"Average fitness curve $chartDescription").width(1920).height(1080).build()
     chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 18))
     chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
     chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
@@ -61,25 +61,26 @@ object Analyzer extends App {
         }.map(_ / values.size)
         chart.addSeries(name(config), totalFitnessCurve.toArray)
     }
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
+    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-fitness-curve.png", BitmapFormat.PNG, 100)
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
-  def showBoxPlot(chartName: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
+  def showBoxPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("variation").yAxisTitle("fitness")
-      .title(s"Final fitness of each robot").width(1920).height(1080).build()
+      .title(s"Final fitness of each robot $chartDescription").width(1920).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
     chart.getStyler.setToolTipsEnabled(true)
     chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
     chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
     chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
     chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 12))
+    chart.getStyler.setXAxisLabelRotation(8)
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val result = values.map(_.fitnessCurve.last)
-        chart.addSeries(name(config).replace(",", "\n"), result.toArray)
+        chart.addSeries(name(config), result.toArray)
     }
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName.png", BitmapFormat.PNG, 100)
+    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-boxplot.png", BitmapFormat.PNG, 100)
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
@@ -90,6 +91,7 @@ object Analyzer extends App {
   def makeCharts[G, S](experimentsResults: Seq[(Configuration, Iterable[RobotData])],
                        series: Configuration => S,
                        chartName: (Configuration, G) => String,
+                       chartDescription: (Configuration, G) => String,
                        legend: (Configuration, G, S) => String,
                        groups: Configuration => G)(implicit classTag: ClassTag[G]): Unit = {
     experimentsResults.groupBy(v => groups(v._1)).foreach {
@@ -97,29 +99,42 @@ object Analyzer extends App {
         val results = groupResult.groupBy(v => series(v._1)).map {
           case (_, seq) => (seq.head._1, seq.flatMap(v => v._2))
         }.toSeq
-        showAveragedFitnessCharts(s"${chartName(groupResult.head._1, group)}-fitness-curve", results, config => s"${legend(config, group, series(config))}")
-        showBoxPlot(s"${chartName(groupResult.head._1, group)}-boxplot", results, config => s"${legend(config, group, series(config))}")
+        showAveragedFitnessCharts(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
+        showBoxPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
     }
   }
 
   /** Plots charts */
   if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
-    Settings.selectedExperiment.configVariation.parForeach(Args.PARALLELISM_DEGREE, { v =>
-      makeCharts[Unit, Any](experimentsResults,
-        groups = _ => (),
-        series = c => v.lens.get(c),
-        chartName = (_, _) => v.name,
-        legend = (c, _, _) => s"${v.name}=${v.desc(c)}")
-    })
 
-    Settings.selectedExperiment.configVariation.filter(!_.collapse).parForeach(Args.PARALLELISM_DEGREE, { v =>
-      Try(makeCharts[Any, Any](experimentsResults,
-        groups = c => v.lens.get(c),
-        series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
-        chartName = (c, _) => s"group-${v.name}-${v.desc(c)}",
-        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(",")))
-    })
+    if (Settings.selectedExperiment.configVariation.size > 1) {
+      Settings.selectedExperiment.configVariation.parForeach(Args.PARALLELISM_DEGREE, { v =>
+        makeCharts[Unit, Any](experimentsResults,
+          groups = _ => (),
+          series = c => v.lens.get(c),
+          chartName = (_, _) => s"${v.name}",
+          chartDescription = (_, _) => s"(foreach ${v.name})",
+          legend = (c, _, _) => s"${v.desc(c)}")
+      })
+
+      Settings.selectedExperiment.configVariation.filter(!_.collapse).parForeach(Args.PARALLELISM_DEGREE, { v =>
+        makeCharts[Any, Any](experimentsResults,
+          groups = c => v.lens.get(c),
+          series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
+          chartName = (c, _) => s"${v.name}=${v.desc(c)}",
+          chartDescription = (c, _) => s"(with ${v.name}=${v.desc(c)})",
+          legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+      })
+    }
+
+    //all series
+    makeCharts[Any, Any](experimentsResults,
+      groups = c => (),
+      series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
+      chartName = (_, _) => s"overall",
+      chartDescription = (_, _) => "",
+      legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
 
   }
 
@@ -135,6 +150,6 @@ object Analyzer extends App {
   }
 
   if (Args.RUN_BEST) {
-    runSimulationWithBestRobot(config => config.objective.half_region_variation.get.penalty_factor == 0)
+    runSimulationWithBestRobot(config => true)
   }
 }

@@ -55,10 +55,10 @@ object First extends ExperimentSettings {
     Variation(Seq(None,
       Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false)),
       Some(HalfRegionVariation(region_nodes = 0, reset_region_every_epoch = false))),
-      lens(_.objective.half_region_variation), "v", (v: Option[HalfRegionVariation]) => v match {
-        case None => "whole arena"
-        case Some(HalfRegionVariation(1, _, _)) => "half arena - feed"
-        case Some(HalfRegionVariation(0, _, _)) => "half arena - no feed"
+      lens(_.objective.half_region_variation), "objective", (v: Option[HalfRegionVariation]) => v match {
+        case None => "whole"
+        case Some(HalfRegionVariation(1, _, _)) => "half - feed"
+        case Some(HalfRegionVariation(0, _, _)) => "half - no feed"
       })
   )
 }

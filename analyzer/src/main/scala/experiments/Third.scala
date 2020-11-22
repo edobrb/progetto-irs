@@ -51,16 +51,16 @@ object Third extends ExperimentSettings {
     val netLens = lens(_.network.p) and lens(_.network.k)
     val netMutationLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
-      Variation[Configuration, (Int, Int)](Seq((6, 16), (0, 0)), netMutationLens, "m", {
-        case (0, 0) => "io rewire"
-        case (6, 16) => "comb"
+      Variation[Configuration, (Int, Int)](Seq((6, 16), (0, 0)), netMutationLens, "adaptation", {
+        case (0, 0) => "rewire"
+        case (6, 16) => "rewire-and-mutation"
       }),
-      Variation(Seq((0.1, 3), (0.79, 3), (0.1, 4), (0.852, 4)), netLens, "pnk"),
+      Variation(Seq((0.1, 3), (0.79, 3), (0.1, 4), (0.852, 4)), netLens, "pk"),
       Variation[Configuration, Option[HalfRegionVariation]](Seq(None,
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false))),
-        lens(_.objective.half_region_variation), "v", {
-          case None => "whole arena"
-          case Some(HalfRegionVariation(1, _, _)) => "half arena"
+        lens(_.objective.half_region_variation), "objective", {
+          case None => "whole"
+          case Some(HalfRegionVariation(1, _, _)) => "half"
         })
     )
   }

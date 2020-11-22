@@ -16,6 +16,7 @@ object Experiments extends App {
     Argos.runConfiguredSimulation(Args.WORKING_DIR(args), config, visualization)
 
   /** Running experiments */
+  val selectedConfig = Args.CONFIGURATION
   println(s"Running ${Settings.experiments.size} experiments...")
   Settings.experiments.toList.sortBy(_._3).parForeach(threads = Args.PARALLELISM_DEGREE, {
     case (experimentName, config, _) =>
@@ -45,11 +46,11 @@ object Experiments extends App {
           }
         } match {
           case (Success(lines), time) if lines == expectedLines =>
-            println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")
+            println(s"[$selectedConfig] Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [SUCCESS]")
           case (Success(lines), time) if lines != expectedLines =>
-            println(s"Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [FAILURE]")
+            println(s"[$selectedConfig] Done experiment $experimentName (${time.toSeconds} s, $lines/$expectedLines lines) [FAILURE]")
           case (Failure(exception), time) =>
-            println(s"Failed experiment $experimentName (${time.toSeconds} s, error: ${exception.getMessage}) [FAILURE]")
+            println(s"[$selectedConfig] Failed experiment $experimentName (${time.toSeconds} s, error: ${exception.getMessage}) [FAILURE]")
         }
       } else {
         println("Skipping " + experimentName)

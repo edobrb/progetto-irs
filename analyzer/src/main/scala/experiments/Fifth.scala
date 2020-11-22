@@ -49,7 +49,7 @@ object Fifth extends ExperimentSettings {
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
     Seq(
-      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "oop"),
+      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
       Variation(Seq(true, false), lens(_.network.io.allow_io_node_overlap), "overlap")
     )
   }

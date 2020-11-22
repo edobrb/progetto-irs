@@ -51,21 +51,21 @@ object Second extends ExperimentSettings {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
-      Variation[Configuration, String](Seq("experiments/parametrized.argos"/*, "experiments/parametrized-random-cylinder.argos"*/), lens(_.simulation.argos), "arena", {
-        case "experiments/parametrized.argos" => "rectangle"
-        case "experiments/parametrized-random-cylinder.argos" => "cylinder"
-      }),
+      /*Variation[Configuration, String](Seq("experiments/parametrized.argos"/*, "experiments/parametrized-random-cylinder.argos"*/), lens(_.simulation.argos), "Arena", {
+        case "experiments/parametrized.argos" => "[Arena rectangle]"
+        case "experiments/parametrized-random-cylinder.argos" => "[Arena cylinder]"
+      }),*/
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
-      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "m", {
-        case ((2, 1), (0, 0)) => "io rewire"
+      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
+        case ((2, 1), (0, 0)) => "rewire"
         case ((0, 0), (3, 8)) => "mutation"
-        case ((2, 1), (3, 8)) => "comb"
+        case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
       Variation[Configuration, Option[HalfRegionVariation]](Seq(None,
         Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false))),
-        lens(_.objective.half_region_variation), "v", {
-          case None => "whole arena"
-          case Some(HalfRegionVariation(1, _, _)) => "half arena"
+        lens(_.objective.half_region_variation), "objective", {
+          case None => "whole"
+          case Some(HalfRegionVariation(1, _, _)) => "half"
         })
     )
   }
