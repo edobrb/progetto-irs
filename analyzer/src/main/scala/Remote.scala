@@ -76,23 +76,33 @@ trait Messenger {
 case class DispatcherServer(server: ServerSocket) {
 
   def run(args: Array[String]): Unit = {
-    val experiments = Settings.experiments(args).sortBy(_._3)
+    var failed = false
+    val experiments = Settings.experiments(args).filter {
+      case (name, _, i) =>
+        val filename = Args.DATA_FOLDER(args) + "/" + name
+        val loaded_output_filename = filename + ".json"
+        val exists = utils.File.exists(loaded_output_filename)
+        if (exists) println(s"Skipping $loaded_output_filename")
+        !exists
+    }.sortBy(_._3)
     val executor: ExecutorService = Executors.newCachedThreadPool()
     println(s"Server started, ${experiments.size} experiments to dispatch")
     experiments.iterator.zip(Iterator.continually(server.accept)).foreach {
       case ((name, config, _), socket) =>
         val filename = Args.DATA_FOLDER(args) + "/" + name
         val loaded_output_filename = filename + ".json"
+
         executor.execute(() => {
           val (done, time) = utils.Benchmark.time {
             Try(DispatcherClient(socket).execute(config)).map(result => utils.File.write(loaded_output_filename, result))
           }
           done match {
             case Success(_) => println(s"$name success in ${time.toSeconds}s")
-            case Failure(_) => println(s"$name failure in ${time.toSeconds}s")
+            case Failure(_) => failed = true; println(s"$name failure in ${time.toSeconds}s")
           }
         })
     }
+    if(failed) run(args)
   }
 }
 
@@ -106,7 +116,7 @@ case class DispatcherClient(client: Socket) extends Messenger {
     var result = ""
     do {
       result = readStr
-    }while(result == "keep alive")
+    } while (result == "keep alive")
     client.close()
     result
   }
@@ -128,7 +138,7 @@ case class RunnerClient(client: Socket) extends Messenger {
     println(s"Configuration $name received...")
     val out = Experiments.runSimulation(config, visualization = false)(args)
     val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.zipWithIndex.map({
-      case (info, i) if i % 100000 == 0=>
+      case (info, i) if i % 100000 == 0 =>
         writeStr("keep alive")
         info
       case (info, _) =>
