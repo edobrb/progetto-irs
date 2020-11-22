@@ -24,13 +24,15 @@ object Remote extends App {
   val port = utils.Arguments.argOrException("port", Some.apply)(args).toInt
   if (client) {
     val address = utils.Arguments.argOrException("address", Some.apply)(args)
-    (0 until Int.MaxValue).parForeach(Args.PARALLELISM_DEGREE(args), {
+    (0 until Args.PARALLELISM_DEGREE(args)).parForeach(Args.PARALLELISM_DEGREE(args), {
       _ =>
-        Try(RunnerClient(new Socket(address, port)).execute(args)) match {
-          case Failure(exception) =>
-            //println(exception)
-            Thread.sleep(10000)
-          case Success(_) =>
+        while (true) {
+          Try(RunnerClient(new Socket(address, port)).execute(args)) match {
+            case Failure(exception) =>
+              println(s"${exception.getMessage}. Retry in 10 seconds")
+              Thread.sleep(10000)
+            case Success(_) =>
+          }
         }
     })
   }
@@ -83,12 +85,11 @@ case class DispatcherServer(server: ServerSocket) {
         val loaded_output_filename = filename + ".json"
         executor.execute(() => {
           val (done, time) = utils.Benchmark.time {
-            val result = DispatcherClient(socket).execute(config)
-            utils.File.write(loaded_output_filename, result)
+            Try(DispatcherClient(socket).execute(config)).map(result => utils.File.write(loaded_output_filename, result))
           }
           done match {
-            case Success(_) => println(s"$name success in ${time.toSeconds}")
-            case Failure(_) => println(s"$name failure in ${time.toSeconds}")
+            case Success(_) => println(s"$name success in ${time.toSeconds}s")
+            case Failure(_) => println(s"$name failure in ${time.toSeconds}s")
           }
         })
     }
@@ -102,7 +103,10 @@ case class DispatcherClient(client: Socket) extends Messenger {
 
   def execute(config: Configuration): String = {
     writeStr(config.toJson)
-    val result = readStr
+    var result = ""
+    do {
+      result = readStr
+    }while(result == "keep alive")
     client.close()
     result
   }
@@ -120,13 +124,20 @@ case class RunnerClient(client: Socket) extends Messenger {
 
   def execute(args: Array[String]): Unit = {
     val config = Configuration.fromJson(readStr)
-    println("New configuration received... " + config.setControllersSeed(None).setSimulationSeed(None).filename)
+    val name = config.setControllersSeed(None).setSimulationSeed(None).filename
+    println(s"Configuration $name received...")
     val out = Experiments.runSimulation(config, visualization = false)(args)
-    val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }
+    val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.zipWithIndex.map({
+      case (info, i) if i % 100000 == 0=>
+        writeStr("keep alive")
+        info
+      case (info, _) =>
+        info
+    })
     val robotsData = Loader.extractTests2(data, config)
     val result = Json.prettyPrint(Json.toJson(robotsData))
     writeStr(result)
-    println("Result pushed, closing...")
+    println(s"Configuration $name done.")
     client.close()
   }
 }
