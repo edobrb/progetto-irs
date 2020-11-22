@@ -137,17 +137,24 @@ case class RunnerClient(client: Socket) extends Messenger {
     val name = config.setControllersSeed(None).setSimulationSeed(None).filename
     println(s"Configuration $name received...")
     val out = Experiments.runSimulation(config, visualization = false)(args)
+    var lines = 1 //configuration not included
     val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.zipWithIndex.map({
       case (info, i) if i % 100000 == 0 =>
+        lines = lines + 1
         writeStr("keep alive")
         info
       case (info, _) =>
+        lines = lines + 1
         info
     })
     val robotsData = Loader.extractTests2(data, config)
-    val result = Json.prettyPrint(Json.toJson(robotsData))
-    writeStr(result)
-    println(s"Configuration $name done.")
+    if(lines == config.expectedLines) {
+      val result = Json.prettyPrint(Json.toJson(robotsData))
+      writeStr(result)
+      println(s"Configuration $name done.")
+    } else {
+      println(s"Configuration $name error.")
+    }
     client.close()
   }
 }
