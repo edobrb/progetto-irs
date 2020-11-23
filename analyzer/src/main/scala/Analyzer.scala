@@ -13,6 +13,7 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 import com.github.plokhotnyuk.jsoniter_scala.macros._
 import com.github.plokhotnyuk.jsoniter_scala.core._
+import org.knowm.xchart.style.Styler.LegendPosition
 
 object Analyzer extends App {
 
@@ -38,7 +39,7 @@ object Analyzer extends App {
   }
 
   /** Groups the raw data by configuration. */
-  val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
+  lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
     rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
@@ -53,6 +54,8 @@ object Analyzer extends App {
     chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
     chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
     chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
+    chart.getStyler.setLegendPosition(LegendPosition.InsideSE)
+    chart.getStyler.setMarkerSize(0)
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
         val tests_count = values.head.fitnessCurve.size
@@ -68,8 +71,9 @@ object Analyzer extends App {
   def showBoxPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("variation").yAxisTitle("fitness")
       .title(s"Final fitness of each robot $chartDescription").width(1920).height(1080).build()
-    chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.N_LESS_1_PLUS_1)
+    chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.NP)
     chart.getStyler.setToolTipsEnabled(true)
+    chart.getStyler.setPlotContentSize(0.98)
     chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
     chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
     chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
@@ -140,7 +144,7 @@ object Analyzer extends App {
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitness_values.sum)
     val bestConfig = bestRobot.config
     println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
