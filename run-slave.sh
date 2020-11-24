@@ -1,6 +1,7 @@
 #!/bin/bash
 
 git checkout develop
+git config core.mergeoptions --no-edit
 git pull origin develop
 cd simulation
 mkdir build
