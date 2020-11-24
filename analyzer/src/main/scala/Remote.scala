@@ -58,9 +58,12 @@ case class DispatcherServer(server: ServerSocket) {
       case (name, _, i) =>
         val filename = Args.DATA_FOLDER(args) + "/" + name
         val loaded_output_filename = filename + ".json"
-        val exists = utils.File.exists(loaded_output_filename)
-        if (exists) println(s"Skipping $loaded_output_filename")
-        !exists
+        val output_filename = filename + ".gzip"
+        val existsLoad = (!load) || utils.File.exists(loaded_output_filename)
+        val existsWrite = (!write) || utils.File.exists(output_filename)
+        val existsBoth = existsLoad && existsWrite
+        if (existsBoth) println(s"Skipping $loaded_output_filename")
+        !existsBoth
     }
     val executor: ExecutorService = Executors.newCachedThreadPool()
     println(s"Server started, ${experiments.size} experiments to dispatch")
