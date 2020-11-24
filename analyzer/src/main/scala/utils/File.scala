@@ -74,6 +74,9 @@ object File {
   def write(fileName: String, data: String): Try[Done] =
     Try(java.nio.file.Files.write(Paths.get(fileName), data.getBytes(StandardCharsets.UTF_8))).map(_ => Done)
 
+  def write(fileName: String, data: Array[Byte]): Try[Done] =
+    Try(java.nio.file.Files.write(Paths.get(fileName), data)).map(_ => Done)
+
   def writeLines(fileName: String, data: Seq[String]): Try[Done] =
     Try(java.nio.file.Files.write(Paths.get(fileName), data.mkString("\n").getBytes(StandardCharsets.UTF_8))).map(_ => Done)
 

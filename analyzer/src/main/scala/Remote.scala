@@ -1,8 +1,10 @@
+import java.io.{ByteArrayOutputStream, PrintWriter}
 import java.net._
 
 import utils.Parallel.Parallel
 import java.net.ServerSocket
 import java.util.concurrent.{BlockingDeque, ExecutorService, Executors, LinkedBlockingDeque}
+import java.util.zip.GZIPOutputStream
 
 import model.config.Configuration.JsonFormats._
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
@@ -13,11 +15,11 @@ import play.api.libs.json.{Json, OFormat}
 import utils.RichIterator.RichIterator
 
 import scala.util.{Failure, Success, Try}
-import utils.RichSocket._
+import utils.{Argos, RichSocket}
+
+import scala.concurrent.duration.Duration
 
 object Remote extends App {
-  def KEEP_ALIVE_MSG = "ka"
-  def VERSION = "0.0.1"
   def KEEP_ALIVE_MS = 10000
 
   val client = utils.Arguments.boolOrDefault("client", default = false)(args)
@@ -28,14 +30,13 @@ object Remote extends App {
     (0 until Args.PARALLELISM_DEGREE(args)).parForeach(Args.PARALLELISM_DEGREE(args), {
       _ =>
         while (true) {
-          Try(RunnerClient(new Socket(address, port)).execute(args)) match {
+          val result = for (socket <- Try(new Socket(address, port));
+                            result <- RunnerClient(socket).execute(args)) yield result
+          result match {
             case Failure(exception) =>
-              println(s"${exception.getMessage}. Retry in 10 seconds")
-              Thread.sleep(10000)
-            case Success(version) if version == VERSION =>
-            case Success(version) if version != VERSION =>
-              println("Wrong remote version. Exiting...")
-              System.exit(0)
+              println(s"${exception.getMessage}. Retry in ${KEEP_ALIVE_MS / 1000} seconds")
+              Thread.sleep(KEEP_ALIVE_MS)
+            case Success((time, name)) => println(s"Configuration $name done. (${time.toSeconds}s)")
           }
         }
     })
@@ -51,6 +52,8 @@ object Remote extends App {
 case class DispatcherServer(server: ServerSocket) {
 
   def run(args: Array[String]): Unit = {
+    val load = Args.LOAD_OUTPUT(args)
+    val write = Args.WRITE_OUTPUT(args)
     val experiments = Settings.experiments(args).sortBy(_._3).filter {
       case (name, _, i) =>
         val filename = Args.DATA_FOLDER(args) + "/" + name
@@ -71,18 +74,24 @@ case class DispatcherServer(server: ServerSocket) {
         val (name, config, i) = work.takeFirst()
         val filename = Args.DATA_FOLDER(args) + "/" + name
         val loaded_output_filename = filename + ".json"
+        val output_filename = filename + ".gzip"
         val socket = server.accept
         executor.execute(() => {
           val (done, time) = utils.Benchmark.time {
-            Try(DispatcherClient(socket).execute(name, config, executor)).map(result => utils.File.write(loaded_output_filename, result))
+            DispatcherClient(socket).execute(name, config, write, load)
+              .map {
+                case (maybeData, maybeJson) =>
+                  maybeJson.foreach(json => utils.File.write(loaded_output_filename, json))
+                  maybeData.foreach(bytes => utils.File.write(output_filename, bytes))
+              }
           }
           done match {
             case Success(_) =>
               println(s"Success    $name from ${socket.getRemoteSocketAddress}. (${time.toSeconds}s)")
               finished.addLast((name, config, i))
-            case Failure(_) =>
+            case Failure(ex) =>
               work.addFirst((name, config, i))
-              println(s"Failure    $name from ${socket.getRemoteSocketAddress}. (${time.toSeconds}s)")
+              println(s"Failure    $name from ${socket.getRemoteSocketAddress}. (${time.toSeconds}s) ${ex.getMessage}")
           }
         })
       }
@@ -92,79 +101,85 @@ case class DispatcherServer(server: ServerSocket) {
   }
 }
 
-case class DispatcherClient(client: Socket) {
-  def execute(name: String, config: Configuration, executor: ExecutorService): String = {
-    client.setSoTimeout(Remote.KEEP_ALIVE_MS * 2)
-    client.writeStr(Remote.VERSION)
+case class DispatcherClient(socket: Socket) {
+
+  def execute(name: String, config: Configuration, write: Boolean, load: Boolean): Try[(Option[Array[Byte]], Option[String])] = {
+    val client = RichSocket(socket, Remote.KEEP_ALIVE_MS)
     client.writeStr(config.toJson)
-    println(s"Dispatched $name to ${client.getRemoteSocketAddress}")
-
-    var result = ""
-    keepAlive()
-    def keepAlive(): Unit = executor.execute(() => {
-      Thread.sleep(Remote.KEEP_ALIVE_MS)
-      Try(client.writeStr(Remote.KEEP_ALIVE_MSG)) match {
-        case Failure(_) => client.close()
-        case Success(_) => if(result == Remote.KEEP_ALIVE_MSG || result.isEmpty) keepAlive()
-      }
-    })
-
-    do {
-      result = client.readStr()
-    } while (result == Remote.KEEP_ALIVE_MSG)
-    client.writeStr("end")
-    client.close()
+    client.writeStr(write.toString)
+    client.writeStr(load.toString)
+    println(s"Dispatched $name to ${client.socket.getRemoteSocketAddress}")
+    val result = (write, load) match {
+      case (true, false) => client.read().map(data => (Some(data), None))
+      case (false, true) => client.readStr().map(json => (None, Some(json)))
+      case (true, true) => for (data <- client.read(); json <- client.readStr()) yield (Some(data), Some(json))
+    }
+    client.richClose()
     result
   }
 }
 
-case class RunnerClient(client: Socket) {
+case class RunnerClient(socket: Socket) {
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
   implicit val dataFormat: OFormat[RobotData] = Json.format[RobotData]
 
-  def execute(args: Array[String]): String = {
-    client.setSoTimeout(Remote.KEEP_ALIVE_MS * 2)
-    val version = client.readStr()
-    if(version == Remote.VERSION) {
-      val config = Configuration.fromJson(client.readStr())
+  def execute(args: Array[String]): Try[(Duration, String)] = {
+    val client = RichSocket(socket, Remote.KEEP_ALIVE_MS)
+
+    for (config <- client.readStr().map(Configuration.fromJson);
+         write <- client.readStr().map(_.toBoolean);
+         load <- client.readStr().map(_.toBoolean)) yield {
+
       val name = config.setControllersSeed(None).setSimulationSeed(None).filename
-      println(s"Configuration $name received...")
-      val executor: ExecutorService = Executors.newCachedThreadPool()
-      var brokenConnection = false
-      readKeepAlive()
-      def readKeepAlive(): Unit = executor.execute(() => {
-        val res = Try(client.readStr()).toOption
-        brokenConnection = brokenConnection || res.isEmpty
-        if(res.isDefined && !res.contains("end")) readKeepAlive()
-      })
+      println(s"Configuration $name received (load=$load, write=$write) ...")
 
-      val ((robotsData, lines), time) = utils.Benchmark.time {
-        val out = Experiments.runSimulation(config, visualization = false)(args)
-        var lines = 1 //configuration not included
-        var lastKeepAlive = System.currentTimeMillis()
-        val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.map({
-          info =>
-            lines = lines + 1
-            if(brokenConnection) throw new Exception("Keep alive timeout")
-            if ((System.currentTimeMillis() - lastKeepAlive) > Remote.KEEP_ALIVE_MS) {
-              client.writeStr(Remote.KEEP_ALIVE_MSG)
-              lastKeepAlive = System.currentTimeMillis()
-            }
-            info
+      val ((raw: Option[Array[Byte]], robotsData: Option[Seq[RobotData]], lines), time) = utils.Benchmark.time {
+        val (experimentStdOut, experimentProcess) = Argos.runConfiguredSimulation(Args.WORKING_DIR(args), config, visualization = false)
+        var lines = 0
+        val output = (config.toJson +: experimentStdOut.filter(_.headOption.contains('{'))).map({ l =>
+          lines = lines + 1
+          if (socket.isClosed) experimentProcess.destroy()
+          l
         })
-        (Loader.extractTests2(data, config), lines)
+
+        def loadRaw(lines: Iterator[String]): Array[Byte] = {
+          val output = new ByteArrayOutputStream(20 * 1024 * 1024)
+          val gzip = new GZIPOutputStream(output)
+          val writer = new PrintWriter(gzip)
+          lines.foreach(line => writer.write(line + "\n"))
+          writer.flush()
+          writer.close()
+          output.toByteArray
+        }
+
+        def loadStepInfo(lines: Iterator[String]): Iterator[StepInfo] =
+          lines.drop(1).map(Loader.toStepInfo).collect { case Some(info) => info }
+
+        (write, load) match {
+          case (true, false) =>
+            (Some(loadRaw(output)), None, lines)
+          case (false, true) =>
+            (None, Some(Loader.extractTests2(loadStepInfo(output), config)), lines)
+          case (true, true) =>
+            val (output1, output2) = output.copy(128)
+            val (raw, json) = utils.Parallel.run2(Some(loadRaw(output1)), Some(Loader.extractTests2(loadStepInfo(output2), config)))
+            (raw, json, lines)
+        }
       }
 
-      executor.shutdown()
-      if (lines == config.expectedLines) {
-        val result = Json.prettyPrint(Json.toJson(robotsData))
-        client.writeStr(result)
-        println(s"Configuration $name done. (${time.toSeconds}s)")
-      } else {
-        println(s"Configuration $name error. (${time.toSeconds}s)")
-      }
+      Try {
+        if (lines == config.expectedLines) {
+          raw.foreach { data =>
+            client.write(data).recover(ex => throw ex)
+          }
+          robotsData.foreach { data =>
+            client.writeStr(Json.prettyPrint(Json.toJson(data))).recover(ex => throw ex)
+          }
+        } else {
+          throw new Exception(s"Wrong lines number")
+        }
+        client.richClose()
+      }.map(_ => (time, name))
     }
-    client.close()
-    version
-  }
+  }.flatten
 }

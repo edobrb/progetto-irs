@@ -13,7 +13,7 @@ object Experiments extends App {
 
   /** Simulation standard output (by lines) */
   def runSimulation(config: Configuration, visualization: Boolean)(implicit args: Array[String]): Iterator[String] =
-    Argos.runConfiguredSimulation(Args.WORKING_DIR(args), config, visualization)
+    Argos.runConfiguredSimulation(Args.WORKING_DIR(args), config, visualization)._1
 
   /** Running experiments */
   val selectedConfig = Args.CONFIGURATION

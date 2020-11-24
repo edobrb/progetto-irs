@@ -13,7 +13,7 @@ object Argos {
   def runSimulation(workingDir: String, simulationFile: String): LazyList[String] =
     Process(s"argos3 -c $simulationFile", new File(workingDir)).lazyLines
 
-  def runConfiguredSimulation(workingDir: String, config: Configuration, visualization: Boolean): Iterator[String] = {
+  def runConfiguredSimulation(workingDir: String, config: Configuration, visualization: Boolean): (Iterator[String], Process) = {
     val escapedConfig = "\\\'" + lens(_.simulation.argos).set("")(config).toJson.replace("\"", "\\\"") + "\\\'"
 
     var output: InputStream = null
@@ -28,7 +28,7 @@ object Argos {
         val buffered = new BufferedReader(decoder)
         buffered.lines().iterator().asScala.foreach(s => println(s"ERR: $s"))
       })
-    Process(Seq("./pargos", config.simulation.argos,
+    val process = Process(Seq("./pargos", config.simulation.argos,
       s"--CONFIG=$escapedConfig",
       s"--TICKS=${config.simulation.ticks_per_seconds}",
       s"--LENGTH=${config.simulation.experiment_length}",
@@ -43,6 +43,6 @@ object Argos {
 
     val decoder = new InputStreamReader(output)
     val buffered = new BufferedReader(decoder)
-    buffered.lines().iterator().asScala
+    (buffered.lines().iterator().asScala, process)
   }
 }
