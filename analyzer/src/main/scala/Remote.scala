@@ -17,7 +17,7 @@ import utils.RichSocket._
 
 object Remote extends App {
   def KEEP_ALIVE_MSG = "ka"
-  def VERSION = "0.0.0"
+  def VERSION = "0.0.1"
   def KEEP_ALIVE_MS = 10000
 
   val client = utils.Arguments.boolOrDefault("client", default = false)(args)
@@ -145,8 +145,8 @@ case class RunnerClient(client: Socket) {
         val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.map({
           info =>
             lines = lines + 1
+            if(brokenConnection) throw new Exception("Keep alive timeout")
             if ((System.currentTimeMillis() - lastKeepAlive) > Remote.KEEP_ALIVE_MS) {
-              if(brokenConnection) throw new Exception("Keep alive timeout")
               client.writeStr(Remote.KEEP_ALIVE_MSG)
               lastKeepAlive = System.currentTimeMillis()
             }
