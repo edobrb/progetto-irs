@@ -51,14 +51,14 @@ object Remote extends App {
 case class DispatcherServer(server: ServerSocket) {
 
   def run(args: Array[String]): Unit = {
-    val experiments = Settings.experiments(args).filter {
+    val experiments = Settings.experiments(args).sortBy(_._3).filter {
       case (name, _, i) =>
         val filename = Args.DATA_FOLDER(args) + "/" + name
         val loaded_output_filename = filename + ".json"
         val exists = utils.File.exists(loaded_output_filename)
         if (exists) println(s"Skipping $loaded_output_filename")
         !exists
-    }.sortBy(_._3)
+    }
     val executor: ExecutorService = Executors.newCachedThreadPool()
     println(s"Server started, ${experiments.size} experiments to dispatch")
 
@@ -94,6 +94,7 @@ case class DispatcherServer(server: ServerSocket) {
 
 case class DispatcherClient(client: Socket) {
   def execute(name: String, config: Configuration, executor: ExecutorService): String = {
+    client.setSoTimeout(Remote.KEEP_ALIVE_MS * 2)
     client.writeStr(Remote.VERSION)
     client.writeStr(config.toJson)
     println(s"Dispatched $name to ${client.getRemoteSocketAddress}")
@@ -122,15 +123,19 @@ case class RunnerClient(client: Socket) {
   implicit val dataFormat: OFormat[RobotData] = Json.format[RobotData]
 
   def execute(args: Array[String]): String = {
+    client.setSoTimeout(Remote.KEEP_ALIVE_MS * 2)
     val version = client.readStr()
     if(version == Remote.VERSION) {
       val config = Configuration.fromJson(client.readStr())
       val name = config.setControllersSeed(None).setSimulationSeed(None).filename
       println(s"Configuration $name received...")
       val executor: ExecutorService = Executors.newCachedThreadPool()
+      var brokenConnection = false
       readKeepAlive()
       def readKeepAlive(): Unit = executor.execute(() => {
-        if(client.readStr() != "end") readKeepAlive()
+        val res = Try(client.readStr()).toOption
+        brokenConnection = brokenConnection || res.isEmpty
+        if(res.isDefined && !res.contains("end")) readKeepAlive()
       })
 
       val ((robotsData, lines), time) = utils.Benchmark.time {
@@ -141,6 +146,7 @@ case class RunnerClient(client: Socket) {
           info =>
             lines = lines + 1
             if ((System.currentTimeMillis() - lastKeepAlive) > Remote.KEEP_ALIVE_MS) {
+              if(brokenConnection) throw new Exception("Keep alive timeout")
               client.writeStr(Remote.KEEP_ALIVE_MSG)
               lastKeepAlive = System.currentTimeMillis()
             }
