@@ -17,6 +17,8 @@ import utils.RichSocket._
 
 object Remote extends App {
   def KEEP_ALIVE_MSG = "ka"
+  def VERSION = "0.0.0"
+  def KEEP_ALIVE_MS = 10000
 
   val client = utils.Arguments.boolOrDefault("client", default = false)(args)
   val server = utils.Arguments.boolOrDefault("server", default = false)(args)
@@ -30,7 +32,10 @@ object Remote extends App {
             case Failure(exception) =>
               println(s"${exception.getMessage}. Retry in 10 seconds")
               Thread.sleep(10000)
-            case Success(_) =>
+            case Success(version) if version == VERSION =>
+            case Success(version) if version != VERSION =>
+              println("Wrong remote version. Exiting...")
+              System.exit(0)
           }
         }
     })
@@ -69,7 +74,7 @@ case class DispatcherServer(server: ServerSocket) {
         val socket = server.accept
         executor.execute(() => {
           val (done, time) = utils.Benchmark.time {
-            Try(DispatcherClient(socket).execute(name, config)).map(result => utils.File.write(loaded_output_filename, result))
+            Try(DispatcherClient(socket).execute(name, config, executor)).map(result => utils.File.write(loaded_output_filename, result))
           }
           done match {
             case Success(_) =>
@@ -88,13 +93,25 @@ case class DispatcherServer(server: ServerSocket) {
 }
 
 case class DispatcherClient(client: Socket) {
-  def execute(name: String, config: Configuration): String = {
+  def execute(name: String, config: Configuration, executor: ExecutorService): String = {
+    client.writeStr(Remote.VERSION)
     client.writeStr(config.toJson)
     println(s"Dispatched $name to ${client.getRemoteSocketAddress}")
+
     var result = ""
+    keepAlive()
+    def keepAlive(): Unit = executor.execute(() => {
+      Thread.sleep(Remote.KEEP_ALIVE_MS)
+      Try(client.writeStr(Remote.KEEP_ALIVE_MSG)) match {
+        case Failure(_) => client.close()
+        case Success(_) => if(result == Remote.KEEP_ALIVE_MSG || result.isEmpty) keepAlive()
+      }
+    })
+
     do {
       result = client.readStr()
     } while (result == Remote.KEEP_ALIVE_MSG)
+    client.writeStr("end")
     client.close()
     result
   }
@@ -104,31 +121,44 @@ case class RunnerClient(client: Socket) {
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
   implicit val dataFormat: OFormat[RobotData] = Json.format[RobotData]
 
-  def execute(args: Array[String]): Unit = {
-    val config = Configuration.fromJson(client.readStr())
-    val name = config.setControllersSeed(None).setSimulationSeed(None).filename
-    println(s"Configuration $name received...")
-    val ((robotsData, lines), time) = utils.Benchmark.time {
-      val out = Experiments.runSimulation(config, visualization = false)(args)
-      var lines = 1 //configuration not included
-      val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.zipWithIndex.map({
-        case (info, i) if i % 100000 == 0 =>
-          lines = lines + 1
-          client.writeStr(Remote.KEEP_ALIVE_MSG)
-          info
-        case (info, _) =>
-          lines = lines + 1
-          info
+  def execute(args: Array[String]): String = {
+    val version = client.readStr()
+    if(version == Remote.VERSION) {
+      val config = Configuration.fromJson(client.readStr())
+      val name = config.setControllersSeed(None).setSimulationSeed(None).filename
+      println(s"Configuration $name received...")
+      val executor: ExecutorService = Executors.newCachedThreadPool()
+      readKeepAlive()
+      def readKeepAlive(): Unit = executor.execute(() => {
+        if(client.readStr() != "end") readKeepAlive()
       })
-      (Loader.extractTests2(data, config), lines)
-    }
-    if (lines == config.expectedLines) {
-      val result = Json.prettyPrint(Json.toJson(robotsData))
-      client.writeStr(result)
-      println(s"Configuration $name done. (${time.toSeconds}s)")
-    } else {
-      println(s"Configuration $name error. (${time.toSeconds}s)")
+
+      val ((robotsData, lines), time) = utils.Benchmark.time {
+        val out = Experiments.runSimulation(config, visualization = false)(args)
+        var lines = 1 //configuration not included
+        var lastKeepAlive = System.currentTimeMillis()
+        val data = out.map(Loader.toStepInfo).collect { case Some(info) => info }.map({
+          info =>
+            lines = lines + 1
+            if ((System.currentTimeMillis() - lastKeepAlive) > Remote.KEEP_ALIVE_MS) {
+              client.writeStr(Remote.KEEP_ALIVE_MSG)
+              lastKeepAlive = System.currentTimeMillis()
+            }
+            info
+        })
+        (Loader.extractTests2(data, config), lines)
+      }
+
+      executor.shutdown()
+      if (lines == config.expectedLines) {
+        val result = Json.prettyPrint(Json.toJson(robotsData))
+        client.writeStr(result)
+        println(s"Configuration $name done. (${time.toSeconds}s)")
+      } else {
+        println(s"Configuration $name error. (${time.toSeconds}s)")
+      }
     }
     client.close()
+    version
   }
 }
