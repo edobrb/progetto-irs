@@ -146,7 +146,7 @@ object Analyzer extends App {
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
     val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitness_values.sum)
     val bestConfig = bestRobot.config
-    println("Best robot in file: " + bestRobot.filename + "(" + bestRobot.fitnessCurve.last + ")")
+    println("Best robot max fitness: " + bestRobot.fitnessCurve.last)
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
       network = bestConfig.network.copy(initial_schema = Some(bestRobot.best_network)))
     println(config)
