@@ -1,23 +1,22 @@
-import java.io.{ByteArrayOutputStream, PrintWriter}
-import java.net._
+package main
 
-import utils.Parallel.Parallel
-import java.net.ServerSocket
+import java.io.{ByteArrayOutputStream, PrintWriter}
+import java.net.{ServerSocket, _}
 import java.util.concurrent.{BlockingDeque, ExecutorService, Executors, LinkedBlockingDeque}
 import java.util.zip.GZIPOutputStream
 
-import model.config.Configuration.JsonFormats._
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
-import model.{RobotData, StepInfo}
 import model.config.Configuration
+import model.{RobotData, StepInfo}
 import play.api.libs.json.{Json, OFormat}
+import utils.Parallel.Parallel
 import utils.RichIterator.RichIterator
-
-import scala.util.{Failure, Success, Try}
 import utils.{Argos, RichSocket}
 
 import scala.concurrent.duration.Duration
+import scala.util.{Failure, Success, Try}
+import model.config.Configuration.JsonFormats._
 
 object Remote extends App {
   def KEEP_ALIVE_MS = 10000

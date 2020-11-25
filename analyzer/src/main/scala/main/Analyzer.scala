@@ -1,19 +1,19 @@
+package main
+
 import java.awt.Font
 
-import Loader.dataFormat
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, readFromString}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.RobotData
 import model.config.Configuration
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
-import org.knowm.xchart._
 import org.knowm.xchart.style.BoxStyler.BoxplotCalCulationMethod
-import play.api.libs.json.{JsError, JsSuccess, Json}
-import utils.Parallel.Parallel
+import org.knowm.xchart.style.Styler.LegendPosition
+import org.knowm.xchart.{BitmapEncoder, BoxChartBuilder, SwingWrapper, XYChartBuilder}
 
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-import com.github.plokhotnyuk.jsoniter_scala.core._
-import org.knowm.xchart.style.Styler.LegendPosition
+import utils.Parallel._
 
 object Analyzer extends App {
 

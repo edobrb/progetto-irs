@@ -1,3 +1,5 @@
+package main
+
 import scala.util.Try
 
 object Args {
@@ -12,14 +14,14 @@ object Args {
   def REPETITIONS(implicit args: Array[String]): Range =
     utils.Arguments.argOrDefault("from", v => Try(v.toInt).toOption, 1)(args) to utils.Arguments.argOrDefault("to", v => Try(v.toInt).toOption, 100)(args)
 
-  def MAKE_CHARTS(implicit args: Array[String]):Boolean = utils.Arguments.boolOrDefault("chart", default = true)(args)
+  def MAKE_CHARTS(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("chart", default = true)(args)
 
-  def SHOW_CHARTS(implicit args: Array[String]):Boolean = utils.Arguments.boolOrDefault("show", default = false)(args)
+  def SHOW_CHARTS(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("show", default = false)(args)
 
-  def RUN_BEST(implicit args: Array[String]):Boolean = utils.Arguments.boolOrDefault("run", default = false)(args)
+  def RUN_BEST(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("run", default = false)(args)
 
-  def WRITE_OUTPUT(implicit args: Array[String]):Boolean = utils.Arguments.boolOrDefault("write", default = true)(args)
+  def WRITE_OUTPUT(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("write", default = true)(args)
 
-  def LOAD_OUTPUT(implicit args: Array[String]):Boolean = utils.Arguments.boolOrDefault("load", default = false)(args)
+  def LOAD_OUTPUT(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("load", default = false)(args)
 
 }

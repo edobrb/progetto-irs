@@ -1,7 +1,7 @@
+package main
+
 import experiments.ExperimentSettings
-import model.config.{Configuration, Variation}
-import model.config.Configuration.{Adaptation, Forwarding, HalfRegionVariation, Network, NetworkIO, NetworkIOMutation, NetworkMutation, Objective, ObstacleAvoidance, Simulation}
-import utils.ConfigLens._
+import model.config.Configuration
 
 object Settings {
 

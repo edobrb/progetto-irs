@@ -1,11 +1,11 @@
+package main
+
 import model.config.Configuration
-import model.config.Configuration.JsonFormats._
-import play.api.libs.json.Json
-import utils.Parallel._
-import utils.RichIterator._
 import utils.{Argos, Benchmark}
 
-import scala.util.{Failure, Random, Success, Try}
+import scala.util.{Failure, Success}
+import utils.Parallel._
+import utils.RichIterator._
 
 object Experiments extends App {
 

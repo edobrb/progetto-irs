@@ -1,8 +1,11 @@
-import model.config.{Configuration, Variation}
+package main
+
+import model.config.Configuration
 import model.config.Configuration._
 import monocle.Lens
+import utils.ConfigLens.lens
 import utils.ConfigLens._
-import utils.Parallel.Parallel
+import utils.Parallel._
 
 object TestController extends App {
 

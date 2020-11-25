@@ -1,16 +1,17 @@
+package main
+
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, readFromString}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.Types.RobotId
 import model.config.Configuration
 import model.{BooleanNetwork, Epoch, RobotData, StepInfo}
-import play.api.libs.json._
+import play.api.libs.json.{Json, OFormat}
 import utils.Benchmark
-import utils.Parallel._
 
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success, Try}
-import com.github.plokhotnyuk.jsoniter_scala.macros._
-import com.github.plokhotnyuk.jsoniter_scala.core._
+import utils.Parallel._
 import model.config.Configuration.JsonFormats._
-import utils.RichIterator.RichIterator
 
 object Loader extends App {
 
