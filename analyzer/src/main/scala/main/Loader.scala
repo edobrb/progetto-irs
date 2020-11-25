@@ -67,7 +67,7 @@ object Loader extends App {
         val data = oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
         map.updated(id, (data, Some((bn, Nil))))
       case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) =>
-        val data = RobotData("", id, configuration, Seq(fitness), bn, Nil)
+        val data = RobotData(id, configuration, Seq(fitness), bn, Nil)
         map.updated(id, (data, None))
     }).values.map(_._1).toSeq
   }
@@ -80,7 +80,6 @@ object Loader extends App {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
         extractTests2(data, config)
         /*val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
-
         results.map {
           case (robotId, epochs: Seq[Epoch]) =>
             RobotData("", robotId, config, epochs.map(_.fitnessValues.last),
