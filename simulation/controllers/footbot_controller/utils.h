@@ -9,7 +9,8 @@ int extract(int n, Real p) {
    return r;
 }
 inline Real round(Real v, int d) {
-    return (Real)(((int)(v * pow(10, d) + .5)) / pow(10, d));
+    double p = pow(10, d);
+    return (Real)(floor(v * p + 0.5) / p);
 }
 
 #endif
