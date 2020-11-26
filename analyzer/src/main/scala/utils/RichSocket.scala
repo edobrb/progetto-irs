@@ -10,6 +10,7 @@ import scala.util.{Failure, Success, Try}
 case class RichSocket(socket: Socket, keepAliveMs: Int = 1000) {
   private val mailbox: BlockingDeque[Try[Array[Byte]]] = new LinkedBlockingDeque[Try[Array[Byte]]]()
   private val executor = Executors.newScheduledThreadPool(2)
+  private val outputLock = new Object()
 
   socket.setSoTimeout(keepAliveMs * 2)
   executor.scheduleWithFixedDelay(() => {
@@ -49,10 +50,12 @@ case class RichSocket(socket: Socket, keepAliveMs: Int = 1000) {
   def read(): Try[Array[Byte]] = mailbox.takeFirst()
 
   private def writePacket(kind: Int, message: Array[Byte]): Try[Unit] = Try {
-    out.write(ByteBuffer.allocate(4).putInt(kind).array())
-    out.write(ByteBuffer.allocate(4).putInt(message.length).array())
-    out.write(message)
-    out.flush()
+    outputLock.synchronized {
+      out.write(ByteBuffer.allocate(4).putInt(kind).array())
+      out.write(ByteBuffer.allocate(4).putInt(message.length).array())
+      out.write(message)
+      out.flush()
+    }
   } match {
     case Failure(exception) =>
       mailbox.addLast(Failure(exception))

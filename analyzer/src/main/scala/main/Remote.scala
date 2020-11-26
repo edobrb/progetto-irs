@@ -30,6 +30,7 @@ object Remote extends App {
       _ =>
         while (true) {
           val result = for (socket <- Try(new Socket(address, port));
+                            _ = socket.setSendBufferSize(50 * 1024 * 1024);
                             result <- RunnerClient(socket).execute(args)) yield result
           result match {
             case Failure(exception) =>
@@ -78,6 +79,7 @@ case class DispatcherServer(server: ServerSocket) {
         val loaded_output_filename = filename + ".json"
         val output_filename = filename + ".gzip"
         val socket = server.accept
+        socket.setReceiveBufferSize(50 * 1024 * 1024)
         executor.execute(() => {
           val (done, time) = utils.Benchmark.time {
             DispatcherClient(socket).execute(name, config, write, load)
