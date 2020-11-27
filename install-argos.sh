@@ -1,10 +1,8 @@
 #!/bin/bash
 
-cd ..
 sudo apt-get install cmake libfreeimage-dev libfreeimageplus-dev qt5-default freeglut3-dev libxi-dev libxmu-dev liblua5.3-dev lua5.3 doxygen graphviz graphviz-dev asciidoc g++ git
-git clone https://github.com/ilpincy/argos3.git argos3
+git clone https://github.com/edobrb/argos3.git
 cd argos3
-git reset --hard 4376baa6fee9921601acc48101b4cab5385e6f94
 mkdir build_simulator
 cd build_simulator
 cmake -DCMAKE_BUILD_TYPE=Release \
