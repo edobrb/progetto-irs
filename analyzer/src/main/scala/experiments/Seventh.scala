@@ -55,6 +55,7 @@ object Seventh extends ExperimentSettings {
         case "experiments/parametrized.argos" => "[Arena rectangle]"
         case "experiments/parametrized-random-cylinder.argos" => "[Arena cylinder]"
       }),*/
+      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
       Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
         case ((2, 1), (0, 0)) => "rewire"
