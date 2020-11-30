@@ -51,7 +51,12 @@ object Fifth extends ExperimentSettings {
     Seq(
       Variation(Seq(0.1, 0.5, 0.79, 0.9), lens(_.network.p), "p"),
       Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
-      Variation(Seq(true, false), lens(_.network.io.allow_io_node_overlap), "overlap")
+      Variation[Configuration, Option[HalfRegionVariation]](Seq(None,
+        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1))),
+        lens(_.objective.half_region_variation), "objective", {
+          case None => "whole"
+          case Some(HalfRegionVariation(_, _, _)) => "half"
+        })
     )
   }
 }
