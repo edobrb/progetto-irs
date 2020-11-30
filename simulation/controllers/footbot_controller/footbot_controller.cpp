@@ -8,8 +8,10 @@
 #include "bn.h"
 #include "utils.h"
 
-#define LOG_DEBUG
+//#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
+#define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
+#define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
 
 CFootBotBn::CFootBotBn() :
    bestNetworkFitness(-1),
@@ -25,7 +27,8 @@ CFootBotBn::CFootBotBn() :
    bestIO(NULL),
    testIO(NULL),
    stayUpper(false),
-   myId(-1) {}
+   myId(-1),
+   m_pcLights(NULL) {}
 
 /* Global parameters */
 bool configurationLoaded = false;
@@ -70,14 +73,27 @@ int WHEELS_NODES;
 //obstacle_avoidance
 Real PROXIMITY_THRESHOLD;
 int PROXIMITY_NODES;
-//half region
-bool STAY_ON_HALF;
+
+//half region variant
+int RUN_VARIANT = 0;
+bool STAY_ON_HALF = false;
 int REGION_NODES = 0;
 Real PENALTY_FACTOR = 0;
 bool RESET_REGION_EVERY_EPOCH = false;
 
-int NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT;
+//foraging variant
+int FORAGING_VARIANT = 1;
+bool FORAGING = false;
+int LIGHT_NODES = 0;
+Real LIGHT_THRESHOLD = 0;
+bool hasGather = false;
+
+int NETWORK_INPUT_COUNT = 0, NETWORK_OUTPUT_COUNT = 0;
 nlohmann::json config;
+
+int VARIANT = 0;
+
+
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
 
@@ -98,13 +114,18 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       GetNodeAttributeOrDefault(t_node, "CONFIG", configStr, configStr);
       config = nlohmann::json::parse(configStr);
 
+      //variant
+      if(config["other"].is_object()) {
+         if(config["other"]["variant"].is_string()) {
+            VARIANT = (config["other"]["variant"].get<std::string>() == "foraging") ? FORAGING_VARIANT : VARIANT;
+         }
+      }
+
       //simulation
       TICKS_PER_SECOND              = config["simulation"]["ticks_per_seconds"].get<int>();
       EXPERIMENT_LENGTH             = config["simulation"]["experiment_length"].get<int>();
       PRINT_ANALYTICS               = config["simulation"]["print_analytics"].get<bool>();
       ROBOT_COUNT                   = config["simulation"]["robot_count"].get<int>();
-      //sharedBn = new Bn*[ROBOT_COUNT];
-      //sharedBnIo = new BnIO*[ROBOT_COUNT];
 
       //adaptation
       EPOCH_LENGTH                  = config["adaptation"]["epoch_length"].get<int>() * TICKS_PER_SECOND;
@@ -138,18 +159,30 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       //obstacle avoidance objective
       PROXIMITY_THRESHOLD           = config["objective"]["obstacle_avoidance"]["proximity_threshold"].get<Real>();
       PROXIMITY_NODES               = config["objective"]["obstacle_avoidance"]["proximity_nodes"].get<int>();
+
       //half region variation
-      STAY_ON_HALF = false;
-      if(config["objective"]["half_region_variation"].is_object()) {
-         STAY_ON_HALF               = true;
-         PENALTY_FACTOR             = config["objective"]["half_region_variation"]["penalty_factor"].get<Real>();
-         REGION_NODES               = config["objective"]["half_region_variation"]["region_nodes"].get<int>();
-         RESET_REGION_EVERY_EPOCH   = config["objective"]["half_region_variation"]["reset_region_every_epoch"].get<bool>();
+      if(VARIANT == RUN_VARIANT && config["objective"]["half_region_variation"].is_object()) {
+         if(config["objective"]["half_region_variation"].is_object()) {
+            STAY_ON_HALF               = true;
+            PENALTY_FACTOR             = config["objective"]["half_region_variation"]["penalty_factor"].get<Real>();
+            REGION_NODES               = config["objective"]["half_region_variation"]["region_nodes"].get<int>();
+            RESET_REGION_EVERY_EPOCH   = config["objective"]["half_region_variation"]["reset_region_every_epoch"].get<bool>();
+            NETWORK_INPUT_COUNT        += REGION_NODES;
+         }
+      } 
+      //foraging variant
+      else if(VARIANT == FORAGING_VARIANT) {
+         FORAGING             = true;
+         NETWORK_INPUT_COUNT  += 3; //is on nest, is on gather, has food
+         NETWORK_OUTPUT_COUNT += 1; //hold food
+         LIGHT_NODES          = std::stoi(config["other"]["light_nodes"].get<std::string>());
+         LIGHT_THRESHOLD      = (Real)std::stod(config["other"]["light_threshold"].get<std::string>());
+         NETWORK_INPUT_COUNT  += LIGHT_NODES;
       }
       
       //netowrk io total nodes
-      NETWORK_INPUT_COUNT = PROXIMITY_NODES + REGION_NODES;
-      NETWORK_OUTPUT_COUNT = WHEELS_NODES;
+      NETWORK_INPUT_COUNT += PROXIMITY_NODES;
+      NETWORK_OUTPUT_COUNT += WHEELS_NODES;
 
       //Select random seed
       uint seed = 0;
@@ -207,6 +240,8 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       
       printf("[DEBUG]\t NETWORK_INPUT_COUNT = %d\n", NETWORK_INPUT_COUNT); 
       printf("[DEBUG]\t NETWORK_OUTPUT_COUNT = %d\n", NETWORK_OUTPUT_COUNT); 
+
+      printf("[DEBUG]\t VARIANT = %d\n", VARIANT); 
       #endif
    } //end configuration loading
 
@@ -265,6 +300,9 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
    testIO->CopyFrom(bestIO, bestBn);
 
    stayUpper = isUpper();
+   if(VARIANT == FORAGING_VARIANT) {
+      m_pcLights = GetSensor<CCI_FootBotLightSensor>("footbot_light");
+   }
    #ifdef LOG_DEBUG 
    if(stayUpper && STAY_ON_HALF) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
@@ -279,6 +317,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
 void CFootBotBn::RunAndEvaluateNetwork() {
 
    // Feed network
+   int nextInputNode = 0;
    const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
    Real maxProximityValue = 0;
    int proximityGroupSize = proximityReadings.size() / PROXIMITY_NODES;
@@ -289,37 +328,60 @@ void CFootBotBn::RunAndEvaluateNetwork() {
          max = max > value ? max : value;
          maxProximityValue = maxProximityValue > value ? maxProximityValue : value;
       }
-      testIO->PushInput(testBn, i, max > PROXIMITY_THRESHOLD);
-   }
-   bool isInCorrectHalf = stayUpper == isUpper();
-   for(int i = 0; i < REGION_NODES; i++) {
-      testIO->PushInput(testBn, PROXIMITY_NODES + i, isInCorrectHalf);
+      testIO->PushInput(testBn, nextInputNode++, max > PROXIMITY_THRESHOLD);
    }
 
-   #ifdef LOG_DEBUG
-   if(STAY_ON_HALF && isInCorrectHalf && stayUpper) {
-      m_pcLEDs->SetAllColors(CColor::GREEN);
-   } else if(STAY_ON_HALF && !isInCorrectHalf && stayUpper) {
-      m_pcLEDs->SetAllColors(CColor::YELLOW);
-   } else if(STAY_ON_HALF && isInCorrectHalf && !stayUpper) {
-      m_pcLEDs->SetAllColors(CColor::RED);
-   } else if(STAY_ON_HALF && !isInCorrectHalf && !stayUpper) {
-      m_pcLEDs->SetAllColors(CColor::ORANGE);
+   bool isInCorrectHalf = stayUpper == isUpper();
+   bool isOnNest = isOnNest();
+   bool isOnGather = isOnGather();
+
+   if(STAY_ON_HALF) {
+      for(int i = 0; i < REGION_NODES; i++) {
+         testIO->PushInput(testBn, nextInputNode++, isInCorrectHalf);
+      }
+      #ifdef LOG_DEBUG
+      if(isInCorrectHalf && stayUpper) {
+         m_pcLEDs->SetAllColors(CColor::GREEN);
+      } else if(!isInCorrectHalf && stayUpper) {
+         m_pcLEDs->SetAllColors(CColor::YELLOW);
+      } else if(isInCorrectHalf && !stayUpper) {
+         m_pcLEDs->SetAllColors(CColor::RED);
+      } else if(!isInCorrectHalf && !stayUpper) {
+         m_pcLEDs->SetAllColors(CColor::ORANGE);
+      }
+      #endif
+   } 
+
+   if(FORAGING) {
+      const CCI_FootBotLightSensor::TReadings& lightReadings = m_pcLights->GetReadings();
+      int lightGroupSize = lightReadings.size() / LIGHT_NODES;
+      for(int i = 0; i < LIGHT_NODES; i++) {
+         Real max = 0;
+         for(int c = 0; c < lightGroupSize; c++) {
+            Real value = lightReadings[i * lightGroupSize + c].Value;
+            max = max > value ? max : value;
+         }
+         testIO->PushInput(testBn, nextInputNode++, max > LIGHT_THRESHOLD);
+      }
+      testIO->PushInput(testBn, nextInputNode++, isOnNest);
+      testIO->PushInput(testBn, nextInputNode++, isOnGather);
+      testIO->PushInput(testBn, nextInputNode++, hasGather);
    }
-   #endif
 
    // Run network
    testBn->Step();
 
    // Run motors with outputs
+   int nextOutputNode = 0;
    Real left = 0, right = 0;
    for(int i = 0; i < WHEELS_NODES / 2; i++) {
-      left += testIO->GetOutput(testBn, i) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
+      left += testIO->GetOutput(testBn, nextOutputNode++) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
    }
    for(int i = 0; i < WHEELS_NODES / 2; i++) {
-      right += testIO->GetOutput(testBn, i + WHEELS_NODES / 2) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
+      right += testIO->GetOutput(testBn, nextOutputNode++) ? (MAX_WHEELS_SPEED / (WHEELS_NODES / 2)): 0;
    }
    m_pcWheels->SetLinearVelocity(left, right);
+   bool holdingFood = (FORAGING && testIO->GetOutput(testBn, nextOutputNode++));
    
    // Evaluate fitness function
    left /= MAX_WHEELS_SPEED;
@@ -328,12 +390,41 @@ void CFootBotBn::RunAndEvaluateNetwork() {
    Real straightFactor = (1 - sqrt(abs(left - right)));
    Real proximityFactor = (1 - maxProximityValue);
    Real totalFactor = speedFactor * straightFactor * proximityFactor;
-   Real fitness = 100 * totalFactor / EPOCH_LENGTH;
-   if(STAY_ON_HALF && !isInCorrectHalf) {
-      testNetworkFitness += PENALTY_FACTOR * fitness;
-   } else {
-      testNetworkFitness += fitness;
+   Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
+
+   if(VARIANT == RUN_VARIANT) {
+      if(STAY_ON_HALF && !isInCorrectHalf) {
+      testNetworkFitness += PENALTY_FACTOR * runFitness;
+      } else {
+         testNetworkFitness += runFitness;
+      }
+   } else if(VARIANT == FORAGING_VARIANT) {
+
+      if(hasGather && !holdingFood) { //drop
+         hasGather = false; 
+         testNetworkFitness += isOnNest ? 1 : -1;
+      }
+      if(!hasGather && holdingFood && isOnGather) { //take
+         hasGather = true;
+         testNetworkFitness += 10;
+      }
+
+      testNetworkFitness += runFitness;
+
+      #ifdef LOG_DEBUG
+      if(isOnNest) {
+         m_pcLEDs->SetAllColors(CColor::GREEN);
+      } else if(isOnGather) {
+         m_pcLEDs->SetAllColors(CColor::RED);
+      } else {
+         m_pcLEDs->SetAllColors(CColor::GRAY50);
+      }
+      if(hasGather) {
+         for(int l = 0; l < 12; l += 2) m_pcLEDs->SetSingleColor(l, CColor::WHITE);
+      } 
+      #endif
    }
+   
 }
 
 /* Controller step */
@@ -368,6 +459,7 @@ void CFootBotBn::ControlStep() {
       //RESET
       currentStep = 0;
       testNetworkFitness = 0;
+      hasGather = false;
       if(RESET_REGION_EVERY_EPOCH) {
          stayUpper = isUpper();
          #ifdef LOG_DEBUG 

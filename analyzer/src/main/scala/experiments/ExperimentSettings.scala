@@ -10,13 +10,17 @@ trait ExperimentSettings {
 }
 
 object ExperimentSettings {
-  def apply(name: String): ExperimentSettings = Map[String, ExperimentSettings](
-    "1" -> First,
-    "2" -> Second,
-    "3" -> Third,
-    "4" -> Fourth,
-    "5" -> Fifth,
-    "6" -> Sixth,
-    "7" -> Seventh,
-  )(name)
+  def apply(name: String): ExperimentSettings = {
+    //name.split(',').flat
+    Map[String, ExperimentSettings](
+      "1" -> First,
+      "2" -> Second,
+      "3" -> Third,
+      "4" -> Fourth,
+      "5" -> Fifth,
+      "6" -> Sixth,
+      "7" -> Seventh,
+      "8" -> Octave,
+    )(name)
+  }
 }

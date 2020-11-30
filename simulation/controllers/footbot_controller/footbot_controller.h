@@ -7,6 +7,7 @@
 #include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_proximity_sensor.h>
 #include <argos3/plugins/robots/generic/control_interface/ci_positioning_sensor.h>
 #include <argos3/plugins/robots/generic/control_interface/ci_leds_actuator.h>
+#include <argos3/plugins/robots/foot-bot/control_interface/ci_footbot_light_sensor.h>
 #include "json.hpp"
 #include "bn_io.h"
 #include "bn.h"
@@ -43,6 +44,7 @@ private:
    CCI_FootBotProximitySensor* m_pcProximity;
    CCI_PositioningSensor* m_pcPositioning;
    CCI_LEDsActuator* m_pcLEDs;
+   CCI_FootBotLightSensor* m_pcLights;
 };
 
 #endif

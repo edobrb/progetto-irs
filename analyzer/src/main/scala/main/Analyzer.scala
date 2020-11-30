@@ -24,17 +24,16 @@ object Analyzer extends App {
   implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
   val rawData: Iterable[RobotData] = {
-    var loaded = 0
     val result = Loader.OUTPUT_FILENAMES.parFlatmap(Args.PARALLELISM_DEGREE, { filename =>
       utils.File.read(filename).map { str =>
         println(s"Parsing $filename (${str.length} chars)")
         Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
       } match {
         case Failure(exception) => Nil //println(s"Error while loading $filename: $exception"); Nil
-        case Success(value) => loaded = loaded + 1; value
+        case Success(value) => value
       }
     })
-    println(s"Loaded $loaded experiments")
+    println(s"Loaded ${result.size} robots data")
     result
   }
 
