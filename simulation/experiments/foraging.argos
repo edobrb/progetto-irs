@@ -63,6 +63,12 @@
     <box id="d4" size="1.66,0.1,0.2" movable="false">
       <body position="-1.415,-1.415,0" orientation="-45,0,0" />
     </box>
+    <box id="o1" size="0.5,0.1,0.2" movable="false">
+      <body position="1.75,0,0" orientation="0,0,0" />
+    </box>
+    <box id="o2" size="0.5,0.1,0.2" movable="false">
+      <body position="-1.75,0,0" orientation="0,0,0" />
+    </box>
 
     <light id="light"
            position="0,1.9,0.9"

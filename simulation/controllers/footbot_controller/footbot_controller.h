@@ -38,6 +38,7 @@ private:
    BnIO* testIO;
 
    bool stayUpper;
+   bool hasGather;
    int myId;
 
    CCI_DifferentialSteeringActuator* m_pcWheels;

@@ -17,7 +17,7 @@ object Octave extends ExperimentSettings {
       experiment_length = 7200 * 2 * 10,
       robot_count = 10,
       print_analytics = true),
-    Adaptation(epoch_length = 40,
+    Adaptation(epoch_length = 80,
       NetworkMutation(
         max_connection_rewires = 0,
         connection_rewire_probability = 1,
@@ -49,9 +49,16 @@ object Octave extends ExperimentSettings {
 
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
+    val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
+    val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
       //Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
-      Variation(Seq(/*0.1, 0.5, */0.79), lens(_.network.p), "p"),
+      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
+      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
+        case ((2, 1), (0, 0)) => "rewire"
+        case ((0, 0), (3, 8)) => "mutation"
+        case ((2, 1), (3, 8)) => "rewire-and-mutation"
+      }),
     )
   }
 }

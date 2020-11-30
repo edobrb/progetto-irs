@@ -143,7 +143,7 @@ object Analyzer extends App {
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitness_values.sum)
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
     val bestConfig = bestRobot.config
     println("Best robot max fitness: " + bestRobot.fitnessCurve.last)
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),

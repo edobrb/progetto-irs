@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-//#define LOG_DEBUG
+#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
@@ -27,6 +27,7 @@ CFootBotBn::CFootBotBn() :
    bestIO(NULL),
    testIO(NULL),
    stayUpper(false),
+   hasGather(false),
    myId(-1),
    m_pcLights(NULL) {}
 
@@ -86,7 +87,7 @@ int FORAGING_VARIANT = 1;
 bool FORAGING = false;
 int LIGHT_NODES = 0;
 Real LIGHT_THRESHOLD = 0;
-bool hasGather = false;
+
 
 int NETWORK_INPUT_COUNT = 0, NETWORK_OUTPUT_COUNT = 0;
 nlohmann::json config;
@@ -343,11 +344,11 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       if(isInCorrectHalf && stayUpper) {
          m_pcLEDs->SetAllColors(CColor::GREEN);
       } else if(!isInCorrectHalf && stayUpper) {
-         m_pcLEDs->SetAllColors(CColor::YELLOW);
-      } else if(isInCorrectHalf && !stayUpper) {
          m_pcLEDs->SetAllColors(CColor::RED);
+      } else if(isInCorrectHalf && !stayUpper) {
+         m_pcLEDs->SetAllColors(CColor::BLUE);
       } else if(!isInCorrectHalf && !stayUpper) {
-         m_pcLEDs->SetAllColors(CColor::ORANGE);
+         m_pcLEDs->SetAllColors(CColor::RED);
       }
       #endif
    } 
@@ -394,7 +395,7 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
    if(VARIANT == RUN_VARIANT) {
       if(STAY_ON_HALF && !isInCorrectHalf) {
-      testNetworkFitness += PENALTY_FACTOR * runFitness;
+         testNetworkFitness += PENALTY_FACTOR * runFitness;
       } else {
          testNetworkFitness += runFitness;
       }
@@ -402,11 +403,12 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
       if(hasGather && !holdingFood) { //drop
          hasGather = false; 
-         testNetworkFitness += isOnNest ? 1 : -1;
-      }
-      if(!hasGather && holdingFood && isOnGather) { //take
+         testNetworkFitness += isOnNest ? 100 : -2;
+          //printf("DROP AT %.2f (%.2f)\n", m_pcPositioning->GetReading().Position.GetY(), testNetworkFitness);
+      } else if(isOnGather && !hasGather && holdingFood) { //take
          hasGather = true;
-         testNetworkFitness += 10;
+         //printf("TAKE AT %.2f (%.2f)\n", m_pcPositioning->GetReading().Position.GetY(), testNetworkFitness);
+         testNetworkFitness += 1;
       }
 
       testNetworkFitness += runFitness;
@@ -460,13 +462,13 @@ void CFootBotBn::ControlStep() {
       currentStep = 0;
       testNetworkFitness = 0;
       hasGather = false;
-      if(RESET_REGION_EVERY_EPOCH) {
+      if(RESET_REGION_EVERY_EPOCH && STAY_ON_HALF) {
          stayUpper = isUpper();
          #ifdef LOG_DEBUG 
-         if(stayUpper && STAY_ON_HALF) {
+         if(stayUpper) {
             m_pcLEDs->SetAllColors(CColor::GREEN);
          } else {
-            m_pcLEDs->SetAllColors(CColor::RED);
+            m_pcLEDs->SetAllColors(CColor::BLUE);
          }
          #endif
       }
