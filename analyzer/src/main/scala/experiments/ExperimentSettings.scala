@@ -7,6 +7,8 @@ trait ExperimentSettings {
   def defaultConfig: Configuration
 
   def configVariation: Seq[Variation[Configuration, _]]
+
+  def filter: Configuration => Boolean = _ => true
 }
 
 object ExperimentSettings {
@@ -21,6 +23,7 @@ object ExperimentSettings {
       "6" -> Sixth,
       "7" -> Seventh,
       "8" -> Octave,
+      "9" -> Ninth,
     )(name)
   }
 }

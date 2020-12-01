@@ -45,6 +45,7 @@ object Ninth extends ExperimentSettings {
       None)
   )
 
+  //override def filter: Configuration => Boolean = c => c.network.p != 0.1 || c.network.io.override_output_nodes
 
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
@@ -59,15 +60,16 @@ object Ninth extends ExperimentSettings {
     val foragingArena = (("experiments/parametrized-foraging.argos", Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
 
     Seq(
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
+      Variation(Seq(0.1, 0.5, 0.79/*, 0.9*/), lens(_.network.p), "p"),
+      //Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
       Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
         case ((2, 1), (0, 0)) => "rewire"
         case ((0, 0), (3, 8)) => "mutation"
         case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
-      Variation(Seq(wholeArena, halfArena, foragingArena), arenaLens, "override", {
+      Variation(Seq(wholeArena, halfArena, foragingArena), arenaLens, "override", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
         case (("experiments/parametrized.argos", _), None) => "whole"
-        case (("experiments/parametrized.argos", _), HalfRegionVariation(_,_,_)) => "half"
+        case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"
         case (("experiments/parametrized-foraging.argos", _), None) => "foraging"
       }),
     )

@@ -10,7 +10,8 @@ object Settings {
 
   /** All configuration combinations */
   def configurations(implicit args: Array[String]): Seq[Configuration] =
-    utils.Combiner(selectedExperiment.defaultConfig, selectedExperiment.configVariation.map(_.apply)).distinct
+    utils.Combiner(selectedExperiment.defaultConfig, selectedExperiment.configVariation.map(_.apply))
+      .distinct.filter(selectedExperiment.filter)
 
   /** Filenames of experiments and the relative config */
   def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
