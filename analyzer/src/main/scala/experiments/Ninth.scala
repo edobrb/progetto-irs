@@ -67,7 +67,7 @@ object Ninth extends ExperimentSettings {
         case ((0, 0), (3, 8)) => "mutation"
         case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
-      Variation(Seq(wholeArena, halfArena, foragingArena), arenaLens, "override", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
+      Variation(Seq(wholeArena, halfArena, foragingArena), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
         case (("experiments/parametrized.argos", _), None) => "whole"
         case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"
         case (("experiments/parametrized-foraging.argos", _), None) => "foraging"

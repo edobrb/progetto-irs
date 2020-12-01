@@ -403,10 +403,10 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
       if(hasGather && !holdingFood) { //drop
          hasGather = false; 
-         testNetworkFitness += isOnNest ? 100 : -2;
+         testNetworkFitness += isOnNest ? 50 : -100;
       } else if(isOnGather && !hasGather && holdingFood) { //take
          hasGather = true;
-         testNetworkFitness += 1;
+         testNetworkFitness += 50;
       }
 
       testNetworkFitness += runFitness;
