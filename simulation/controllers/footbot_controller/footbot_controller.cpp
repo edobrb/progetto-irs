@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-#define LOG_DEBUG
+//#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
@@ -404,10 +404,8 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       if(hasGather && !holdingFood) { //drop
          hasGather = false; 
          testNetworkFitness += isOnNest ? 100 : -2;
-          //printf("DROP AT %.2f (%.2f)\n", m_pcPositioning->GetReading().Position.GetY(), testNetworkFitness);
       } else if(isOnGather && !hasGather && holdingFood) { //take
          hasGather = true;
-         //printf("TAKE AT %.2f (%.2f)\n", m_pcPositioning->GetReading().Position.GetY(), testNetworkFitness);
          testNetworkFitness += 1;
       }
 
