@@ -1,7 +1,6 @@
 package main
 
 import java.awt.Font
-
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, readFromString}
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.RobotData
@@ -15,6 +14,8 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 import utils.Parallel._
 
+import java.io.FileNotFoundException
+
 object Analyzer extends App {
 
   implicit val arguments: Array[String] = args
@@ -24,17 +25,30 @@ object Analyzer extends App {
   implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
   /** Load data of all experiments. */
   val rawData: Iterable[RobotData] = {
-    val result = Loader.OUTPUT_FILENAMES.parFlatmap(Args.PARALLELISM_DEGREE, { filename =>
-      utils.File.read(filename).map { str =>
-        println(s"Parsing $filename (${str.length} chars)")
-        Try(readFromString[Seq[RobotData]](str)).getOrElse(Nil)
-      } match {
-        case Failure(exception) => Nil //println(s"Error while loading $filename: $exception"); Nil
-        case Success(value) => value
-      }
-    })
-    println(s"Loaded ${result.size} robots data")
-    result
+    println("Loading files...")
+    val result = Loader.OUTPUT_FILENAMES.parMap(Args.PARALLELISM_DEGREE, { filename =>
+      utils.File.read(filename).map({ str =>
+        //println(s"Parsing $filename (${str.length} chars)")
+        Try(readFromString[Seq[RobotData]](str)) match {
+          case Failure(exception) => Left(filename)
+          case Success(value) => Right(value)
+        }
+      })
+    }).collect {
+      case Success(v) => v
+    }
+
+    println("Broken files: " + result.collect {
+      case Left(filename) => filename
+    }.map(f => f.split('/').last).mkString(" | "))
+
+    val robotsData = result.flatMap {
+      case Right(data) => data
+      case Left(_) => Nil
+    }
+
+    println(s"Loaded ${robotsData.size} robots data")
+    robotsData
   }
 
   /** Groups the raw data by configuration. */
@@ -143,7 +157,7 @@ object Analyzer extends App {
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.last)
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.sum)
     val bestConfig = bestRobot.config
     println("Best robot max fitness: " + bestRobot.fitnessCurve.last)
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),

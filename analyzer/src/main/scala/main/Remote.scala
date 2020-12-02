@@ -179,6 +179,7 @@ case class RunnerClient(socket: Socket) {
           robotsData.foreach { data =>
             client.writeStr(Json.prettyPrint(Json.toJson(data))).recover(ex => throw ex)
           }
+          Thread.sleep(1000)
         } else {
           throw new Exception(s"Wrong lines number")
         }

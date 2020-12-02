@@ -387,13 +387,15 @@ void CFootBotBn::RunAndEvaluateNetwork() {
    // Evaluate fitness function
    left /= MAX_WHEELS_SPEED;
    right /= MAX_WHEELS_SPEED;
-   Real speedFactor = (left + right) / 2;
-   Real straightFactor = (1 - sqrt(abs(left - right)));
-   Real proximityFactor = (1 - maxProximityValue);
-   Real totalFactor = speedFactor * straightFactor * proximityFactor;
-   Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
+   
 
    if(VARIANT == RUN_VARIANT) {
+      Real speedFactor = (left + right) / 2;
+      Real straightFactor = (1 - sqrt(abs(left - right)));
+      Real proximityFactor = (1 - maxProximityValue);
+      Real totalFactor = speedFactor * straightFactor * proximityFactor;
+      Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
+
       if(STAY_ON_HALF && !isInCorrectHalf) {
          testNetworkFitness += PENALTY_FACTOR * runFitness;
       } else {
@@ -408,6 +410,12 @@ void CFootBotBn::RunAndEvaluateNetwork() {
          hasGather = true;
          testNetworkFitness += 50;
       }
+
+      Real speedFactor = (left + right) / 2;
+      Real straightFactor = (1 - sqrt(abs(left - right)));
+      Real proximityFactor = (1 - maxProximityValue * 2);
+      Real totalFactor = speedFactor * straightFactor * proximityFactor;
+      Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
 
       testNetworkFitness += runFitness;
 
