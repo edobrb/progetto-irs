@@ -15,16 +15,17 @@ object ExperimentSettings {
   def apply(name: String): ExperimentSettings = {
     //name.split(',').flat
     Map[String, ExperimentSettings](
-      "1" -> First,
-      "2" -> Second,
-      "3" -> Third,
-      "4" -> Fourth,
-      "5" -> Fifth,
-      "6" -> Sixth,
-      "7" -> Seventh,
-      "8" -> Octave,
-      "9" -> Ninth,
-      "10" -> Tenth,
+      "1" -> E1,
+      "2" -> E2,
+      "3" -> E3,
+      "4" -> E4,
+      "5" -> E5,
+      "6" -> E6,
+      "7" -> E7,
+      "8" -> E8,
+      "9" -> E9,
+      "9bis" -> E9Bis,
+      "10" -> E10,
     )(name)
   }
 }

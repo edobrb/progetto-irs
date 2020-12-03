@@ -6,9 +6,9 @@ import utils.ConfigLens._
 
 /**
  * Investigate the effect of p, io rewires, network mutation and both
- * in full, half arena and foraging arena.
+ * in full, half arena and foraging arena. (With half_rewire_mutation).
  */
-object Eleventh extends ExperimentSettings {
+object E10 extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
@@ -19,17 +19,17 @@ object Eleventh extends ExperimentSettings {
       print_analytics = true),
     Adaptation(epoch_length = 80,
       NetworkMutation(
-        max_connection_rewires = 0,
+        max_connection_rewires = 3,
         connection_rewire_probability = 1,
         self_loops = false,
         only_distinct_connections = true,
-        max_function_bit_flips = 0,
+        max_function_bit_flips = 8,
         function_bit_flips_probability = 1,
         keep_p_balance = false),
       NetworkIOMutation(
-        max_input_rewires = 0,
+        max_input_rewires = 2,
         input_rewire_probability = 1,
-        max_output_rewires = 0,
+        max_output_rewires = 1,
         output_rewire_probability = 1,
         allow_io_node_overlap = false)),
     Network(n = 100, k = 3, p = 0, self_loops = false, only_distinct_connections = true,
@@ -53,19 +53,12 @@ object Eleventh extends ExperimentSettings {
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
 
     val arenaLens = (lens(_.simulation.argos) and lens(_.other)) and lens(_.objective.half_region_variation)
-
-    val wholeArena = (("experiments/parametrized.argos", Map[String, String]("reset_states_every_epoch" -> "")), None)
-    val halfArena = (("experiments/parametrized.argos", Map[String, String]("reset_states_every_epoch" -> "")),
+    val wholeArena = (("experiments/parametrized.argos", Map[String, String]("half_rewire_mutation" -> "")), None)
+    val halfArena = (("experiments/parametrized.argos", Map[String, String]("half_rewire_mutation" -> "")),
       Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)))
-    val foragingArena = (("experiments/parametrized-foraging.argos", Map("reset_states_every_epoch" -> "", "variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
-
+    val foragingArena = (("experiments/parametrized-foraging.argos", Map("half_rewire_mutation" -> "", "variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
     Seq(
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
-      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
-        case ((2, 1), (0, 0)) => "rewire"
-        case ((0, 0), (3, 8)) => "mutation"
-        case ((2, 1), (3, 8)) => "rewire-and-mutation"
-      }),
       Variation(Seq(wholeArena, halfArena, foragingArena), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
         case (("experiments/parametrized.argos", _), None) => "whole"
         case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"

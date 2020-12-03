@@ -8,7 +8,7 @@ import utils.ConfigLens._
  * Investigate the effect of n, p
  * in full arena.
  */
-object Sixth extends ExperimentSettings {
+object E6 extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(

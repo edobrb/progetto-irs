@@ -8,7 +8,7 @@ import utils.ConfigLens._
  * Investigate the effect of k in critical and ordered network
  * with io rewires and with/without mutations.
  */
-object Third extends ExperimentSettings {
+object E3 extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(

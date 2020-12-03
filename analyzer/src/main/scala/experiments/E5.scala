@@ -5,10 +5,10 @@ import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
 /**
- * Investigate the effect of penalty_factor and reset_region_every_epoch
- * in half arena with no mutation.
+ * Investigate the effect of override_output_nodes and allow_io_node_overlap
+ * in full arena, with critical networks.
  */
-object Fourth extends ExperimentSettings {
+object E5 extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
@@ -48,16 +48,15 @@ object Fourth extends ExperimentSettings {
 
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
-    lens(_.objective.half_region_variation)
     Seq(
-      Variation[Configuration, Option[HalfRegionVariation]](Seq(
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = 0)),
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)),
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = 0)),
-        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = false, penalty_factor = -1)),
-      ), lens(_.objective.half_region_variation), "", {
-        case Some(HalfRegionVariation(_, f, reset)) => s"penalty=$f,reset=$reset"
-      }),
+      Variation(Seq(0.1, 0.5, 0.79, 0.9), lens(_.network.p), "p"),
+      Variation(Seq(true, false), lens(_.network.io.override_output_nodes), "override"),
+      Variation[Configuration, Option[HalfRegionVariation]](Seq(None,
+        Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1))),
+        lens(_.objective.half_region_variation), "objective", {
+          case None => "whole"
+          case Some(HalfRegionVariation(_, _, _)) => "half"
+        })
     )
   }
 }
