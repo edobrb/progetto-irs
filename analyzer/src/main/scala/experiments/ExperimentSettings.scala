@@ -24,6 +24,7 @@ object ExperimentSettings {
       "7" -> Seventh,
       "8" -> Octave,
       "9" -> Ninth,
+      "10" -> Tenth,
     )(name)
   }
 }
