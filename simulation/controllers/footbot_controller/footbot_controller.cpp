@@ -96,7 +96,7 @@ nlohmann::json config;
 int VARIANT = 0;
 
 bool HALF_REWIRE_MUTATION = false;
-
+bool RESET_STATES_EVERY_EPOCH = false;
 
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
@@ -125,6 +125,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          }
 
          HALF_REWIRE_MUTATION = config["other"]["half_rewire_mutation"].is_string();
+         RESET_STATES_EVERY_EPOCH = config["other"]["reset_states_every_epoch"].is_string();
       }
 
       //simulation
@@ -249,6 +250,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
 
       printf("[DEBUG]\t VARIANT = %d\n", VARIANT);
       printf("[DEBUG]\t HALF_REWIRE_MUTATION = %d\n", HALF_REWIRE_MUTATION);
+      printf("[DEBUG]\t RESET_STATES_EVERY_EPOCH = %d\n", RESET_STATES_EVERY_EPOCH);
       #endif
    } //end configuration loading
 
@@ -456,8 +458,10 @@ void CFootBotBn::ControlStep() {
          testBn->CopyFrom(bestBn);
          testIO->CopyFrom(bestIO, bestBn);
       }
-      //TODO reset states with p 0.5?
 
+      if(RESET_STATES_EVERY_EPOCH) {
+         testBn->ResetStates(0.5);
+      }
        
       bool canMutate = !HALF_REWIRE_MUTATION || (currentEpoch >= (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);
       bool canRewire = !HALF_REWIRE_MUTATION || (currentEpoch < (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);

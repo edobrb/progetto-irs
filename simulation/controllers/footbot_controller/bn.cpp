@@ -35,6 +35,11 @@ Bn::Bn(int n, int k, double p, bool selfLoops, bool onlyDistinctConnection) {
         }
     }
 }
+void Bn::ResetStates(double p) {
+    for (int i = 0; i < N; i++) {
+        states[i] = ((double)rand() / RAND_MAX) < p;
+    }
+}
 Bn::~Bn(){
     for (int i = 0; i < N; ++i) {
         delete [] functions[i];

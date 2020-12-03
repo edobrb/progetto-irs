@@ -13,6 +13,7 @@ class Bn {
         //Mutation
         void RewiresConnections(int count, bool selfLoops, bool onlyDistinctConnection);
         void MutesFunctions(int count, bool keepBalanced);
+        void ResetStates(double p);
 
         //Interface
         bool GetOldNodeState(int index);
