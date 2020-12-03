@@ -29,6 +29,7 @@ CFootBotBn::CFootBotBn() :
    stayUpper(false),
    hasGather(false),
    myId(-1),
+   currentEpoch(0),
    m_pcLights(NULL) {}
 
 /* Global parameters */
@@ -94,6 +95,8 @@ nlohmann::json config;
 
 int VARIANT = 0;
 
+bool HALF_REWIRE_MUTATION = false;
+
 
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
@@ -120,11 +123,13 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          if(config["other"]["variant"].is_string()) {
             VARIANT = (config["other"]["variant"].get<std::string>() == "foraging") ? FORAGING_VARIANT : VARIANT;
          }
+
+         HALF_REWIRE_MUTATION = config["other"]["half_rewire_mutation"].is_string();
       }
 
       //simulation
       TICKS_PER_SECOND              = config["simulation"]["ticks_per_seconds"].get<int>();
-      EXPERIMENT_LENGTH             = config["simulation"]["experiment_length"].get<int>();
+      EXPERIMENT_LENGTH             = config["simulation"]["experiment_length"].get<int>() * TICKS_PER_SECOND;
       PRINT_ANALYTICS               = config["simulation"]["print_analytics"].get<bool>();
       ROBOT_COUNT                   = config["simulation"]["robot_count"].get<int>();
 
@@ -242,7 +247,8 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t NETWORK_INPUT_COUNT = %d\n", NETWORK_INPUT_COUNT); 
       printf("[DEBUG]\t NETWORK_OUTPUT_COUNT = %d\n", NETWORK_OUTPUT_COUNT); 
 
-      printf("[DEBUG]\t VARIANT = %d\n", VARIANT); 
+      printf("[DEBUG]\t VARIANT = %d\n", VARIANT);
+      printf("[DEBUG]\t HALF_REWIRE_MUTATION = %d\n", HALF_REWIRE_MUTATION);
       #endif
    } //end configuration loading
 
@@ -452,17 +458,23 @@ void CFootBotBn::ControlStep() {
       }
       //TODO reset states with p 0.5?
 
+       
+      bool canMutate = !HALF_REWIRE_MUTATION || (currentEpoch >= (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);
+      bool canRewire = !HALF_REWIRE_MUTATION || (currentEpoch < (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);
       //NETWORK MUTATION
-      int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
-      int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
-      if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS_ON_REWIRE);
-      if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
-
+      if(canMutate) {
+         int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
+         int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
+         if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS_ON_REWIRE);
+         if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
+      }
       //NETWORK IO REWIRES
-      int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
-      int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
-      if(inputRewires > 0) testIO->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
-      if(outputRewires > 0) testIO->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
+      if(canRewire) {
+         int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
+         int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
+         if(inputRewires > 0) testIO->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
+         if(outputRewires > 0) testIO->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
+      }
 
       //RESET
       currentStep = 0;
@@ -478,6 +490,8 @@ void CFootBotBn::ControlStep() {
          }
          #endif
       }
+
+      currentEpoch++;
    }
 
    if(currentStep == 0 && PRINT_ANALYTICS) PrintAnalytics(true);

@@ -17,10 +17,16 @@ case class RobotData(robot_id: String,
                      fitness_values: Seq[Double],
                      best_network: BooleanNetwork,
                      location: Seq[Location] = Nil) {
-  def fitnessCurve: Seq[Double] = {
+  def fitnessMaxCurve: Seq[Double] = {
     fitness_values.scanLeft(0.0) {
       case (fitness, v) if v > fitness => v
       case (fitness, _) => fitness
+    }.drop(1) //remove the initial 0.0
+  }
+
+  def fitnessSumCurve: Seq[Double] = {
+    fitness_values.scanLeft(0.0) {
+      case (fitness, v) => fitness + v
     }.drop(1) //remove the initial 0.0
   }
 }

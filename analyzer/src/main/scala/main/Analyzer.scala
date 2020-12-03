@@ -30,11 +30,14 @@ object Analyzer extends App {
       utils.File.read(filename).map({ str =>
         //println(s"Parsing $filename (${str.length} chars)")
         Try(readFromString[Seq[RobotData]](str)) match {
-          case Failure(exception) => Left(filename)
+          case Failure(_) => Left(filename)
           case Success(value) => Right(value)
         }
       })
-    }).collect {
+    }).map {
+      case Success(value) => Success(value)
+      case Failure(ex) => println(ex); Failure(ex)
+    }.collect {
       case Success(v) => v
     }
 
@@ -57,7 +60,7 @@ object Analyzer extends App {
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
     case (_, data) =>
-      (data.map(_.fitnessCurve.last).sum / data.size * -1000).toInt
+      (data.map(_.fitnessMaxCurve.last).sum / data.size * -1000).toInt
   }
 
   def showAveragedFitnessCharts(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
@@ -71,8 +74,8 @@ object Analyzer extends App {
     chart.getStyler.setMarkerSize(0)
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
-        val tests_count = values.head.fitnessCurve.size
-        val totalFitnessCurve = values.map(_.fitnessCurve).foldLeft(0 until tests_count map (_ => 0.0)) {
+        val tests_count = values.head.fitnessMaxCurve.size
+        val totalFitnessCurve = values.map(_.fitnessMaxCurve).foldLeft(0 until tests_count map (_ => 0.0)) {
           case (sum, curve) => sum.zip(curve).map(v => v._1 + v._2)
         }.map(_ / values.size)
         chart.addSeries(name(config), totalFitnessCurve.toArray)
@@ -81,7 +84,8 @@ object Analyzer extends App {
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
-  def showBoxPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
+  def showBoxPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])],
+                  name: Configuration => String): Unit = {
     val chart = new BoxChartBuilder().xAxisTitle("variation").yAxisTitle("fitness")
       .title(s"Final fitness of each robot $chartDescription").width(1920).height(1080).build()
     chart.getStyler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.NP)
@@ -94,10 +98,30 @@ object Analyzer extends App {
     chart.getStyler.setXAxisLabelRotation(8)
     experimentsResults.sortBy(resultSorted).foreach {
       case (config, values) =>
-        val result = values.map(_.fitnessCurve.last)
+        val result = values.map(_.fitnessMaxCurve.last)
         chart.addSeries(name(config), result.toArray)
     }
     BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-boxplot.png", BitmapFormat.PNG, 100)
+    if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
+  }
+
+  def showSchatterPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
+    val chart = new XYChartBuilder().xAxisTitle("epoch").yAxisTitle("fitness")
+      .title(s"Best fitness at epoch $chartDescription").width(1920).height(1080).build()
+    import org.knowm.xchart.XYSeries.XYSeriesRenderStyle
+    chart.getStyler.setDefaultSeriesRenderStyle(XYSeriesRenderStyle.Scatter)
+    chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 18))
+    chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
+    chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
+    chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
+    //chart.getStyler.setLegendPosition(LegendPosition.InsideSE)
+    chart.getStyler.setMarkerSize(8)
+    experimentsResults.sortBy(resultSorted).foreach {
+      case (config, values) =>
+        val series = values.map(data => data.fitness_values.zipWithIndex.maxBy(_._1))
+        chart.addSeries(name(config), series.map(_._2.toDouble).toArray, series.map(_._1).toArray)
+    }
+    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-scatterplot.png", BitmapFormat.PNG, 100)
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
@@ -118,6 +142,7 @@ object Analyzer extends App {
         }.toSeq
         showAveragedFitnessCharts(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
         showBoxPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
+        //showSchatterPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
     }
   }
 
@@ -156,17 +181,17 @@ object Analyzer extends App {
   }
 
   /** Run a simulation where each robot has the best boolean network. */
-  def runSimulationWithBestRobot(filter: Configuration => Boolean): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(_.fitnessCurve.sum)
+  def runSimulationWithBestRobot(filter: Configuration => Boolean, selector:RobotData=>Double): Unit = {
+    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(selector)
     val bestConfig = bestRobot.config
-    println("Best robot max fitness: " + bestRobot.fitnessCurve.last)
+    println("Best robot max fitness: " + bestRobot.fitnessMaxCurve.last)
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
-      network = bestConfig.network.copy(initial_schema = Some(bestRobot.best_network)))
+      network = bestConfig.network.copy(initial_schema = Some(bestRobot.best_network), initial_state = Some(bestRobot.best_network.states)))
     println(config)
     Experiments.runSimulation(config, visualization = true).foreach(println)
   }
 
   if (Args.RUN_BEST) {
-    runSimulationWithBestRobot(config => true)
+    runSimulationWithBestRobot(config => true, _.fitnessMaxCurve.sum)
   }
 }

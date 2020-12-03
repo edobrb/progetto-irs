@@ -30,7 +30,7 @@ private:
    void RunAndEvaluateNetwork();
 
    Real bestNetworkFitness, testNetworkFitness;
-   long printStep, currentStep;
+   long printStep, currentStep, currentEpoch;
    
    Bn* bestBn;
    Bn* testBn;
