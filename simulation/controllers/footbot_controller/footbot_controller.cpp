@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-//#define LOG_DEBUG
+#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
@@ -98,8 +98,9 @@ int VARIANT = 0;
 
 bool HALF_REWIRE_MUTATION = false;
 bool RESET_STATES_EVERY_EPOCH = false;
-bool SKIP_EPOCH_IF_STUCK = false;
-Real STUCK_TIME = 5; //seconds
+
+bool PREMATURE_EDIT_IF_STUCK = false;
+Real STUCK_TIME = 2; //seconds
 
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
@@ -127,11 +128,11 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
             VARIANT = (config["other"]["variant"].get<std::string>() == "foraging") ? FORAGING_VARIANT : VARIANT;
          }
 
-         HALF_REWIRE_MUTATION       = config["other"]["half_rewire_mutation"].is_string();
-         RESET_STATES_EVERY_EPOCH   = config["other"]["reset_states_every_epoch"].is_string();
-         SKIP_EPOCH_IF_STUCK        = config["other"]["skip_epoch_if_stuck"].is_string();
+         HALF_REWIRE_MUTATION             = config["other"]["half_rewire_mutation"].is_string();
+         RESET_STATES_EVERY_EPOCH         = config["other"]["reset_states_every_epoch"].is_string();
+         PREMATURE_EDIT_IF_STUCK          = config["other"]["premature_edit_if_stuck"].is_string();
          if(config["other"]["stuck_time"].is_string()) {
-            STUCK_TIME              = (Real)std::stod(config["other"]["stuck_time"].get<std::string>());
+            STUCK_TIME                    = (Real)std::stod(config["other"]["stuck_time"].get<std::string>());
          }
       }
 
@@ -258,7 +259,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t VARIANT = %d\n", VARIANT);
       printf("[DEBUG]\t HALF_REWIRE_MUTATION = %d\n", HALF_REWIRE_MUTATION);
       printf("[DEBUG]\t RESET_STATES_EVERY_EPOCH = %d\n", RESET_STATES_EVERY_EPOCH);
-      printf("[DEBUG]\t SKIP_EPOCH_IF_STUCK = %d\n", SKIP_EPOCH_IF_STUCK);
+      printf("[DEBUG]\t PREMATURE_EDIT_IF_STUCK = %d\n", PREMATURE_EDIT_IF_STUCK);
       printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
       #endif
    } //end configuration loading
@@ -460,14 +461,18 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
 /* Controller step */
 void CFootBotBn::ControlStep() {
-   bool prematureEndOfEpoch = SKIP_EPOCH_IF_STUCK && (currentStep - lastStepFitnessChange > STUCK_TIME * TICKS_PER_SECOND);
+   bool prematureEdit = currentStep < EPOCH_LENGTH && PREMATURE_EDIT_IF_STUCK && 
+      ((currentStep - lastStepFitnessChange) > (STUCK_TIME * TICKS_PER_SECOND));
 
    /* End of an epoch */
-   if(currentStep >= EPOCH_LENGTH || prematureEndOfEpoch) {
-      if(PRINT_ANALYTICS) PrintAnalytics(false);
+   if(currentStep >= EPOCH_LENGTH || prematureEdit) {
+      if(!prematureEdit && PRINT_ANALYTICS) {
+         PrintAnalytics(false);
+         PrintAnalytics(true);
+      }
 
       //SELECTION
-      if(testNetworkFitness >= bestNetworkFitness) {
+      if(testNetworkFitness >= bestNetworkFitness && !prematureEdit) {
          bestBn->CopyFrom(testBn);
          bestIO->CopyFrom(testIO, bestBn);
          bestNetworkFitness = testNetworkFitness;
@@ -498,10 +503,13 @@ void CFootBotBn::ControlStep() {
       }
 
       //RESET
-      currentStep = 0;
-      testNetworkFitness = 0;
-      lastStepFitnessChange = 0;
-      hasGather = false;
+      if(!prematureEdit) {
+         currentStep = 0;
+         testNetworkFitness = 0;
+         hasGather = false;
+         currentEpoch++;
+      }
+      lastStepFitnessChange = currentStep;
       if(RESET_REGION_EVERY_EPOCH && STAY_ON_HALF) {
          stayUpper = isUpper();
          #ifdef LOG_DEBUG 
@@ -512,8 +520,6 @@ void CFootBotBn::ControlStep() {
          }
          #endif
       }
-
-      currentEpoch++;
    }
 
    if(currentStep == 0 && PRINT_ANALYTICS) PrintAnalytics(true);
@@ -533,6 +539,7 @@ void CFootBotBn::Destroy() {
    #endif
    if(currentStep > 0) { //can be called when a robot initialization fails
       if(PRINT_ANALYTICS) PrintAnalytics(false);
+      if(PRINT_ANALYTICS) PrintAnalytics(true);
       fflush(stdout);
    }
 }

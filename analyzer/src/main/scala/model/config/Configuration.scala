@@ -19,7 +19,7 @@ case class Configuration(simulation: Simulation,
     val argosInfoPrints = 0
     val initialConfigPrints = 1
     val stepPrints = simulation.experiment_length * simulation.ticks_per_seconds * simulation.robot_count
-    val initialBnConfigPrints = stepPrints / (adaptation.epoch_length * simulation.ticks_per_seconds)
+    val initialBnConfigPrints = 2 * stepPrints / (adaptation.epoch_length * simulation.ticks_per_seconds)
     stepPrints + argosInfoPrints + initialConfigPrints + initialBnConfigPrints
   }
 
