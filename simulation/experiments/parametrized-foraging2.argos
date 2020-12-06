@@ -1,0 +1,132 @@
+<?xml version="1.0" ?>
+<argos-configuration>
+
+  <!-- ************************* -->
+  <!-- * General configuration * -->
+  <!-- ************************* -->
+  <framework>
+    <system threads="0" />
+    <experiment length=${LENGTH} ticks_per_second=${TICKS} ${RANDOM_SEED} />
+  </framework>
+
+  <!-- *************** -->
+  <!-- * Controllers * -->
+  <!-- *************** -->
+  <controllers>
+
+    <footbot_controller id="fdc" library="build/controllers/footbot_controller/libfootbot_controller.so">
+      <actuators>
+        <differential_steering implementation="default" noise_level="0.03" />
+        <leds implementation="default" medium="leds" />
+      </actuators>
+      <sensors>
+        <footbot_proximity implementation="default" show_rays="true" noise_level="0.03" />
+        <positioning implementation="default" />
+        <footbot_light implementation="rot_z_only" show_rays="true" noise_level="0.01" />
+      </sensors>
+      <params CONFIG=${CONFIG}/>
+    </footbot_controller>
+
+  </controllers>
+
+  <media>
+    <led id="leds" />
+  </media>
+  <!-- *********************** -->
+  <!-- * Arena configuration * -->
+  <!-- *********************** -->
+  <arena size="4, 4, 1" center="0,0,0.5">
+
+    <box id="w1" size="1.66,0.1,0.2" movable="false">
+      <body position="0,2,0" orientation="0,0,0" />
+    </box>
+    <box id="w2" size="0.1,1.66,0.2" movable="false">
+      <body position="2,0,0" orientation="0,0,0" />
+    </box>
+    <box id="w3" size="1.66,0.1,0.2" movable="false">
+      <body position="0,-2,0" orientation="0,0,0" />
+    </box>
+    <box id="w4" size="0.1,1.66,0.2" movable="false">
+      <body position="-2,0,0" orientation="0,0,0" />
+    </box>
+    <box id="d1" size="1.66,0.1,0.2" movable="false">
+      <body position="1.415,1.415,0" orientation="-45,0,0" />
+    </box>
+    <box id="d2" size="1.66,0.1,0.2" movable="false">
+      <body position="-1.415,1.415,0" orientation="45,0,0" />
+    </box>
+    <box id="d3" size="1.66,0.1,0.2" movable="false">
+      <body position="1.415,-1.415,0" orientation="45,0,0" />
+    </box>
+    <box id="d4" size="1.66,0.1,0.2" movable="false">
+      <body position="-1.415,-1.415,0" orientation="-45,0,0" />
+    </box>
+    
+    <box id="o1" size="1,0.1,0.2" movable="false">
+      <body position="1.5,0,0" orientation="0,0,0" />
+    </box>
+    <box id="o2" size="1,0.1,0.2" movable="false">
+      <body position="-1.5,0,0" orientation="0,0,0" />
+    </box>
+    <box id="o3" size="1,0.1,0.2" movable="false">
+      <body position="0,0,0" orientation="0,0,0" />
+    </box>
+    <box id="o4" size="1,0.1,0.2" movable="false">
+      <body position="0.75,0.5,0" orientation="0,0,0" />
+    </box>
+    <box id="o5" size="1,0.1,0.2" movable="false">
+      <body position="-0.75,0.5,0" orientation="0,0,0" />
+    </box>
+    <box id="o6" size="1,0.1,0.2" movable="false">
+      <body position="0.75,-0.5,0" orientation="0,0,0" />
+    </box>
+    <box id="o7" size="1,0.1,0.2" movable="false">
+      <body position="-0.75,-0.5,0" orientation="0,0,0" />
+    </box>
+
+    <light id="light"
+           position="0,1.9,0.9"
+           orientation="0,0,0"
+           color="white"
+           intensity="10"
+           medium="leds"/>
+
+    
+    <distribute>
+      <position method="uniform" min="-1.415,-1.415,0" max="1.415,1.415,0" />
+      <orientation method="gaussian" mean="0,0,0" std_dev="360,0,0" />
+      <entity quantity="${ROBOT_COUNT}" max_trials="10000">
+        <foot-bot id="">
+          <controller config="fdc" />
+        </foot-bot>
+      </entity>
+    </distribute>
+
+    
+
+  </arena>
+
+  <!-- ******************* -->
+  <!-- * Physics engines * -->
+  <!-- ******************* -->
+  <physics_engines>
+    <dynamics2d id="dyn2d" />
+  </physics_engines>
+
+  <!-- ********* -->
+  <!-- * Media * -->
+  <!-- ********* -->
+  <media />
+
+  <!-- ****************** -->
+  <!-- * Visualization * -->
+  <!-- ****************** -->
+  <${VISUAL}>
+    <qt-opengl>
+      <camera>
+        <placement index="1" position="0,0,5" look_at="0,0,0" up="0,0,1" lens_focal_length="50" />
+      </camera>
+    </qt-opengl>
+  </${VISUAL}>
+
+</argos-configuration>
