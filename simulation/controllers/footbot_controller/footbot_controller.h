@@ -21,7 +21,6 @@ public:
    ~CFootBotBn();
    void Init(TConfigurationNode& t_node);
    void ControlStep();
-   void UpdateTestFitness(Real increment);
    void Reset();
    void Destroy();
 
@@ -31,7 +30,7 @@ private:
    void RunAndEvaluateNetwork();
 
    Real bestNetworkFitness, testNetworkFitness;
-   long printStep, currentStep, currentEpoch, lastStepFitnessChange;
+   long printStep, currentStep, currentEpoch;
    
    Bn* bestBn;
    Bn* testBn;

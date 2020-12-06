@@ -30,7 +30,6 @@ CFootBotBn::CFootBotBn() :
    hasGather(false),
    myId(-1),
    currentEpoch(0),
-   lastStepFitnessChange(0),
    m_pcLights(NULL) {}
 
 /* Global parameters */
@@ -98,8 +97,6 @@ int VARIANT = 0;
 
 bool HALF_REWIRE_MUTATION = false;
 bool RESET_STATES_EVERY_EPOCH = false;
-bool SKIP_EPOCH_IF_STUCK = false;
-Real STUCK_TIME = 5; //seconds
 
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
@@ -127,12 +124,8 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
             VARIANT = (config["other"]["variant"].get<std::string>() == "foraging") ? FORAGING_VARIANT : VARIANT;
          }
 
-         HALF_REWIRE_MUTATION       = config["other"]["half_rewire_mutation"].is_string();
-         RESET_STATES_EVERY_EPOCH   = config["other"]["reset_states_every_epoch"].is_string();
-         SKIP_EPOCH_IF_STUCK        = config["other"]["skip_epoch_if_stuck"].is_string();
-         if(config["other"]["stuck_time"].is_string()) {
-            STUCK_TIME              = (Real)std::stod(config["other"]["stuck_time"].get<std::string>());
-         }
+         HALF_REWIRE_MUTATION = config["other"]["half_rewire_mutation"].is_string();
+         RESET_STATES_EVERY_EPOCH = config["other"]["reset_states_every_epoch"].is_string();
       }
 
       //simulation
@@ -258,8 +251,6 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t VARIANT = %d\n", VARIANT);
       printf("[DEBUG]\t HALF_REWIRE_MUTATION = %d\n", HALF_REWIRE_MUTATION);
       printf("[DEBUG]\t RESET_STATES_EVERY_EPOCH = %d\n", RESET_STATES_EVERY_EPOCH);
-      printf("[DEBUG]\t SKIP_EPOCH_IF_STUCK = %d\n", SKIP_EPOCH_IF_STUCK);
-      printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
       #endif
    } //end configuration loading
 
@@ -330,12 +321,6 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
    #endif
 }
 
-void CFootBotBn::UpdateTestFitness(Real increment) {
-   if(increment > 0) {
-      lastStepFitnessChange = currentStep;
-   }
-   testNetworkFitness += increment;
-}
 
 /* Feed run and evaluate the test network */
 void CFootBotBn::RunAndEvaluateNetwork() {
@@ -420,18 +405,18 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
 
       if(STAY_ON_HALF && !isInCorrectHalf) {
-         UpdateTestFitness(PENALTY_FACTOR * runFitness);
+         testNetworkFitness += PENALTY_FACTOR * runFitness;
       } else {
-         UpdateTestFitness(runFitness);
+         testNetworkFitness += runFitness;
       }
    } else if(VARIANT == FORAGING_VARIANT) {
 
       if(hasGather && !holdingFood) { //drop
          hasGather = false; 
-         UpdateTestFitness(isOnNest ? 50 : -100);
+         testNetworkFitness += isOnNest ? 50 : -100;
       } else if(isOnGather && !hasGather && holdingFood) { //take
          hasGather = true;
-         UpdateTestFitness(50);
+         testNetworkFitness += 50;
       }
 
       Real speedFactor = (left + right) / 2;
@@ -440,7 +425,7 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       Real totalFactor = speedFactor * straightFactor * proximityFactor;
       Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
 
-      UpdateTestFitness(runFitness);
+      testNetworkFitness += runFitness;
 
       #ifdef LOG_DEBUG
       if(isOnNest) {
@@ -460,10 +445,8 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
 /* Controller step */
 void CFootBotBn::ControlStep() {
-   bool prematureEndOfEpoch = SKIP_EPOCH_IF_STUCK && (currentStep - lastStepFitnessChange > STUCK_TIME * TICKS_PER_SECOND);
-
    /* End of an epoch */
-   if(currentStep >= EPOCH_LENGTH || prematureEndOfEpoch) {
+   if(currentStep >= EPOCH_LENGTH) {
       if(PRINT_ANALYTICS) PrintAnalytics(false);
 
       //SELECTION
@@ -500,7 +483,6 @@ void CFootBotBn::ControlStep() {
       //RESET
       currentStep = 0;
       testNetworkFitness = 0;
-      lastStepFitnessChange = 0;
       hasGather = false;
       if(RESET_REGION_EVERY_EPOCH && STAY_ON_HALF) {
          stayUpper = isUpper();
