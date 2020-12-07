@@ -69,6 +69,7 @@ object E9One extends ExperimentSettings {
         case (("experiments/parametrized.argos", _), None) => "whole"
         case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"
         case (("experiments/parametrized-foraging.argos", _), None) => "foraging"
+        case (("experiments/parametrized-foraging2.argos", _), None) => "foraging2"
       }),
     )
   }
