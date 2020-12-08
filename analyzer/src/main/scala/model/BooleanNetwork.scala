@@ -1,6 +1,14 @@
 package model
 
+import scala.util.Random
+
 object BooleanNetwork {
+  def random(n:Int, k:Int, bias:Double):BooleanNetwork = {
+    val states = Seq.fill(n)(false)
+    val connections = Seq.fill(n)(Seq.fill(k)(Random.between(0, n)))
+    val functions = Seq.fill(n)(Seq.fill(1 << k)(Random.nextDouble() < bias))
+    BooleanNetwork(functions, connections, states, Nil, Nil, None).randomizeStates(0.5)
+  }
 }
 
 /**
@@ -18,26 +26,59 @@ case class BooleanNetwork(functions: Seq[Seq[Boolean]],
                           states: Seq[Boolean],
                           inputs: Seq[Int],
                           outputs: Seq[Int],
-                          overridden_output_functions: Option[Seq[Seq[Boolean]]]) extends (Seq[Boolean] => BooleanNetwork) {
+                          overridden_output_functions: Option[Seq[Seq[Boolean]]]) {
 
-  override def apply(inputsValues: Seq[Boolean]): BooleanNetwork = {
-    val oldStates = states.zipWithIndex.map {
+  def withInputs(inputsValues: Seq[Boolean]): BooleanNetwork =
+    this.copy(states = states.zipWithIndex.map {
       case (_, i) if inputs.contains(i) =>
         val inputIndex = inputs.indexOf(i)
         inputsValues(inputIndex)
       case (state, _) => state
-    }
+    })
 
-    val newStates = states.indices.map { i=>
-      val column = connections(i).zipWithIndex.foldLeft(0)({
-        case (sum, (connection, index)) if oldStates(connection) => sum + (1 << index)
-        case (sum, _) => sum
-      })
-      functions(i)(column)
-    }
+  def next(steps: Int = 1): BooleanNetwork =
+    (0 until steps).foldLeft(this)({
+      case (bn, i) =>
+        bn.copy(states = bn.states.indices.map { i =>
+          val column = bn.connections(i).zipWithIndex.foldLeft(0)({
+            case (sum, (connection, index)) if bn.states(connection) => sum + (1 << index)
+            case (sum, _) => sum
+          })
+          bn.functions(i)(column)
+        })
+    })
 
-    this.copy(states = newStates)
+  def statesMap(steps: Int, perturbation: BooleanNetwork => BooleanNetwork = identity): Map[BooleanNetwork, Int] = {
+    (0 until steps).foldLeft((Map[BooleanNetwork, Int](this -> 1), this))({
+      case ((map, bn), _) =>
+        val newBn = perturbation(bn).next()
+        val newMap = if (map.contains(newBn)) map.updated(newBn, map(newBn) + 1)
+        else map + (newBn -> 1)
+        (newMap, newBn)
+    })._1
   }
+
+  def randomizeStates(p: Double): BooleanNetwork =
+    this.copy(states = this.states.map(_ => Random.nextDouble() < p))
+
+  def statesHammingDistance(other: BooleanNetwork): Int =
+    this.states.zip(other.states).count({
+      case (a, b) => a != b
+    })
+
+  def invertRandomInputs(q: Int): BooleanNetwork =
+    this.copy(states = Random.shuffle(this.inputs).take(q).foldLeft(this.states)({
+      case (modifiedStates, input) =>
+        modifiedStates.updated(input, !modifiedStates(input))
+    }))
+
+  def invertRandomStates(q: Int): BooleanNetwork =
+    this.copy(states = Random.shuffle(this.states.indices.toList).take(q).foldLeft(this.states)({
+      case (modifiedStates, input) =>
+        modifiedStates.updated(input, !modifiedStates(input))
+    }))
+
+  def prettyStatesString: String = states.map(if (_) "1" else "0").mkString
 }
 
 

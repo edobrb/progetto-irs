@@ -22,11 +22,12 @@ object Analyzer extends App {
 
   def RESULT_FOLDER(implicit args: Array[String]): String = Args.DATA_FOLDER(args) + "/results"
 
-  implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
-  /** Load data of all experiments. */
-  val rawData: Iterable[RobotData] = {
+  /** Load all data of the specified experiment. */
+  def loadRobotsData(implicit args: Array[String]): Iterable[RobotData] = {
+    implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
+
     println("Loading files...")
-    val result = Loader.OUTPUT_FILENAMES.parMap(Args.PARALLELISM_DEGREE, { filename =>
+    val result = Loader.OUTPUT_FILENAMES(args).parMap(Args.PARALLELISM_DEGREE(args), { filename =>
       utils.File.read(filename).map({ str =>
         //println(s"Parsing $filename (${str.length} chars)")
         Try(readFromString[Seq[RobotData]](str)) match {
@@ -54,9 +55,11 @@ object Analyzer extends App {
     robotsData
   }
 
+  val robotsData: Iterable[RobotData] = loadRobotsData
+
   /** Groups the raw data by configuration. */
   lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
-    rawData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
+    robotsData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
     case (_, data) =>
@@ -182,7 +185,7 @@ object Analyzer extends App {
 
   /** Run a simulation where each robot has the best boolean network. */
   def runSimulationWithBestRobot(filter: Configuration => Boolean, selector:RobotData=>Double): Unit = {
-    val bestRobot = rawData.filter(v => filter(v.config)).maxBy(selector)
+    val bestRobot = robotsData.filter(v => filter(v.config)).maxBy(selector)
     val bestConfig = bestRobot.config
     println("Best robot max fitness: " + bestRobot.fitnessMaxCurve.last)
     val config = bestConfig.copy(simulation = bestConfig.simulation.copy(print_analytics = false), adaptation = bestConfig.adaptation.copy(epoch_length = 720000),
