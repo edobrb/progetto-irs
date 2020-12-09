@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-#define LOG_DEBUG
+//#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
