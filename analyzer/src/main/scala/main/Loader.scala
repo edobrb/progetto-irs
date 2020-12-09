@@ -72,13 +72,34 @@ object Loader extends App {
     }).values.map(_._1).toSeq
   }
 
+  def extractTests3(data: Iterator[StepInfo], configuration: Configuration): Seq[RobotData] = {
+    data.foldLeft(Map[RobotId, (RobotData, Boolean)]())({
+      case (map, stepInfo) if stepInfo.boolean_network.isEmpty => map /** step within epoch **/
+      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) if map.contains(id) =>
+        val (oldData, executing) = map(id)
+        if(executing) {   /** last print of epoch **/
+          val data = if (oldData.fitness_values.nonEmpty && oldData.fitnessMaxCurve.last > fitness) {
+            oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
+          } else {
+            oldData.copy(fitness_values = oldData.fitness_values :+ fitness, best_network = bn)
+          }
+          map.updated(id, (data, false))
+        } else {          /** first print of epoch **/
+          map.updated(id, (oldData, true))
+        }
+      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) => /** first print of each robot **/
+        val data = RobotData(id, configuration, fitness_values = Nil, bn, locations = Nil)
+        map.updated(id, (data, true))
+    }).values.map(_._1).toSeq
+  }
+
   def load(content: Iterator[String], output_filename: String): Try[FiniteDuration] = {
     Try {
       implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
       val config: Configuration = Configuration.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        extractTests2(data, config)
+        extractTests3(data, config)
         /*val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
         results.map {
           case (robotId, epochs: Seq[Epoch]) =>

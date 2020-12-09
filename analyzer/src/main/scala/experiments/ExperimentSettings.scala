@@ -26,7 +26,7 @@ object ExperimentSettings {
       "9" -> E9,
       "9bis" -> E9Bis,
       "9one" -> E9One,
-      "10" -> E10,
+      "11" -> E11,
     )(name)
   }
 }

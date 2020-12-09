@@ -28,9 +28,10 @@ private:
 
    void PrintAnalytics(bool printBnSchema);
    void RunAndEvaluateNetwork();
+   void UpdateFitness(Real delta);
 
    Real bestNetworkFitness, testNetworkFitness;
-   long printStep, currentStep, currentEpoch;
+   long printStep, currentStep, currentEpoch, lastStepFitnessChange;
    
    Bn* bestBn;
    Bn* testBn;

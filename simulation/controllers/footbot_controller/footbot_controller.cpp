@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-//#define LOG_DEBUG
+#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
@@ -30,6 +30,7 @@ CFootBotBn::CFootBotBn() :
    hasGather(false),
    myId(-1),
    currentEpoch(0),
+   lastStepFitnessChange(0),
    m_pcLights(NULL) {}
 
 /* Global parameters */
@@ -95,8 +96,9 @@ nlohmann::json config;
 
 int VARIANT = 0;
 
-bool HALF_REWIRE_MUTATION = false;
 bool RESET_STATES_EVERY_EPOCH = false;
+bool PREMATURE_EDIT_IF_STUCK = false;
+Real STUCK_TIME = 2; //seconds
 
 //Bn** sharedBn;
 //BnIO** sharedBnIo;
@@ -124,8 +126,11 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
             VARIANT = (config["other"]["variant"].get<std::string>() == "foraging") ? FORAGING_VARIANT : VARIANT;
          }
 
-         HALF_REWIRE_MUTATION = config["other"]["half_rewire_mutation"].is_string();
-         RESET_STATES_EVERY_EPOCH = config["other"]["reset_states_every_epoch"].is_string();
+         RESET_STATES_EVERY_EPOCH         = config["other"]["reset_states_every_epoch"].is_string();
+         PREMATURE_EDIT_IF_STUCK          = config["other"]["premature_edit_if_stuck"].is_string();
+         if(config["other"]["stuck_time"].is_string()) {
+            STUCK_TIME                    = (Real)std::stod(config["other"]["stuck_time"].get<std::string>());
+         }
       }
 
       //simulation
@@ -249,8 +254,9 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t NETWORK_OUTPUT_COUNT = %d\n", NETWORK_OUTPUT_COUNT); 
 
       printf("[DEBUG]\t VARIANT = %d\n", VARIANT);
-      printf("[DEBUG]\t HALF_REWIRE_MUTATION = %d\n", HALF_REWIRE_MUTATION);
       printf("[DEBUG]\t RESET_STATES_EVERY_EPOCH = %d\n", RESET_STATES_EVERY_EPOCH);
+      printf("[DEBUG]\t PREMATURE_EDIT_IF_STUCK = %d\n", PREMATURE_EDIT_IF_STUCK);
+      printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
       #endif
    } //end configuration loading
 
@@ -321,6 +327,12 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
    #endif
 }
 
+void CFootBotBn::UpdateFitness(Real delta) {
+   if(delta > 0) {
+      lastStepFitnessChange = currentStep;
+   }
+   testNetworkFitness += delta;
+}
 
 /* Feed run and evaluate the test network */
 void CFootBotBn::RunAndEvaluateNetwork() {
@@ -405,18 +417,18 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
 
       if(STAY_ON_HALF && !isInCorrectHalf) {
-         testNetworkFitness += PENALTY_FACTOR * runFitness;
+         UpdateFitness(PENALTY_FACTOR * runFitness);
       } else {
-         testNetworkFitness += runFitness;
+         UpdateFitness(runFitness);
       }
    } else if(VARIANT == FORAGING_VARIANT) {
 
       if(hasGather && !holdingFood) { //drop
          hasGather = false; 
-         testNetworkFitness += isOnNest ? 50 : -100;
+         UpdateFitness(isOnNest ? 50 : -100);
       } else if(isOnGather && !hasGather && holdingFood) { //take
          hasGather = true;
-         testNetworkFitness += 50;
+         UpdateFitness(50);
       }
 
       Real speedFactor = (left + right) / 2;
@@ -425,7 +437,7 @@ void CFootBotBn::RunAndEvaluateNetwork() {
       Real totalFactor = speedFactor * straightFactor * proximityFactor;
       Real runFitness = 100 * totalFactor / EPOCH_LENGTH;
 
-      testNetworkFitness += runFitness;
+      UpdateFitness(runFitness);
 
       #ifdef LOG_DEBUG
       if(isOnNest) {
@@ -445,12 +457,18 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
 /* Controller step */
 void CFootBotBn::ControlStep() {
+   bool prematureEdit = currentStep < EPOCH_LENGTH && PREMATURE_EDIT_IF_STUCK && 
+      ((currentStep - lastStepFitnessChange) > (STUCK_TIME * TICKS_PER_SECOND));
+
    /* End of an epoch */
-   if(currentStep >= EPOCH_LENGTH) {
-      if(PRINT_ANALYTICS) PrintAnalytics(false);
+   if(currentStep >= EPOCH_LENGTH || prematureEdit) {
+      if(!prematureEdit && PRINT_ANALYTICS) {
+         PrintAnalytics(false);
+         PrintAnalytics(true);
+      }
 
       //SELECTION
-      if(testNetworkFitness >= bestNetworkFitness) {
+      if(testNetworkFitness >= bestNetworkFitness && !prematureEdit) {
          bestBn->CopyFrom(testBn);
          bestIO->CopyFrom(testIO, bestBn);
          bestNetworkFitness = testNetworkFitness;
@@ -463,27 +481,28 @@ void CFootBotBn::ControlStep() {
          testBn->ResetStates(0.5);
       }
        
-      bool canMutate = !HALF_REWIRE_MUTATION || (currentEpoch >= (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);
-      bool canRewire = !HALF_REWIRE_MUTATION || (currentEpoch < (EXPERIMENT_LENGTH / EPOCH_LENGTH) / 2);
+      
       //NETWORK MUTATION
-      if(canMutate) {
-         int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
-         int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
-         if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS_ON_REWIRE);
-         if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
-      }
+      int connectionRewires = extract(MAX_CONNECTION_REWIRES, CONNECTION_REWIRE_PROBABILITY);
+      int functinoBitFlips = extract(MAX_FUNCTION_BIT_FLIPS, FUNCTION_BIT_FLIP_PROBABILITY);
+      if(connectionRewires > 0) testBn->RewiresConnections(connectionRewires, CONNECTION_REWIRE_SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS_ON_REWIRE);
+      if(functinoBitFlips > 0) testBn->MutesFunctions(functinoBitFlips, KEEP_P_BALANCE);
+      
       //NETWORK IO REWIRES
-      if(canRewire) {
-         int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
-         int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
-         if(inputRewires > 0) testIO->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
-         if(outputRewires > 0) testIO->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
-      }
+      int inputRewires = extract(MAX_INPUT_REWIRES, INPUT_REWIRE_PROBABILITY);
+      int outputRewires = extract(MAX_OUTPUT_REWIRES, OUTPUT_REWIRE_PROBABILITY);
+      if(inputRewires > 0) testIO->Rewires(testBn, inputRewires, 0, IO_NODE_OVERLAP_ON_REWIRE);
+      if(outputRewires > 0) testIO->Rewires(testBn, 0, outputRewires, IO_NODE_OVERLAP_ON_REWIRE);
+      
 
       //RESET
-      currentStep = 0;
-      testNetworkFitness = 0;
-      hasGather = false;
+      if(!prematureEdit) {
+         currentStep = 0;
+         testNetworkFitness = 0;
+         hasGather = false;
+         currentEpoch++;
+      }
+      lastStepFitnessChange = currentStep;
       if(RESET_REGION_EVERY_EPOCH && STAY_ON_HALF) {
          stayUpper = isUpper();
          #ifdef LOG_DEBUG 
@@ -494,8 +513,6 @@ void CFootBotBn::ControlStep() {
          }
          #endif
       }
-
-      currentEpoch++;
    }
 
    if(currentStep == 0 && PRINT_ANALYTICS) PrintAnalytics(true);
@@ -515,6 +532,7 @@ void CFootBotBn::Destroy() {
    #endif
    if(currentStep > 0) { //can be called when a robot initialization fails
       if(PRINT_ANALYTICS) PrintAnalytics(false);
+      if(PRINT_ANALYTICS) PrintAnalytics(true);
       fflush(stdout);
    }
 }
