@@ -1,10 +1,9 @@
 package main
 
-import experiments.E9
-import model.{BooleanNetwork, RobotData}
+import model.RobotData
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.style.markers.{Circle, Marker}
-import org.knowm.xchart.{BitmapEncoder, SwingWrapper, XYChartBuilder}
+import org.knowm.xchart.{BitmapEncoder, XYChartBuilder}
 import utils.Parallel.Parallel
 
 import java.awt.Font
@@ -20,7 +19,7 @@ object Measures extends App {
 
       val series = data.groupBy(_.config.network.p).map {
         case (p, data) =>
-          val series = data.parMap(8, {
+          val series = data.parMap(Args.PARALLELISM_DEGREE, {
             case RobotData(robot_id, config, fitness_values, best_network, locations) =>
               val bn = best_network
               val derrida = (0 until 1000).map(i => {
@@ -29,17 +28,27 @@ object Measures extends App {
               println(fitness_values.max + " " + derrida.sum.toDouble / derrida.size)
               (fitness_values.max, derrida.sum.toDouble / derrida.size)
 
-            /* val map = bn.next(1000).statesMap(steps = 1000, perturbation = _.invertRandomInputs(1))
-             val count = map.maxBy(_._2)._1.statesHammingDistance(bn)
-             println(fitness_values.max + " " + count)
-             (fitness_values.max, count)*/
+            /*val map = bn.next(1000).statesMap(steps = 1000, perturbation = _.invertRandomInputs(1))
+            val count = map.maxBy(_._2)._1.statesHammingDistance(bn)
+            println(fitness_values.max + " " + count)
+            (fitness_values.max, count)*/
+
+            /*val distance = bn.averageMinimumIODistance
+            println(fitness_values.max + " " + distance)
+            (fitness_values.max, distance)*/
           })
           (s"p=${p}", series)
       }
 
       val mutation = config.adaptation.network_mutation.max_connection_rewires > 0
       val rewire = config.adaptation.network_io_mutation.max_input_rewires > 0
-      val title = s"${config.simulation.argos.split('/').last}-rewire=$rewire-mutation=$mutation"
+      val arena = config.simulation.argos match {
+        case "experiments/parametrized.argos" => "whole"
+        case "experiments/parametrized.argos" => "half"
+        case "experiments/parametrized-foraging.argos" => "foraging"
+        case "experiments/parametrized-foraging2.argos" => "foraging2"
+      }
+      val title = s"arena=$arena-rewire=$rewire-mutation=$mutation"
       val chart = new XYChartBuilder().xAxisTitle("Derrida").yAxisTitle("Fitness")
         .title(title).width(1600).height(900).build()
       import org.knowm.xchart.XYSeries.XYSeriesRenderStyle
@@ -55,11 +64,8 @@ object Measures extends App {
         case (name, s) => chart.addSeries(name, s.map(_._2.toDouble).toArray, s.map(_._1).toArray)
       }
       //new SwingWrapper(chart).displayChart
-      BitmapEncoder.saveBitmap(chart, s"/home/edo/Desktop/$title-derrida-scatterplot.png", BitmapFormat.PNG)
+      BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/$title-derrida-scatterplot.png", BitmapFormat.PNG)
   }
-
-
-
 
 
   /*val statesMap = bn.statesMap(steps = 10000, perturbation = _.invertRandomInputs(1))
