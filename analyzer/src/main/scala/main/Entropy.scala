@@ -7,17 +7,12 @@ import model.{RobotData, StepInfo}
 import play.api.libs.json.{Json, OFormat}
 import utils.Parallel.Parallel
 import model.config.Configuration.JsonFormats._
-import org.knowm.xchart.{BitmapEncoder, XYChartBuilder}
+import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
-import org.knowm.xchart.style.markers.{Circle, Marker}
 
-import java.awt.{Color, Font}
+import java.awt.Color
 
 object Entropy extends App {
-  def shannon(probabilities: Iterable[Double], base: Double = 2): Double =
-    -probabilities.foldLeft(0.0)({
-      case (sum, p) => sum + (p * (Math.log(p) / Math.log(base)))
-    })
 
 
   implicit val arguments: Array[String] = args
@@ -54,7 +49,7 @@ object Entropy extends App {
             case (robotId, (config, (fitness, epoch), (_, printOfOneEpoch))) =>
               val bestEpochInputs = steps(robotId).drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
               val inputsProbabilities = bestEpochInputs.groupBy(identity).map(v => v._2.size.toDouble / (printOfOneEpoch - 2))
-              val entropy = shannon(inputsProbabilities)
+              val entropy = utils.Entropy.shannon(inputsProbabilities)
               println((gzipFile.split('-').last, fitness, entropy, robotId))
               Result(config, fitness, entropy, robotId)
           }
@@ -76,7 +71,6 @@ object Entropy extends App {
       v.configuration.copy(network = v.configuration.network.copy(p = 0), adaptation = Settings.selectedExperiment(args).defaultConfig.adaptation)
         .setControllersSeed(None).setSimulationSeed(None)).foreach {
       case (config, results) =>
-
         val arena = (config.simulation.argos, config.objective.half_region_variation.isDefined) match {
           case ("experiments/parametrized.argos", false) => "whole"
           case ("experiments/parametrized.argos", true) => "half"
@@ -84,22 +78,14 @@ object Entropy extends App {
           case ("experiments/parametrized-foraging2.argos", false) => "foraging2"
         }
         val title = s"arena=$arena"
-        val chart = new XYChartBuilder().xAxisTitle("Entropy").yAxisTitle("Fitness")
-          .title(title).width(1600).height(900).build()
-        import org.knowm.xchart.XYSeries.XYSeriesRenderStyle
-        chart.getStyler.setDefaultSeriesRenderStyle(XYSeriesRenderStyle.Scatter)
-        chart.getStyler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 18))
-        chart.getStyler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
-        chart.getStyler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
-        chart.getStyler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
-        //chart.getStyler.setLegendPosition(LegendPosition.InsideSE)
-        chart.getStyler.setLegendVisible(false)
-
-        chart.getStyler.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
-        val chartSeries = chart.addSeries("all", results.map(_.entropy).toArray, results.map(_.fitness).map(Math.abs).toArray)
-        chartSeries.setMarkerColor(new Color(255, 0, 0, 20))
-        //new SwingWrapper(chart).displayChart
-        BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/$title-entropy-scatterplot.png", BitmapFormat.PNG)
+        val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
+          Seq(("all", Some(new Color(255, 0, 0, 20)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
+          _.setLegendVisible(false))
+        BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/entropy-scatterplot-$title.png", BitmapFormat.PNG)
     }
+    val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",
+      Seq(("all", Some(new Color(255, 0, 0, 5)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
+      _.setLegendVisible(false))
+    BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/entropy-scatterplot.png", BitmapFormat.PNG)
   }
 }
