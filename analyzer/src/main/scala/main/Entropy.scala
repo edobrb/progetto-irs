@@ -21,9 +21,12 @@ object Entropy extends App {
 
   implicit def resultFormat: OFormat[Result] = Json.format[Result]
 
+  implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
+
   if (Args.LOAD_OUTPUT) {
     val results: Seq[Result] = Loader.FILENAMES(args).parMap(Args.PARALLELISM_DEGREE, {
       case (gzipFile, jsonFile) =>
+        val tmpGzipFile = Analyzer.RESULT_FOLDER(args) + "/tmp/" + gzipFile.split('/').last
         RobotData.loadsFromFile(jsonFile).toOption.map(robotsData => {
 
           //id -> (config, (fitness,epoch),(toDrop,toTake))
@@ -34,14 +37,13 @@ object Entropy extends App {
             (data.robot_id, (data.config, (bestFitness, bestEpoch), (toDrop, printOfOneEpoch)))
           }).toMap
 
-          val (lines, source) = utils.File.readGzippedLines(gzipFile).get
-          implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
+          val (lines, source) = utils.File.readGzippedLines(tmpGzipFile).get
           val steps: Map[String, Seq[StepInfo]] = lines.map(l => Loader.toStepInfo(l)).collect {
             case Some(v) => v
-          }.filter(v => {
+          }/*.filter(v => {
             val (_, _, (toDrop, toTake)) = maxes(v.id)
             toDrop <= v.step && v.step < (toDrop + toTake)
-          }).toSeq.groupBy(_.id)
+          })*/.toSeq.groupBy(_.id)
           source.close()
 
 
