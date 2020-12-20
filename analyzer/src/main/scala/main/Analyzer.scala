@@ -29,7 +29,7 @@ object Analyzer extends App {
     println("Loading files...")
     val result = Loader.OUTPUT_FILENAMES(args).parMap(Args.PARALLELISM_DEGREE(args), { filename =>
       utils.File.read(filename).map({ str =>
-        //println(s"Parsing $filename (${str.length} chars)")
+        println(s"Parsing $filename (${str.length} chars)")
         Try(readFromString[Seq[RobotData]](str)) match {
           case Failure(_) => Left(filename)
           case Success(value) => Right(value)

@@ -20,13 +20,13 @@ object Derrida extends App {
   if (Args.LOAD_OUTPUT) {
     println("Loading files...")
     val robotsData: MapView[Configuration, Seq[(Double, Double)]] = Loader.OUTPUT_FILENAMES(args).parMap(Args.PARALLELISM_DEGREE(args), { filename =>
+      println(filename)
       RobotData.loadsFromFile(filename).map(_.map {
         case RobotData(robot_id, config, fitness_values, best_network, locations) =>
           val bn = best_network
           val derrida = (0 until 1000).map(i => {
             bn.invertRandomStates(1).next(1).statesHammingDistance(bn.next(1))
           })
-          println(fitness_values.max + " " + derrida.sum.toDouble / derrida.size)
           (config, fitness_values.max, derrida.sum.toDouble / derrida.size)
       })
     }).collect {
