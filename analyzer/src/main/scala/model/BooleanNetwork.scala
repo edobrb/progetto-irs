@@ -1,9 +1,10 @@
 package model
 
+import scala.annotation.tailrec
 import scala.util.Random
 
 object BooleanNetwork {
-  def random(n:Int, k:Int, bias:Double):BooleanNetwork = {
+  def random(n: Int, k: Int, bias: Double): BooleanNetwork = {
     val states = Seq.fill(n)(false)
     val connections = Seq.fill(n)(Seq.fill(k)(Random.between(0, n)))
     val functions = Seq.fill(n)(Seq.fill(1 << k)(Random.nextDouble() < bias))
@@ -78,7 +79,39 @@ case class BooleanNetwork(functions: Seq[Seq[Boolean]],
         modifiedStates.updated(input, !modifiedStates(input))
     }))
 
+  def invertState(index:Int):BooleanNetwork = copy(states = states.updated(index, !states(index)))
+
   def prettyStatesString: String = states.map(if (_) "1" else "0").mkString
+
+  def fsm(limit: Option[Int] = None): Map[BooleanNetwork, Seq[BooleanNetwork]] = {
+    val inputSet = (0 until (1 << inputs.size)).map(v => Seq.fill(inputs.size)(false).zipWithIndex.map(i => (v & (1 << i._2)) > 0))
+
+    def successors(bn: BooleanNetwork): Seq[BooleanNetwork] = {
+      inputSet.map(bn.withInputs).map(_.next())
+    }
+
+    @tailrec
+    def compute(states: Map[BooleanNetwork, Seq[BooleanNetwork]]): Map[BooleanNetwork, Seq[BooleanNetwork]] =
+      if (limit.exists(_ < states.size)) {
+        states
+      } else {
+        states.collectFirst {
+          case (bn, Nil) => bn
+        } match {
+          case Some(bn) =>
+            val s = successors(bn)
+            val newStates = s.foldLeft(states)({
+              case (foldStates, successor) if foldStates.contains(successor) => foldStates
+              case (foldStates, successor) => foldStates.updated(successor, Nil)
+            }).updated(bn, s)
+            compute(newStates)
+          case None => states
+        }
+      }
+
+    compute(Map(this -> Nil))
+  }
+
 }
 
 
