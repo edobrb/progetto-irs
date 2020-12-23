@@ -33,7 +33,7 @@ case class Configuration(simulation: Simulation,
     lens(_.simulation.controllers_random_seed).set(seed)(this)
 
   def setInitialSchema(schema: Option[BooleanNetwork]): Configuration =
-    lens(_.network.initial_schema).set(schema.map(_.copy(states = Nil)))(this)
+    lens(_.network.initial_schema).set(schema.map(_.copy(states = IndexedSeq.empty)))(this)
 }
 
 object Configuration {

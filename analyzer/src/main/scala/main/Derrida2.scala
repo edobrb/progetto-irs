@@ -56,14 +56,14 @@ object Derrida2 extends App {
             case (robotId, (config, (fitness, _), (_, _))) =>
               val bestNetwork = steps(robotId).head.boolean_network.get
               val bns = steps(robotId).drop(1).dropRight(1).scanLeft(bestNetwork)({
-                case (bn, stepInfo) => bn.withInputs(stepInfo.inputs).next()
+                case (bn, stepInfo) => bn.withInputs(stepInfo.inputs).step()
               })
 
               val derridaValues = bns.groupBy(_.states).map({ case (_, networks) =>
                 val bn = networks.head
-                val bnNext = bn.next()
+                val bnNext = bn.step()
                 bn.states.indices.map(i =>
-                  bn.invertState(i).next().statesHammingDistance(bnNext)
+                  bn.invertState(i).step().statesHammingDistance(bnNext)
                 ).sum.toDouble / bn.states.size * networks.size
               })
               val derrida = derridaValues.sum / bns.size
