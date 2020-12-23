@@ -90,12 +90,11 @@ object E9TestBest extends ExperimentSettings {
 
   override def initialize(configuration: Configuration, index: Int, args: Array[String]): Configuration = {
     if(originArgs.isEmpty) {
-      originArgs = Array("data=" + Args.ORIGIN_DATA_FOLDER(args), "config=9", "from=1", "to=10")
+      originArgs = Array("data=" + Args.ORIGIN_DATA_FOLDER(args), "config=9", "from=1", "to=1000")
     }
 
     val config = lens(_.simulation.experiment_length).set(80 * 200)(configuration).setControllersSeed(None).setSimulationSeed(None)
     val bestRobots = e9Data(config)
-    println(index)
     val bn = bestRobots(index % n).best_network
     configuration.setInitialSchema(Some(bn))
   }
