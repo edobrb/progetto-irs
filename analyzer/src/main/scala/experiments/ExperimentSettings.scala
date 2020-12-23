@@ -8,6 +8,8 @@ trait ExperimentSettings {
 
   def configVariation: Seq[Variation[Configuration, _]]
 
+  def initialize(configuration: Configuration, index: Int, args: Array[String]): Configuration = configuration
+
   def filter: Configuration => Boolean = _ => true
 }
 
@@ -26,6 +28,7 @@ object ExperimentSettings {
       "9" -> E9,
       "9bis" -> E9Bis,
       "9one" -> E9One,
+      "9test" -> E9TestBest,
       "11" -> E11,
       "12" -> E12,
       "13" -> E13,

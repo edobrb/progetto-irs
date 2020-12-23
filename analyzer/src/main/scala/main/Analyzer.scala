@@ -59,7 +59,7 @@ object Analyzer extends App {
 
   /** Groups the raw data by configuration. */
   lazy val experimentsResults: Seq[(Configuration, Iterable[RobotData])] =
-    robotsData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).toList.sortBy(resultSorted)
+    robotsData.groupBy(_.config.setControllersSeed(None).setSimulationSeed(None).setInitialSchema(None)).toList.sortBy(resultSorted)
 
   def resultSorted: ((Configuration, Iterable[RobotData])) => Int = {
     case (_, data) =>
@@ -145,7 +145,7 @@ object Analyzer extends App {
         }.toSeq
         showAveragedFitnessCharts(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
         showBoxPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
-        //showSchatterPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
+      //showSchatterPlot(chartName(groupResult.head._1, group), chartDescription(groupResult.head._1, group), results, config => s"${legend(config, group, series(config))}")
     }
   }
 
@@ -184,7 +184,7 @@ object Analyzer extends App {
   }
 
   /** Run a simulation where each robot has the best boolean network. */
-  def runSimulationWithBestRobot(filter: Configuration => Boolean, selector:RobotData=>Double): Unit = {
+  def runSimulationWithBestRobot(filter: Configuration => Boolean, selector: RobotData => Double): Unit = {
     val bestRobot = robotsData.filter(v => filter(v.config)).maxBy(selector)
     val bestConfig = bestRobot.config
     println("Best robot max fitness: " + bestRobot.fitnessMaxCurve.last)
