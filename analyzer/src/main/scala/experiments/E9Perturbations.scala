@@ -50,11 +50,12 @@ object E9Perturbations extends ExperimentSettings {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
 
-    val arenaLens = (lens(_.simulation.argos) and lens(_.other)) and lens(_.objective.half_region_variation)
-
+    val argosLens = lens(_.simulation.argos) //and lens(_.other)) and
+    val halfLens = lens(_.objective.half_region_variation)
+    val foragingSettings = Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")
     val wholeArena = (("experiments/parametrized.argos", Map[String, String]()), None)
     val halfArena = (("experiments/parametrized.argos", Map[String, String]()),
-      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)))
+      )
     val foragingArena = (("experiments/parametrized-foraging.argos", Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
     val foragingArena2 = (("experiments/parametrized-foraging2.argos", Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
 
@@ -64,19 +65,36 @@ object E9Perturbations extends ExperimentSettings {
         case ((2, 1), (0, 0)) => "rewire"
         case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
-      Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
+      /*Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
         case (("experiments/parametrized.argos", _), None) => "whole"
         case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"
         case (("experiments/parametrized-foraging.argos", _), None) => "foraging"
         case (("experiments/parametrized-foraging2.argos", _), None) => "foraging2"
-      }),
+      }),*/
+
+      Variation.normal[Configuration, String](Seq("whole", "half", "foraging", "foraging2"), {
+        case ("whole", config) =>
+          argosLens.set("experiments/parametrized.argos")(config)
+        case ("half", config) =>
+          val halfVariation = Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1))
+          halfLens.set(halfVariation)(argosLens.set("experiments/parametrized.argos")(config))
+        case ("foraging", config) =>
+          argosLens.set("experiments/parametrized-foraging.argos")(config).copy(other = config.other ++ foragingSettings)
+        case ("foraging2", config) =>
+          argosLens.set("experiments/parametrized-foraging2.argos")(config).copy(other = config.other ++ foragingSettings)
+      }, {
+        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isEmpty => "whole"
+        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isDefined => "half"
+        case config if config.simulation.argos == "experiments/parametrized-foraging.argos" => "foraging"
+        case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "foraging2"
+      }, "objective", identity),
 
       Variation.normal[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100")), {
         case (v, config) => v match {
           case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
           case None => config
         }
-      }, _.other.get("states_flip_f"), "flips", _.other.get("states_flip_f") match {
+      }, _.other.get("states_flip_f"), "flips", {
         case Some(value) => value.toDouble.toString
         case None => "none"
       })

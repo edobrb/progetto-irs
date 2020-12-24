@@ -26,6 +26,13 @@ case class Configuration(simulation: Simulation,
   def filename: String =
     utils.Hash.sha256(setSimulationSeed(None).setControllersSeed(None).toString)
 
+  def setSeed(i: Int): Configuration = {
+    val name = this.filename + "-" + i
+    this
+      .setSimulationSeed(Some(Math.abs((name + "-simulation").hashCode)))
+      .setControllersSeed(Some(Math.abs((name + "-controller").hashCode)))
+  }
+
   def setSimulationSeed(seed: Option[Int]): Configuration =
     lens(_.simulation.simulation_random_seed).set(seed)(this)
 

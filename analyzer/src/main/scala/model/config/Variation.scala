@@ -23,8 +23,9 @@ object Variation {
   def apply[K, V](variations: Seq[V], lens: Lens[K, V], name: String, description: V => String = (v: V) => v.toString, collapse: Boolean = false): Variation[K, V] =
     LensVariation(variations, lens, name, description, collapse)
 
-  def normal[K, V](variations: Seq[V], setter: (V, K) => K, getter: K => V, name: String, description: K => String, collapse: Boolean = false): Variation[K, V] =
-    FunctionalVariation(variations, setter, getter, name, description, collapse)
+  def normal[K, V](variations: Seq[V], setter: (V, K) => K, getter: K => V, name: String, description: V => String, collapse: Boolean = false): Variation[K, V] =
+    FunctionalVariation(variations, setter, getter, name, k => description(getter(k)), collapse)
+
 
   case class LensVariation[K, V](override val variations: Seq[V],
                                  lens: Lens[K, V],

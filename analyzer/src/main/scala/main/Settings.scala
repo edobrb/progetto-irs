@@ -18,14 +18,7 @@ object Settings {
     /** Configuration repetitions for statistical accuracy. */
     val initialization = Args.CONFIG_INITIALIZATION(args)
     configurations.flatMap {
-      config =>
-        def setSeed(i: Int): Configuration = {
-          val name = config.filename + "-" + i
-          config
-            .setSimulationSeed(Some(Math.abs((name + "-simulation").hashCode)))
-            .setControllersSeed(Some(Math.abs((name + "-controller").hashCode)))
-        }
-        Args.REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
+      config => Args.REPETITIONS.map(i => (config.filename + "-" + i, config.setSeed(i), i))
     }
   }
 }
