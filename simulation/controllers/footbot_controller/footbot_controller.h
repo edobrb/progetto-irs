@@ -32,6 +32,8 @@ private:
 
    Real bestNetworkFitness, testNetworkFitness;
    long printStep, currentStep, currentEpoch, lastStepFitnessChange;
+
+   Real tNextStateFlip;
    
    Bn* bestBn;
    Bn* testBn;

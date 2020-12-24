@@ -8,7 +8,7 @@
 #include "bn.h"
 #include "utils.h"
 
-//#define LOG_DEBUG
+#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
 #define isOnNest() (m_pcPositioning->GetReading().Position.GetY() > 1);
 #define isOnGather() (m_pcPositioning->GetReading().Position.GetY() < -1);
@@ -31,6 +31,7 @@ CFootBotBn::CFootBotBn() :
    myId(-1),
    currentEpoch(0),
    lastStepFitnessChange(0),
+   tNextStateFlip(0),
    m_pcLights(NULL) {}
 
 /* Global parameters */
@@ -100,8 +101,8 @@ bool RESET_STATES_EVERY_EPOCH = false;
 bool PREMATURE_EDIT_IF_STUCK = false;
 Real STUCK_TIME = 2; //seconds
 
-//Bn** sharedBn;
-//BnIO** sharedBnIo;
+//perturbations
+Real STATES_FLIP_F = 0; // flip/sec
 
 
 /* Controller initialization */
@@ -130,6 +131,9 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          PREMATURE_EDIT_IF_STUCK          = config["other"]["premature_edit_if_stuck"].is_string();
          if(config["other"]["stuck_time"].is_string()) {
             STUCK_TIME                    = (Real)std::stod(config["other"]["stuck_time"].get<std::string>());
+         }
+         if(config["other"]["states_flip_f"].is_string()) {
+            STATES_FLIP_F                 = (Real)std::stod(config["other"]["states_flip_f"].get<std::string>());
          }
       }
 
@@ -257,6 +261,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t RESET_STATES_EVERY_EPOCH = %d\n", RESET_STATES_EVERY_EPOCH);
       printf("[DEBUG]\t PREMATURE_EDIT_IF_STUCK = %d\n", PREMATURE_EDIT_IF_STUCK);
       printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
+      printf("[DEBUG]\t STATES_FLIP_F = %.2f\n", STATES_FLIP_F);
       #endif
    } //end configuration loading
 
@@ -318,6 +323,9 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
    if(VARIANT == FORAGING_VARIANT) {
       m_pcLights = GetSensor<CCI_FootBotLightSensor>("footbot_light");
    }
+   if(STATES_FLIP_F != 0) {
+      tNextStateFlip = eventTime(STATES_FLIP_F);
+   }
    #ifdef LOG_DEBUG 
    if(stayUpper && STAY_ON_HALF) {
       m_pcLEDs->SetAllColors(CColor::GREEN);
@@ -336,6 +344,16 @@ void CFootBotBn::UpdateFitness(Real delta) {
 
 /* Feed run and evaluate the test network */
 void CFootBotBn::RunAndEvaluateNetwork() {
+
+   //Perturbations
+   Real t = ((Real)currentStep) / TICKS_PER_SECOND; //time now
+   if(STATES_FLIP_F != 0) {
+      while(tNextStateFlip <= t) {
+         int index = rand() % testBn->N;
+         testBn->SetNodeState(index, !testBn->GetNodeState(index)); //invert random state
+         tNextStateFlip += eventTime(STATES_FLIP_F);
+      }
+   }
 
    // Feed network
    int nextInputNode = 0;
@@ -501,6 +519,9 @@ void CFootBotBn::ControlStep() {
          testNetworkFitness = 0;
          hasGather = false;
          currentEpoch++;
+         if(STATES_FLIP_F != 0) {
+            tNextStateFlip = eventTime(STATES_FLIP_F);
+         }
       }
       lastStepFitnessChange = currentStep;
       if(RESET_REGION_EVERY_EPOCH && STAY_ON_HALF) {
