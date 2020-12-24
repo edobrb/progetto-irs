@@ -30,9 +30,10 @@ object Derrida2 extends App {
     Json.fromJson[Seq[Result]](json).get
   }.getOrElse(Nil)
   println("Loaded: " + loaded.size)
+  val loadedFile = loaded.map(v => v.fromFile -> ()).toMap
 
   if (Args.LOAD_OUTPUT) {
-    val results: Seq[Result] = loaded ++ Loader.FILENAMES(args).filter(v => !loaded.map(_.fromFile).contains(v._1.split('/').last)).parMap(Args.PARALLELISM_DEGREE, {
+    val results: Seq[Result] = loaded ++ Loader.FILENAMES(args).filter(v => !loadedFile.contains(v._1.split('/').last)).parMap(Args.PARALLELISM_DEGREE, {
       case (gzipFile, jsonFile) =>
         val tmpGzipFile = Analyzer.RESULT_FOLDER(args) + "/tmp/" + gzipFile.split('/').last
         RobotData.loadsFromFile(jsonFile).toOption.map(robotsData => {
