@@ -1,27 +1,20 @@
 package experiments
 
-import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
-import main.{Analyzer, Args, Settings}
-import model.RobotData
 import model.config.Configuration._
 import model.config.{Configuration, Variation}
 import utils.ConfigLens._
 
-import scala.collection.MapView
-
 /**
- * Load the best networks of E9 and test their robustness.
- * Every network schema will be loaded in a robot but without initial states.
- * Only one epoch is run. No edits.
+ * Investigate the effect of p, io rewires, network mutation and both
+ * in full, half arena and foraging arena.
  */
-object E9TestBest extends ExperimentSettings {
+object E9Perturbations extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
       argos = "",
       ticks_per_seconds = 10,
-      experiment_length = 80 * 1, //200 edits
+      experiment_length = 80 * 200, //200 edits
       robot_count = 10,
       print_analytics = true),
     Adaptation(epoch_length = 80,
@@ -66,10 +59,9 @@ object E9TestBest extends ExperimentSettings {
     val foragingArena2 = (("experiments/parametrized-foraging2.argos", Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
 
     Seq(
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
-      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
+      Variation(Seq(0.1, 0.79), lens(_.network.p), "p"),
+      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
         case ((2, 1), (0, 0)) => "rewire"
-        case ((0, 0), (3, 8)) => "mutation"
         case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
       Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
@@ -78,24 +70,16 @@ object E9TestBest extends ExperimentSettings {
         case (("experiments/parametrized-foraging.argos", _), None) => "foraging"
         case (("experiments/parametrized-foraging2.argos", _), None) => "foraging2"
       }),
+
+      Variation.normal[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100")), {
+        case (v, config) => v match {
+          case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
+          case None => config
+        }
+      }, _.other.get("states_flip_f"), "flips", _.other.get("states_flip_f") match {
+        case Some(value) => value.toDouble.toString
+        case None => "none"
+      })
     )
-  }
-
-  val n = 10
-
-  private var originArgs: Array[String] = Array()
-
-  lazy val e9Data: Map[Configuration, List[RobotData]] = Analyzer.loadRobotsData(originArgs).
-    groupBy(_.config.setControllersSeed(None).setSimulationSeed(None)).map(v => (v._1, v._2.toList.sortBy(-_.fitness_values.max).take(n)))
-
-  override def initialize(configuration: Configuration, index: Int, args: Array[String]): Configuration = {
-    if(originArgs.isEmpty) {
-      originArgs = Array("data=" + Args.ORIGIN_DATA_FOLDER(args), "config=9", "from=1", "to=1000")
-    }
-
-    val config = lens(_.simulation.experiment_length).set(80 * 200)(configuration).setControllersSeed(None).setSimulationSeed(None)
-    val bestRobots = e9Data(config)
-    val bn = bestRobots(index % n).best_network
-    configuration.setInitialSchema(Some(bn))
   }
 }

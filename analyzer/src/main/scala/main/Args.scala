@@ -9,8 +9,6 @@ object Args {
 
   def DATA_FOLDER(implicit args: Array[String]): String = utils.Arguments.argOrException("data", Some.apply)(args)
 
-  def ORIGIN_DATA_FOLDER(implicit args: Array[String]): String = utils.Arguments.argOrException("origin_data", Some.apply)(args)
-
   def CONFIG_INITIALIZATION(implicit args: Array[String]): Boolean = utils.Arguments.boolOrDefault("initialization", default = false)(args)
 
   def PARALLELISM_DEGREE(implicit args: Array[String]): Int = utils.Arguments.argOrDefault("threads", v => Try(v.toInt).toOption, 4)(args)

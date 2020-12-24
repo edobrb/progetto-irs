@@ -157,7 +157,7 @@ object Analyzer extends App {
       Settings.selectedExperiment.configVariation.parForeach(Args.PARALLELISM_DEGREE, { v =>
         makeCharts[Unit, Any](experimentsResults,
           groups = _ => (),
-          series = c => v.lens.get(c),
+          series = c => v.getVariation(c),
           chartName = (_, _) => s"${v.name}",
           chartDescription = (_, _) => s"(foreach ${v.name})",
           legend = (c, _, _) => s"${v.desc(c)}")
@@ -165,8 +165,8 @@ object Analyzer extends App {
 
       Settings.selectedExperiment.configVariation.filter(!_.collapse).parForeach(Args.PARALLELISM_DEGREE, { v =>
         makeCharts[Any, Any](experimentsResults,
-          groups = c => v.lens.get(c),
-          series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
+          groups = c => v.getVariation(c),
+          series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.getVariation(c)),
           chartName = (c, _) => s"${v.name}=${v.desc(c)}",
           chartDescription = (c, _) => s"(with ${v.name}=${v.desc(c)})",
           legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).filter(_.name != v.name).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
@@ -176,7 +176,7 @@ object Analyzer extends App {
     //all series
     makeCharts[Any, Any](experimentsResults,
       groups = c => (),
-      series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.lens.get(c)),
+      series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.getVariation(c)),
       chartName = (_, _) => s"overall",
       chartDescription = (_, _) => "",
       legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => s"${v.name}=${v.desc(c)}").mkString(","))

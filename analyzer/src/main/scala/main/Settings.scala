@@ -21,11 +21,9 @@ object Settings {
       config =>
         def setSeed(i: Int): Configuration = {
           val name = config.filename + "-" + i
-          val seededConfig = config
+          config
             .setSimulationSeed(Some(Math.abs((name + "-simulation").hashCode)))
             .setControllersSeed(Some(Math.abs((name + "-controller").hashCode)))
-          if (initialization) selectedExperiment.initialize(seededConfig, i - 1, args)
-          else seededConfig
         }
         Args.REPETITIONS.map(i => (config.filename + "-" + i, setSeed(i), i))
     }
