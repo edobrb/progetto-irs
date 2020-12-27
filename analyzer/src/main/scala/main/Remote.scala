@@ -118,6 +118,7 @@ case class DispatcherClient(socket: Socket) {
       case (false, true) => client.readStr().map(json => (None, Some(json)))
       case (true, true) => for (data <- client.read(); json <- client.readStr()) yield (Some(data), Some(json))
     }
+    client.writeStr("done")
     client.richClose()
     result
   }
@@ -179,7 +180,9 @@ case class RunnerClient(socket: Socket) {
           robotsData.foreach { data =>
             client.writeStr(Json.prettyPrint(Json.toJson(data))).recover(ex => throw ex)
           }
-          Thread.sleep(1000)
+          if(!client.readStr().toOption.contains("done")) {
+            throw new Exception(s"Experiment done but 'done' was not received")
+          }
         } else {
           throw new Exception(s"Wrong lines number")
         }

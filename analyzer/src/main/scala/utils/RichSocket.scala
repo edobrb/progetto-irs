@@ -77,7 +77,7 @@ case class RichSocket(socket: Socket, keepAliveMs: Int = 1000) {
   }
 
   def richClose(): Unit = {
-    executor.shutdown()
+    executor.shutdownNow()
     socket.close()
   }
 }
