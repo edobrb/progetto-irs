@@ -34,8 +34,8 @@ object Robustness extends App {
   val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
   println("Loading files...")
   val networkPerConfiguration = 100
-  val repetitions = 1
-  val robotCount = 1
+  val repetitions = 10
+  val robotCount = 10
   val epochCount = 2
 
   val configs = Settings.configurations.map(v => v.filename -> v).toMap
@@ -55,20 +55,21 @@ object Robustness extends App {
       case (configuration, value) => (configuration, value.map(_._2).toList.sortBy(-_._1).take(networkPerConfiguration))
     }
 
-    val resultFitness: Map[Configuration, Seq[Fitness]] = robotsData.zipWithIndex.parFlatmap(Args.PARALLELISM_DEGREE, {
+    val resultFitness: Map[Configuration, Seq[Fitness]] = robotsData.zipWithIndex.flatMap({
       case ((config, networks), configurationIndex) =>
-        println(s"Running ${config.filename} ($configurationIndex)")
-        networks.flatMap {
-          case (_, network) =>
-            val newConfig = (ioLens and netLens).set((0, 0), (0, 0))(robotLens.set(robotCount)(lengthLens.set(config.adaptation.epoch_length * epochCount)(networkLens.set(Some(network))(config))))
-            (0 until repetitions).flatMap(i => {
-              Experiments.runSimulation(newConfig.setSeed(i), visualization = false).map(v => Loader.toStepInfo(v)).collect {
-                case Some(si) => si
-              }.toSeq.groupBy(_.id).toSeq.map({
-                case (_, steps) => (config, steps.maxBy(_.fitness).fitness)
-              })
-            })
+        val work = networks.flatMap {
+          case (_, network) => (0 until repetitions).map(i => (network, i))
         }
+        work.zipWithIndex.parFlatmap(Args.PARALLELISM_DEGREE, {
+          case ((network, i), workIndex) => val newConfig = (ioLens and netLens).set((0, 0), (0, 0))(robotLens.set(robotCount)(lengthLens.set(config.adaptation.epoch_length * epochCount)(networkLens.set(Some(network))(config))))
+            val (output, time) = utils.Benchmark.time(Experiments.runSimulation(newConfig.setSeed(i), visualization = false).map(v => Loader.toStepInfo(v)).collect {
+              case Some(si) => si
+            }.toSeq.groupBy(_.id).toSeq.map({
+              case (_, steps) => (config, steps.maxBy(_.fitness).fitness)
+            }))
+            println(s"Finished experiment ${workIndex + configurationIndex * work.size}/${work.size * configs.size} (${time.toMillis} ms)")
+            output
+        })
     }).groupBy(_._1).map(v => v._1 -> v._2.map(_._2).toSeq)
 
 
@@ -90,14 +91,14 @@ object Robustness extends App {
 
     Settings.selectedExperiment.configVariation.filter(!_.collapse).foreach({ v =>
       results.groupBy(r => v.getVariation(r.configuration)).foreach {
-        case (_, results:Seq[Result]) =>
+        case (_, results: Seq[Result]) =>
           val c = results.head.configuration
 
           var spaces = 1
           val series: Iterable[(String, Iterable[Double])] = results.flatMap(result => {
             val legend = Settings.selectedExperiment.configVariation.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(result.configuration)}").mkString(",")
-            val source:(String, Iterable[Double]) = (legend, result.bestFitness)
-            val dest:(String, Iterable[Double]) = ((0 until spaces).map(_ => " ").mkString, result.robustnessFitness)
+            val source: (String, Iterable[Double]) = (legend, result.bestFitness)
+            val dest: (String, Iterable[Double]) = ((0 until spaces).map(_ => " ").mkString, result.robustnessFitness)
             spaces = spaces + 1
             Seq[(String, Iterable[Double])](source, dest)
           })

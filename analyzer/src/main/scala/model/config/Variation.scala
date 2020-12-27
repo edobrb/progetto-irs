@@ -17,21 +17,26 @@ trait Variation[K, V] {
   def apply: Seq[K => K] = variations.map(v => applyVariation(v))
 
   def collapse: Boolean = false
+
+  def showDivided: Boolean = true
 }
 
 object Variation {
-  def apply[K, V](variations: Seq[V], lens: Lens[K, V], name: String, description: V => String = (v: V) => v.toString, collapse: Boolean = false): Variation[K, V] =
-    LensVariation(variations, lens, name, description, collapse)
+  def apply[K, V](variations: Seq[V], lens: Lens[K, V], name: String, description: V => String = (v: V) => v.toString,
+                  collapse: Boolean = false, showDivided: Boolean = false): Variation[K, V] =
+    LensVariation(variations, lens, name, description, collapse, showDivided)
 
-  def normal[K, V](variations: Seq[V], setter: (V, K) => K, getter: K => V, name: String, description: V => String, collapse: Boolean = false): Variation[K, V] =
-    FunctionalVariation(variations, setter, getter, name, k => description(getter(k)), collapse)
+  def normal[K, V](variations: Seq[V], setter: (V, K) => K, getter: K => V, name: String, description: V => String,
+                   collapse: Boolean = false, showDivided: Boolean = false): Variation[K, V] =
+    FunctionalVariation(variations, setter, getter, name, k => description(getter(k)), collapse, showDivided)
 
 
   case class LensVariation[K, V](override val variations: Seq[V],
                                  lens: Lens[K, V],
                                  override val name: String,
                                  description: V => String = (v: V) => v.toString,
-                                 override val collapse: Boolean) extends Variation[K, V] {
+                                 override val collapse: Boolean,
+                                 override val showDivided: Boolean) extends Variation[K, V] {
     override def applyVariation(v: V)(k: K): K = lens.set(v)(k)
 
     override def desc(k: K): String = description(lens.get(k))
@@ -44,7 +49,8 @@ object Variation {
                                        getter: K => V,
                                        override val name: String,
                                        description: K => String,
-                                       override val collapse: Boolean) extends Variation[K, V] {
+                                       override val collapse: Boolean,
+                                       override val showDivided: Boolean) extends Variation[K, V] {
     override def applyVariation(v: V)(k: K): K = setter(v, k)
 
     override def desc(k: K): String = description(k)

@@ -10,7 +10,7 @@ object BooleanNetwork {
     val states = IndexedSeq.fill(n)(false)
     val connections = IndexedSeq.fill(n)(IndexedSeq.fill(k)(Random.between(0, n)))
     val functions = IndexedSeq.fill(n)(IndexedSeq.fill(1 << k)(Random.nextDouble() < bias))
-    BooleanNetwork(functions, connections, states, IndexedSeq.empty,  IndexedSeq.empty, None).randomizeStates(0.5)
+    BooleanNetwork(functions, connections, states, IndexedSeq.empty, IndexedSeq.empty, None).randomizeStates(0.5)
   }
 }
 
@@ -31,6 +31,8 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
                           outputs: IndexedSeq[Int],
                           overridden_output_functions: Option[Seq[Seq[Boolean]]]) {
 
+  def n: Int = states.size
+
   def withInputs(inputsValues: Seq[Boolean]): BooleanNetwork =
     this.copy(states = states.zipWithIndex.map {
       case (_, i) if inputs.contains(i) =>
@@ -44,7 +46,7 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
       case (bn, _) => bn.step()
     })
 
-  def step():BooleanNetwork = this.copy(states = this.states.indices.map { i =>
+  def step(): BooleanNetwork = this.copy(states = this.states.indices.map { i =>
     val column = this.connections(i).indices.foldLeft(0)({
       case (sum, connectionIndex) if this.states(this.connections(i)(connectionIndex)) => sum + (1 << connectionIndex)
       case (sum, _) => sum
@@ -80,7 +82,7 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
         modifiedStates.updated(input, !modifiedStates(input))
     }))
 
-  def invertState(index:Int):BooleanNetwork = copy(states = states.updated(index, !states(index)))
+  def invertState(index: Int): BooleanNetwork = copy(states = states.updated(index, !states(index)))
 
   def prettyStatesString: String = states.map(if (_) "1" else "0").mkString
 
@@ -93,7 +95,7 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
 
     @tailrec
     def compute(states: Map[BooleanNetwork, Seq[BooleanNetwork]]): Map[BooleanNetwork, Seq[BooleanNetwork]] =
-      if (limit.exists(_ < states.size)) {
+      if (limit.exists(_ < n)) {
         states
       } else {
         states.collectFirst {
