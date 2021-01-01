@@ -24,8 +24,8 @@ object Derrida extends App {
       RobotData.loadsFromFile(filename).map(_.map {
         case RobotData(robot_id, config, fitness_values, best_network, locations) =>
           val bn = best_network
-          val derrida = (0 until 1000).map(i => {
-            bn.invertRandomStates(1).steps(1).statesHammingDistance(bn.steps(1))
+          val derrida = (0 until bn.n).map(i => {
+            bn.invertState(i).step().statesHammingDistance(bn.step())
           })
           (config, fitness_values.max, derrida.sum.toDouble / derrida.size)
       })
