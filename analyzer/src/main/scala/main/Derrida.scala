@@ -1,63 +1,105 @@
 package main
 
-import model.RobotData
+import java.awt.Color
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import model.{RobotData, StepInfo}
 import model.config.Configuration
-import model.config.Configuration.JsonFormats
+import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.style.markers.{Circle, Marker}
-import org.knowm.xchart.{BitmapEncoder, XYChartBuilder}
-import play.api.libs.json.{JsArray, JsSuccess, JsValue, Json, Reads}
+import play.api.libs.json._
 import utils.Parallel.Parallel
 
-import java.awt.{Color, Font}
-import scala.collection.MapView
-import scala.util.Success
+import scala.util.{Failure, Success, Try}
+import model.config.Configuration.JsonFormats._
 
 object Derrida extends App {
 
   implicit val arguments: Array[String] = args
 
-  if (Args.LOAD_OUTPUT) {
-    println("Loading files...")
-    val robotsData: MapView[Configuration, Seq[(Double, Double)]] = Loader.OUTPUT_FILENAMES(args).parMap(Args.PARALLELISM_DEGREE(args), { filename =>
-      println(filename)
-      RobotData.loadsFromFile(filename).map(_.map {
-        case RobotData(robot_id, config, fitness_values, best_network, locations) =>
-          val bn = best_network
-          val derrida = (0 until bn.n).map(i => {
-            bn.invertState(i).step().statesHammingDistance(bn.step())
-          })
-          (config, fitness_values.max, derrida.sum.toDouble / derrida.size)
-      })
-    }).collect {
-      case Success(v) => v
-    }.flatten.groupBy(_._1).view.mapValues(v => v.map(d => (d._2, d._3)).toSeq)
+  case class Result(configuration: Configuration, fitness: Double, derrida: Double, robotId: String, fromFile: String)
 
-    import JsonFormats._
-    val json = Json.toJson(robotsData).toString()
-    utils.File.write(s"${Analyzer.RESULT_FOLDER(args)}/derrida-data.json", json)
+  implicit def resultFormat: OFormat[Result] = Json.format[Result]
+
+  implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
+
+  def DERRIDA_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_derrida"
+
+  if (utils.Folder.create(DERRIDA_FOLDER).isFailure) {
+    println("Cannot create derrida folder")
+    System.exit(-1)
   }
 
-  if (Args.MAKE_CHARTS) {
-    println("Drawing charts...")
-    val jsonStr = utils.File.read(s"${Analyzer.RESULT_FOLDER(args)}/derrida-data.json").get
+  def loadResults: Seq[Result] = Try {
+    val jsonStr = utils.File.read(s"$DERRIDA_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
-    import JsonFormats._
-    implicit val myMapRead: Reads[Map[Configuration, Seq[(Double, Double)]]] = (json: JsValue) => JsSuccess {
-      json.as[JsArray].value.map { a =>
-        val k :: v :: Nil = a.as[JsArray].value.map(_.toString()).toSeq
-        (Json.fromJson[Configuration](Json.parse(k)).get, Json.fromJson[Seq[(Double, Double)]](Json.parse(v)).get)
-      }.toMap
-    }
-    val robotsData = Json.fromJson[Map[Configuration, Seq[(Double, Double)]]](json).get
-    val data = robotsData.flatMap({
-      case (configuration, value) => value.map(v => (configuration, v._1, v._2))
-    })
-    data.groupBy(v => v._1.copy(network = v._1.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
-      case (config, data) =>
+    Json.fromJson[Seq[Result]](json).get
+  }.getOrElse(Nil)
 
-        val series = data.groupBy(_._1.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255))).map {
-          case ((p, data), color) => (s"p=$p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v._3, Math.max(0.0, v._2))))
+  if (Args.LOAD_OUTPUT) {
+    val loaded = loadResults
+    println("Loaded: " + loaded.size)
+    val loadedFile = loaded.map(v => v.fromFile -> ()).toMap
+    val results: Seq[Result] = loaded ++ Loader.FILENAMES(args).filter(v => !loadedFile.contains(v._1.split('/').last)).parMap(Args.PARALLELISM_DEGREE, {
+      case (gzipFile, jsonFile) =>
+        val tmpGzipFile = LoadBest.BEST_RAW_FOLDER + "/" + gzipFile.split('/').last
+        RobotData.loadsFromFile(jsonFile).toOption.flatMap(robotsData => {
+
+          //id -> (config, (fitness,epoch),(toDrop,toTake))
+          val maxes = robotsData.map(data => {
+            val printOfOneEpoch = data.config.adaptation.epoch_length * data.config.simulation.ticks_per_seconds + 2
+            val (bestFitness, bestEpoch) = data.fitness_values.zipWithIndex.maxBy(_._1)
+            val toDrop = printOfOneEpoch * bestEpoch
+            (data.robot_id, (data.config, (bestFitness, bestEpoch), (toDrop, printOfOneEpoch)))
+          }).toMap
+
+          utils.File.readGzippedLinesAndMap(tmpGzipFile)(lines => {
+            val steps: Map[String, Seq[StepInfo]] = lines.map(l => Loader.toStepInfo(l)).collect {
+              case Some(v) => v
+            }.toSeq.groupBy(_.id)
+
+            maxes.toSeq.map {
+              case (robotId, (config, (fitness, _), (_, _))) =>
+                val bestNetwork = steps(robotId).head.boolean_network.get
+                val bns = steps(robotId).drop(1).dropRight(1).scanLeft(bestNetwork)({
+                  case (bn, stepInfo) => bn.withInputs(stepInfo.inputs).step()
+                })
+
+                val derridaValues = bns.groupBy(_.states).map({ case (_, networks) =>
+                  val bn = networks.head
+                  val bnNext = bn.step()
+                  bn.states.indices.map(i =>
+                    bn.invertState(i).step().statesHammingDistance(bnNext)
+                  ).sum.toDouble / bn.states.size * networks.size
+                })
+                val derrida = derridaValues.sum / bns.size
+
+                println((gzipFile.split('-').last, fitness, derrida, robotId))
+                Result(config, fitness, derrida, robotId, gzipFile.split('/').last)
+            }
+          }) match {
+            case Failure(exception) => println(s"Error: ${exception.getMessage}"); None
+            case Success(value) => Some(value)
+          }
+
+        }).getOrElse(Nil)
+    }).flatten.toSeq
+
+    println("saving results...")
+    val json = Json.toJson(results).toString()
+    utils.File.write(s"$DERRIDA_FOLDER/results.json", json)
+  }
+
+
+  if (Args.MAKE_CHARTS) {
+    val loaded = loadResults
+    println("Loaded: " + loaded.size)
+    println("Plotting charts...")
+    loaded.groupBy(v => v.configuration.copy(network = v.configuration.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
+      case (config, data) =>
+        val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255))).map {
+          case ((p, data), color) => (s"p=$p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
         val mutation = config.adaptation.network_mutation.max_connection_rewires > 0
         val rewire = config.adaptation.network_io_mutation.max_input_rewires > 0
@@ -77,20 +119,7 @@ object Derrida extends App {
             s.setYAxisMax(200)
             s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
           })
-        BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/derrida-scatterplot-$title.png", BitmapFormat.PNG)
+        BitmapEncoder.saveBitmap(chart, s"$DERRIDA_FOLDER/$title.png", BitmapFormat.PNG)
     }
-    val series = data.groupBy(_._1.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255))).map {
-      case ((p, data), color) => (s"p=$p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 5)), data.map(v => (v._3, Math.max(0.0, v._2))))
-    }
-    val chart = utils.Charts.scatterPlot("All", "Derrida", "Fitness",
-      series,
-      s => {
-        s.setMarkerSize(8)
-        s.setXAxisMax(2)
-        s.setXAxisMin(0)
-        s.setYAxisMax(200)
-        s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
-      })
-    BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/derrida-scatterplot.png", BitmapFormat.PNG)
   }
 }

@@ -1,7 +1,7 @@
 package main
 
 import utils.ConfigLens._
-import java.awt.Color
+
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.Types.Fitness
@@ -9,12 +9,10 @@ import model.config.Configuration
 import model.{BooleanNetwork, RobotData, StepInfo}
 import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
-import org.knowm.xchart.style.markers.{Circle, Marker}
 import play.api.libs.json._
 import utils.ConfigLens.lens
 import utils.Parallel.Parallel
-
-import scala.util.{Success, Try}
+import scala.util.Success
 import model.config.Configuration.JsonFormats._
 
 object Robustness extends App {
@@ -27,12 +25,18 @@ object Robustness extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
+  def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness"
+
+  if (utils.Folder.create(ROBUSTNESS_FOLDER).isFailure) {
+    println("Cannot create robustness folder")
+    System.exit(-1)
+  }
+
   val networkLens = lens(_.network.initial_schema)
   val lengthLens = lens(_.simulation.experiment_length)
   val robotLens = lens(_.simulation.robot_count)
   val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
   val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
-  println("Loading files...")
   val networkPerConfiguration = 100
   val repetitions = 10
   val robotCount = 10
@@ -41,6 +45,7 @@ object Robustness extends App {
   val configs = Settings.configurations.map(v => v.filename -> v).toMap
 
   if (Args.LOAD_OUTPUT) {
+    println("Loading files...")
     val robotsData: Iterable[(Configuration, Seq[(Fitness, BooleanNetwork)])] = Loader.OUTPUT_FILENAMES.parMap(Args.PARALLELISM_DEGREE, { filename =>
       RobotData.loadsFromFile(filename).map(robotsData => {
         println("Loaded " + filename)
@@ -81,13 +86,14 @@ object Robustness extends App {
     }
 
     val json = Json.toJson(results).toString()
-    utils.File.write(s"${Analyzer.RESULT_FOLDER}/robustness-data.json", json)
+    utils.File.write(s"$ROBUSTNESS_FOLDER/results.json", json)
   }
+
   if (Args.MAKE_CHARTS) {
-    val jsonStr = utils.File.read(s"${Analyzer.RESULT_FOLDER}/robustness-data.json").get
+    println("plotting charts...")
+    val jsonStr = utils.File.read(s"$ROBUSTNESS_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
     val results = Json.fromJson[Seq[Result]](json).get.sortBy(-_.bestFitness.sum)
-
 
     Settings.selectedExperiment.configVariation.filter(!_.collapse).foreach({ v =>
       results.groupBy(r => v.getVariation(r.configuration)).foreach {
@@ -104,10 +110,8 @@ object Robustness extends App {
           })
 
           val chart = utils.Charts.boxplot(s"(with ${v.name}=${v.desc(c)})", "variations", "fitness", series)
-          BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/robustness-boxplot-${v.name}=${v.desc(c)}.png", BitmapFormat.PNG)
+          BitmapEncoder.saveBitmap(chart, s"$ROBUSTNESS_FOLDER/${v.name}=${v.desc(c)}.png", BitmapFormat.PNG)
       }
     })
-
-
   }
 }

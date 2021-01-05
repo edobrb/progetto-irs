@@ -11,9 +11,9 @@ import org.knowm.xchart.BitmapEncoder
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 
 import java.awt.Color
+import scala.util.{Failure, Success}
 
 object Entropy extends App {
-
 
   implicit val arguments: Array[String] = args
 
@@ -23,11 +23,18 @@ object Entropy extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
+  def ENTROPY_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_entropy"
+
+  if (utils.Folder.create(ENTROPY_FOLDER).isFailure) {
+    println("Cannot create entropy folder")
+    System.exit(-1)
+  }
+
   if (Args.LOAD_OUTPUT) {
     val results: Seq[Result] = Loader.FILENAMES(args).parMap(Args.PARALLELISM_DEGREE, {
       case (gzipFile, jsonFile) =>
-        val tmpGzipFile = Analyzer.RESULT_FOLDER(args) + "/tmp/" + gzipFile.split('/').last
-        RobotData.loadsFromFile(jsonFile).toOption.map(robotsData => {
+        val tmpGzipFile = LoadBest.BEST_RAW_FOLDER + "/" + gzipFile.split('/').last
+        RobotData.loadsFromFile(jsonFile).toOption.flatMap(robotsData => {
 
           //id -> (config, (fitness,epoch),(toDrop,toTake))
           val maxes = robotsData.map(data => {
@@ -37,34 +44,34 @@ object Entropy extends App {
             (data.robot_id, (data.config, (bestFitness, bestEpoch), (toDrop, printOfOneEpoch)))
           }).toMap
 
-          val (lines, source) = utils.File.readGzippedLines(tmpGzipFile).get
-          val steps: Map[String, Seq[StepInfo]] = lines.map(l => Loader.toStepInfo(l)).collect {
-            case Some(v) => v
-          }/*.filter(v => {
-            val (_, _, (toDrop, toTake)) = maxes(v.id)
-            toDrop <= v.step && v.step < (toDrop + toTake)
-          })*/.toSeq.groupBy(_.id)
-          source.close()
+          utils.File.readGzippedLinesAndMap(tmpGzipFile)(lines => {
+            val steps: Map[String, Seq[StepInfo]] = lines.map(l => Loader.toStepInfo(l)).collect {
+              case Some(v) => v
+            }.toSeq.groupBy(_.id)
 
-
-          maxes.toSeq.map {
-            case (robotId, (config, (fitness, epoch), (_, printOfOneEpoch))) =>
-              val bestEpochInputs = steps(robotId).drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
-              val inputsProbabilities = bestEpochInputs.groupBy(identity).map(v => v._2.size.toDouble / (printOfOneEpoch - 2))
-              val entropy = utils.Entropy.shannon(inputsProbabilities)
-              println((gzipFile.split('-').last, fitness, entropy, robotId))
-              Result(config, fitness, entropy, robotId)
+            maxes.toSeq.map {
+              case (robotId, (config, (fitness, epoch), (_, printOfOneEpoch))) =>
+                val bestEpochInputs = steps(robotId).drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
+                val inputsProbabilities = bestEpochInputs.groupBy(identity).map(v => v._2.size.toDouble / (printOfOneEpoch - 2))
+                val entropy = utils.Entropy.shannon(inputsProbabilities)
+                println((gzipFile.split('-').last, fitness, entropy, robotId))
+                Result(config, fitness, entropy, robotId)
+            }
+          }) match {
+            case Failure(exception) => println(s"Error: ${exception.getMessage}"); None
+            case Success(value) => Some(value)
           }
         }).getOrElse(Nil)
     }).flatten.toSeq
 
 
     val json = Json.toJson(results).toString()
-    utils.File.write(s"${Analyzer.RESULT_FOLDER(args)}/entropy-data.json", json)
+    utils.File.write(s"$ENTROPY_FOLDER/results.json", json)
   }
 
   if (Args.MAKE_CHARTS) {
-    val jsonStr = utils.File.read(s"${Analyzer.RESULT_FOLDER(args)}/entropy-data.json").get
+    println("Plotting charts")
+    val jsonStr = utils.File.read(s"$ENTROPY_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
     val results = Json.fromJson[Seq[Result]](json).get
     println(results.size)
@@ -83,7 +90,7 @@ object Entropy extends App {
         val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
           Seq(("all", Some(new Color(255, 0, 0, 20)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
           _.setLegendVisible(false))
-        BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/entropy-scatterplot-$title.png", BitmapFormat.PNG)
+        BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/$title.png", BitmapFormat.PNG)
     }
     val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",
       Seq(("all", Some(new Color(255, 0, 0, 5)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),

@@ -13,12 +13,18 @@ import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
 import utils.Parallel._
 
+import java.awt.Color
+
 
 object Analyzer extends App {
 
   implicit val arguments: Array[String] = args
 
   def RESULT_FOLDER(implicit args: Array[String]): String = Args.DATA_FOLDER(args) + "/results"
+
+  def CHARTS_FOLDER(implicit args: Array[String]): String = s"${RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_charts"
+
+  def CHARTS_DATA_FOLDER(implicit args: Array[String]): String = s"${RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_charts_data"
 
   val configs = Settings.configurations.map(v => v.filename -> v).toMap
 
@@ -66,32 +72,62 @@ object Analyzer extends App {
       (data.map(_.fitnessMaxCurve.last).sum / data.size * -1000).toInt
   }
 
-  def showAveragedFitnessCharts(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])], name: Configuration => String): Unit = {
-    val series = experimentsResults.sortBy(resultSorted).map {
+  def averageFitnessSeries(experimentsResults: Seq[(Configuration, Iterable[RobotData])]): Seq[(Configuration, Iterable[(Double, Double)])] =
+    experimentsResults.sortBy(resultSorted).map {
       case (config, values) =>
         val tests_count = values.head.fitnessMaxCurve.size
         val totalFitnessCurve = values.map(_.fitnessMaxCurve).foldLeft(0 until tests_count map (_ => 0.0)) {
           case (sum, curve) => sum.zip(curve).map(v => v._1 + v._2)
         }.map(_ / values.size).zipWithIndex.map(v => (v._2.toDouble, v._1))
-        (name(config), None, totalFitnessCurve)
+        (config, totalFitnessCurve)
     }
+
+  def finalFitnessSeries(experimentsResults: Seq[(Configuration, Iterable[RobotData])]): Seq[(Configuration, Iterable[Double])] =
+    experimentsResults.sortBy(resultSorted).map {
+      case (config, values) => (config, values.map(_.fitnessMaxCurve.last))
+    }
+
+  def saveAveragedFitnessCharts(chartName: String, chartDescription: String, series: Seq[(String, Option[Color], Iterable[(Double, Double)])]): Unit = {
     val chart = utils.Charts.linePlot(s"Average fitness curve $chartDescription", "edits", "average fitness",
       series, v => {
-        v.setLegendPosition(LegendPosition.InsideSE); v.setMarkerSize(0)
+        v.setLegendPosition(LegendPosition.InsideSE);
+        v.setMarkerSize(0)
       }, _.width(1920).height(1080))
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-fitness-curve.png", BitmapFormat.PNG, 100)
+    val chartFileName = s"$CHARTS_FOLDER/$chartName-fitness-curve.png"
+    BitmapEncoder.saveBitmapWithDPI(chart, chartFileName, BitmapFormat.PNG, 100)
+    println(s"saved $chartFileName")
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
-  def showBoxPlot(chartName: String, chartDescription: String, experimentsResults: Seq[(Configuration, Iterable[RobotData])],
-                  name: Configuration => String): Unit = {
-    val series = experimentsResults.sortBy(resultSorted).map {
-      case (config, values) => (name(config), values.map(_.fitnessMaxCurve.last))
+  def saveAverageFitnessData(chartName: String, series: Seq[(String, Option[Color], Iterable[(Double, Double)])]) = {
+    val rows = series.foldLeft(Seq[String]()) {
+      case (Nil, (_, _, series)) => series.map(_._2.toString).toSeq
+      case (lines, (_, _, series)) => lines.zip(series.map(_._2.toString)).map(v => v._1 + ";" + v._2)
     }
+    val header = series.map {
+      case (legend, _, _) => legend
+    }.mkString(";")
+    utils.File.writeLines(s"$CHARTS_DATA_FOLDER/$chartName-fitness-curve.csv", header +: rows)
+  }
+
+  def saveBoxPlot(chartName: String, chartDescription: String, series: Seq[(String, Iterable[Double])]): Unit = {
     val chart = utils.Charts.boxplot(s"Final fitness of each robot $chartDescription", "variation", "fitness",
       series, applyCustomBuild = _.width(1920).height(1080))
-    BitmapEncoder.saveBitmapWithDPI(chart, RESULT_FOLDER + s"/$chartName-boxplot.png", BitmapFormat.PNG, 100)
+    val chartFileName = s"$CHARTS_FOLDER/$chartName-boxplot.png"
+    BitmapEncoder.saveBitmapWithDPI(chart, chartFileName, BitmapFormat.PNG, 100)
+    println(s"saved $chartFileName")
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
+  }
+
+  def saveBoxPlotData(chartName: String, series: Seq[(String, Iterable[Double])]) = {
+    val rows = series.foldLeft(Seq[String]()) {
+      case (Nil, (_, series)) => series.map(_.toString).toSeq
+      case (lines, (_, series)) => lines.zip(series.map(_.toString)).map(v => v._1 + ";" + v._2)
+    }
+    val header = series.map {
+      case (legend, _) => legend
+    }.mkString(";")
+    utils.File.writeLines(s"$CHARTS_DATA_FOLDER/$chartName-boxplot.csv", header +: rows)
   }
 
 
@@ -113,14 +149,30 @@ object Analyzer extends App {
         val chartNameV = chartName(groupResult.head._1, group)
         val chartDescriptionV = chartDescription(groupResult.head._1, group)
         val legendGenerator: Configuration => String = config => s"${legend(config, group, series(config))}"
-        showAveragedFitnessCharts(chartNameV, chartDescriptionV, results, legendGenerator)
-        showBoxPlot(chartNameV, chartDescriptionV, results, legendGenerator)
+        val averageFitness = averageFitnessSeries(results).map {
+          case (config, series) => (legendGenerator(config), None, series)
+        }
+        val finalFitness = finalFitnessSeries(results).map {
+          case (config, value) => (legendGenerator(config), value)
+        }
+        saveAveragedFitnessCharts(chartNameV, chartDescriptionV, averageFitness)
+        saveAverageFitnessData(chartNameV, averageFitness)
+        saveBoxPlot(chartNameV, chartDescriptionV, finalFitness)
+        saveBoxPlotData(chartNameV, finalFitness)
     }
   }
 
   /** Plots charts */
   if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
+    val folderCreationRes =
+      for (_ <- utils.Folder.create(CHARTS_FOLDER);
+           res <- utils.Folder.create(CHARTS_DATA_FOLDER)) yield res
+    if (folderCreationRes.isFailure) {
+      println("Cannot create result folders.")
+      System.exit(-1)
+    }
+
     if (Settings.selectedExperiment.configVariation.size > 1) {
       Settings.selectedExperiment.configVariation.parForeach(Args.PARALLELISM_DEGREE, { v =>
         makeCharts[Unit, Any](experimentsResults,

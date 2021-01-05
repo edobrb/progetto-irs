@@ -34,8 +34,9 @@ case class RobotData(robot_id: String,
 }
 
 object RobotData {
+  implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
+
   def loadsFromFile(filename: String): Try[Seq[RobotData]] = {
-    implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
     utils.File.read(filename).map(str => Try(readFromString[Seq[RobotData]](str))).flatten
   }
 }
