@@ -7,8 +7,9 @@ import model.{RobotData, StepInfo}
 import play.api.libs.json.{Json, OFormat}
 import utils.Parallel.Parallel
 import model.config.Configuration.JsonFormats._
-import org.knowm.xchart.BitmapEncoder
+import org.knowm.xchart.{BitmapEncoder, VectorGraphicsEncoder}
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
+import org.knowm.xchart.VectorGraphicsEncoder.VectorGraphicsFormat
 
 import java.awt.Color
 import scala.util.{Failure, Success}
@@ -25,7 +26,9 @@ object Entropy extends App {
 
   def ENTROPY_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_entropy"
 
-  if (utils.Folder.create(ENTROPY_FOLDER).isFailure) {
+  def ENTROPY_FOLDER_DATA(implicit args: Array[String]): String = s"${ENTROPY_FOLDER(args)}/data"
+
+  if (utils.Folder.create(ENTROPY_FOLDER, ENTROPY_FOLDER_DATA).exists(_.isFailure)) {
     println("Cannot create entropy folder")
     System.exit(-1)
   }
@@ -70,7 +73,7 @@ object Entropy extends App {
   }
 
   if (Args.MAKE_CHARTS) {
-    println("Plotting charts")
+    println(s"Plotting charts at $ENTROPY_FOLDER")
     val jsonStr = utils.File.read(s"$ENTROPY_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
     val results = Json.fromJson[Seq[Result]](json).get
@@ -87,10 +90,16 @@ object Entropy extends App {
           case ("experiments/parametrized-foraging2.argos", false) => "foraging2"
         }
         val title = s"arena=$arena"
+        val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
         val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
-          Seq(("all", Some(new Color(255, 0, 0, 20)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
-          _.setLegendVisible(false))
+          Seq(("all", Some(new Color(255, 0, 0, 20)), series)),
+          _.setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE))
         BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/$title.png", BitmapFormat.PNG)
+        //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.pdf", VectorGraphicsFormat.PDF)
+        //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.svg", VectorGraphicsFormat.SVG)
+        val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
+        utils.File.writeLines(s"$ENTROPY_FOLDER_DATA/$title.csv", data)
+
     }
     val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",
       Seq(("all", Some(new Color(255, 0, 0, 5)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),

@@ -26,7 +26,7 @@ object Derrida extends App {
 
   def DERRIDA_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_derrida"
 
-  if (utils.Folder.create(DERRIDA_FOLDER).isFailure) {
+  if (utils.Folder.create(DERRIDA_FOLDER).exists(_.isFailure)) {
     println("Cannot create derrida folder")
     System.exit(-1)
   }
@@ -82,7 +82,6 @@ object Derrida extends App {
             case Failure(exception) => println(s"Error: ${exception.getMessage}"); None
             case Success(value) => Some(value)
           }
-
         }).getOrElse(Nil)
     }).flatten.toSeq
 

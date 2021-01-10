@@ -27,7 +27,7 @@ object Robustness extends App {
 
   def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness"
 
-  if (utils.Folder.create(ROBUSTNESS_FOLDER).isFailure) {
+  if (utils.Folder.create(ROBUSTNESS_FOLDER).exists(_.isFailure)) {
     println("Cannot create robustness folder")
     System.exit(-1)
   }

@@ -6,8 +6,9 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.RobotData
 import model.config.Configuration
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
+import org.knowm.xchart.VectorGraphicsEncoder.VectorGraphicsFormat
 import org.knowm.xchart.style.Styler.LegendPosition
-import org.knowm.xchart.{BitmapEncoder, SwingWrapper}
+import org.knowm.xchart.{BitmapEncoder, SwingWrapper, VectorGraphicsEncoder}
 
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -92,30 +93,38 @@ object Analyzer extends App {
       series, v => {
         v.setLegendPosition(LegendPosition.InsideSE);
         v.setMarkerSize(0)
+        v.setChartTitleVisible(false)
+        v.setChartBackgroundColor(Color.white)
       }, _.width(1920).height(1080))
-    val chartFileName = s"$CHARTS_FOLDER/$chartName-fitness-curve.png"
-    BitmapEncoder.saveBitmapWithDPI(chart, chartFileName, BitmapFormat.PNG, 100)
-    println(s"saved $chartFileName")
+    def chartFileName(format:String):String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
+    BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
+    println(s"saved ${chartFileName("png")}")
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   def saveAverageFitnessData(chartName: String, series: Seq[(String, Option[Color], Iterable[(Double, Double)])]) = {
-    val rows = series.foldLeft(Seq[String]()) {
-      case (Nil, (_, _, series)) => series.map(_._2.toString).toSeq
+    val epochCount = series.minBy(_._3.size)._3.size
+    val rows = series.foldLeft((1 to epochCount).map(_.toString)) {
       case (lines, (_, _, series)) => lines.zip(series.map(_._2.toString)).map(v => v._1 + ";" + v._2)
     }
-    val header = series.map {
+    val header = (Seq("epoch") ++ series.map {
       case (legend, _, _) => legend
-    }.mkString(";")
+    }).mkString(";")
     utils.File.writeLines(s"$CHARTS_DATA_FOLDER/$chartName-fitness-curve.csv", header +: rows)
   }
 
   def saveBoxPlot(chartName: String, chartDescription: String, series: Seq[(String, Iterable[Double])]): Unit = {
     val chart = utils.Charts.boxplot(s"Final fitness of each robot $chartDescription", "variation", "fitness",
-      series, applyCustomBuild = _.width(1920).height(1080))
-    val chartFileName = s"$CHARTS_FOLDER/$chartName-boxplot.png"
-    BitmapEncoder.saveBitmapWithDPI(chart, chartFileName, BitmapFormat.PNG, 100)
-    println(s"saved $chartFileName")
+      series,
+      applyCustomStyle = _.setChartBackgroundColor(Color.white).setChartTitleVisible(false),
+      applyCustomBuild = _.width(1920).height(1080))
+    def chartFileName(format:String):String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
+    BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
+    println(s"saved ${chartFileName("png")}")
     if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
@@ -165,10 +174,7 @@ object Analyzer extends App {
   /** Plots charts */
   if (Args.MAKE_CHARTS) {
     println("Plotting charts...")
-    val folderCreationRes =
-      for (_ <- utils.Folder.create(CHARTS_FOLDER);
-           res <- utils.Folder.create(CHARTS_DATA_FOLDER)) yield res
-    if (folderCreationRes.isFailure) {
+    if (utils.Folder.create(CHARTS_FOLDER, CHARTS_DATA_FOLDER, s"$CHARTS_FOLDER/png", s"$CHARTS_FOLDER/svg", s"$CHARTS_FOLDER/pdf").exists(_.isFailure)) {
       println("Cannot create result folders.")
       System.exit(-1)
     }
