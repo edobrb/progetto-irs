@@ -20,10 +20,10 @@ object Charts {
     applyCustomBuild(builder)
     val chart = builder.build()
     val styler = chart.getStyler
-    styler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 18))
-    styler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
-    styler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
-    styler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 16))
+    styler.setLegendFont(new Font(Font.MONOSPACED, Font.PLAIN, 18))
+    styler.setAxisTitleFont(new Font(Font.SERIF, Font.PLAIN, 22))
+    styler.setChartTitleFont(new Font(Font.SERIF, Font.PLAIN, 30))
+    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 16))
     applyCustomStyle(styler)
     series.foreach {
       case (name, color, s) =>
@@ -59,10 +59,10 @@ object Charts {
     styler.setBoxplotCalCulationMethod(BoxplotCalCulationMethod.NP)
     styler.setToolTipsEnabled(true)
     styler.setPlotContentSize(0.98)
-    styler.setLegendFont(new Font("Computer Modern", Font.PLAIN, 28))
-    styler.setAxisTitleFont(new Font("Computer Modern", Font.PLAIN, 22))
-    styler.setChartTitleFont(new Font("Computer Modern", Font.PLAIN, 30))
-    styler.setAxisTickLabelsFont(new Font("Computer Modern", Font.PLAIN, 12))
+    styler.setLegendFont(new Font(Font.MONOSPACED, Font.PLAIN, 28))
+    styler.setAxisTitleFont(new Font(Font.SERIF, Font.PLAIN, 22))
+    styler.setChartTitleFont(new Font(Font.SERIF, Font.PLAIN, 30))
+    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 12))
     styler.setXAxisLabelRotation(8)
     applyCustomStyle(styler)
     series.foreach {

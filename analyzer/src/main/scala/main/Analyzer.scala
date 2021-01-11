@@ -25,7 +25,7 @@ object Analyzer extends App {
 
   def CHARTS_FOLDER(implicit args: Array[String]): String = s"${RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_charts"
 
-  def CHARTS_DATA_FOLDER(implicit args: Array[String]): String = s"${RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_charts_data"
+  def CHARTS_DATA_FOLDER(implicit args: Array[String]): String = s"${CHARTS_FOLDER(args)}/csv"
 
   val configs = Settings.configurations.map(v => v.filename -> v).toMap
 
@@ -79,7 +79,7 @@ object Analyzer extends App {
         val tests_count = values.head.fitnessMaxCurve.size
         val totalFitnessCurve = values.map(_.fitnessMaxCurve).foldLeft(0 until tests_count map (_ => 0.0)) {
           case (sum, curve) => sum.zip(curve).map(v => v._1 + v._2)
-        }.map(_ / values.size).zipWithIndex.map(v => (v._2.toDouble, v._1))
+        }.map(_ / values.size).zipWithIndex.map(v => (v._2.toDouble + 1, v._1))
         (config, totalFitnessCurve)
     }
 
@@ -89,14 +89,16 @@ object Analyzer extends App {
     }
 
   def saveAveragedFitnessCharts(chartName: String, chartDescription: String, series: Seq[(String, Option[Color], Iterable[(Double, Double)])]): Unit = {
-    val chart = utils.Charts.linePlot(s"Average fitness curve $chartDescription", "edits", "average fitness",
+    val chart = utils.Charts.linePlot(s"Average fitness curve $chartDescription", "Epoca", "Fitness media",
       series, v => {
-        v.setLegendPosition(LegendPosition.InsideSE);
+        v.setLegendPosition(LegendPosition.OutsideS);
         v.setMarkerSize(0)
         v.setChartTitleVisible(false)
         v.setChartBackgroundColor(Color.white)
-      }, _.width(1920).height(1080))
-    def chartFileName(format:String):String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
+      }, _.width(800).height(800))
+
+    def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
+
     BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
     VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
     VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
@@ -116,11 +118,18 @@ object Analyzer extends App {
   }
 
   def saveBoxPlot(chartName: String, chartDescription: String, series: Seq[(String, Iterable[Double])]): Unit = {
-    val chart = utils.Charts.boxplot(s"Final fitness of each robot $chartDescription", "variation", "fitness",
+    val chart = utils.Charts.boxplot(s"Final fitness of each robot $chartDescription", "Variante", "Fitness massima",
       series,
-      applyCustomStyle = _.setChartBackgroundColor(Color.white).setChartTitleVisible(false),
-      applyCustomBuild = _.width(1920).height(1080))
-    def chartFileName(format:String):String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
+      applyCustomStyle = v => {
+        v.setPlotContentSize(0.95)
+        v.setMarkerSize(5)
+        v.setXAxisLabelRotation(8)
+        v.setChartBackgroundColor(Color.white).setChartTitleVisible(false)
+      },
+      applyCustomBuild = _.width(800).height(600))
+
+    def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
+
     BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
     VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
     VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
@@ -161,12 +170,31 @@ object Analyzer extends App {
         val averageFitness = averageFitnessSeries(results).map {
           case (config, series) => (legendGenerator(config), None, series)
         }
+        val legends = averageFitness.map(_._1.split(',').toIndexedSeq).toIndexedSeq
+        val averageFitness2 = averageFitness.zipWithIndex.map {
+          case ((_, _, series), i) =>
+            val newLegend = legends(i).zipWithIndex.map {
+              case (leg, j) =>
+                val maxL = legends.map(_ (j)).maxBy(_.length).length
+                leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
+            }.mkString(" ")
+            (newLegend.trim, None, series)
+        }
         val finalFitness = finalFitnessSeries(results).map {
           case (config, value) => (legendGenerator(config), value)
         }
-        saveAveragedFitnessCharts(chartNameV, chartDescriptionV, averageFitness)
+        val finalFitness2 = finalFitness.zipWithIndex.map {
+          case ((_, series), i) =>
+            val newLegend = legends(i).zipWithIndex.map {
+              case (leg, j) =>
+                val maxL = legends.map(_ (j)).maxBy(_.length).length
+                leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
+            }.mkString(" ")
+            (newLegend.trim, series)
+        }
+        saveAveragedFitnessCharts(chartNameV, chartDescriptionV, averageFitness2)
         saveAverageFitnessData(chartNameV, averageFitness)
-        saveBoxPlot(chartNameV, chartDescriptionV, finalFitness)
+        saveBoxPlot(chartNameV, chartDescriptionV, finalFitness2)
         saveBoxPlotData(chartNameV, finalFitness)
     }
   }
@@ -196,16 +224,11 @@ object Analyzer extends App {
         chartName = (c, _) => variations.map(v => s"${v.name}=${v.desc(c)}").mkString(","),
         chartDescription = (c, _) => variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
         legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse)
-          .filter(v => !variations.map(_.name).contains(v.name)).map(v => s"${v.name}=${v.desc(c)}").mkString(","))
+          .filter(v => !variations.map(_.name).contains(v.name)).map(v => {
+          if (v.legendName.nonEmpty) s"${v.legendName}=${v.desc(c)}" else v.desc(c)
+        }).mkString(",")
+      )
     }
-
-    //all series
-    /*makeCharts[Any, Any](experimentsResults,
-      groups = c => (),
-      series = c => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => v.getVariation(c)),
-      chartName = (_, _) => s"overall",
-      chartDescription = (_, _) => "",
-      legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse).map(v => s"${v.name}=${v.desc(c)}").mkString(","))*/
   }
 
   /** Run a simulation where each robot has the best boolean network. */
