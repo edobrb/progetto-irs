@@ -12,6 +12,11 @@ object LoadBest extends App {
 
   def BEST_RAW_FOLDER(implicit args: Array[String]): String = Analyzer.RESULT_FOLDER(args) + "/best_raw"
 
+  if (utils.Folder.create(BEST_RAW_FOLDER).exists(_.isFailure)) {
+    println("Cannot create best_raw folder")
+    System.exit(-1)
+  }
+
   Loader.FILENAMES(args).parForeach(Args.PARALLELISM_DEGREE, {
     case (gzipFile, jsonFile) =>
       val bestRawFile = BEST_RAW_FOLDER + "/" + gzipFile.split('/').last

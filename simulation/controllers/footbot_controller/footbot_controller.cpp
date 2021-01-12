@@ -7,6 +7,7 @@
 #include "bn_io.h"
 #include "bn.h"
 #include "utils.h"
+#include <limits>
 
 //#define LOG_DEBUG
 #define isUpper() (m_pcPositioning->GetReading().Position.GetX() > 0);
@@ -26,12 +27,14 @@ CFootBotBn::CFootBotBn() :
    testBn(NULL),
    bestIO(NULL),
    testIO(NULL),
+   proximityVisitedStates(NULL),
    stayUpper(false),
    hasGather(false),
    myId(-1),
    currentEpoch(0),
    lastStepFitnessChange(0),
    tNextStateFlip(0),
+   bestNetworkEntropyDistance(std::numeric_limits<Real>::max()),
    m_pcLights(NULL) {}
 
 /* Global parameters */
@@ -51,7 +54,7 @@ Real INPUT_REWIRE_PROBABILITY;
 int MAX_OUTPUT_REWIRES;
 Real OUTPUT_REWIRE_PROBABILITY;
 bool IO_NODE_OVERLAP_ON_REWIRE;
-//netowrk
+//network
 int MAX_CONNECTION_REWIRES;
 Real CONNECTION_REWIRE_PROBABILITY;
 bool CONNECTION_REWIRE_SELF_LOOPS;
@@ -60,12 +63,12 @@ Real FUNCTION_BIT_FLIP_PROBABILITY;
 bool KEEP_P_BALANCE;
 bool ONLY_DISTINCT_CONNECTIONS_ON_REWIRE = false;
 
-//NETOWRK
+//NETWORK
 int N, K;
 Real P;
 bool SELF_LOOPS;
 bool ONLY_DISTINCT_CONNECTIONS = false;
-//NETOWRK IO
+//NETWORK IO
 bool OVERRIDE_OUTPUT_FUNCTIONS;
 Real P_OVERRIDE;
 bool IO_NODE_OVERLAP;
@@ -104,6 +107,10 @@ Real STUCK_TIME = 2; //seconds
 //perturbations
 Real STATES_FLIP_F = 0; // flip/sec
 
+//use entropy as fitness
+bool USE_ENTROPY_AS_FITNESS = false;
+Real TARGET_ENTROPY = 2.0;
+
 
 /* Controller initialization */
 void CFootBotBn::Init(TConfigurationNode& t_node) {
@@ -135,6 +142,10 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          if(config["other"]["states_flip_f"].is_string()) {
             STATES_FLIP_F                 = (Real)std::stod(config["other"]["states_flip_f"].get<std::string>());
          }
+         if(config["other"]["target_entropy"].is_string()) {
+            TARGET_ENTROPY                = (Real)std::stod(config["other"]["target_entropy"].get<std::string>());
+            USE_ENTROPY_AS_FITNESS        = true;
+         }
       }
 
       //simulation
@@ -158,13 +169,13 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       FUNCTION_BIT_FLIP_PROBABILITY = config["adaptation"]["network_mutation"]["function_bit_flips_probability"].get<Real>();
       KEEP_P_BALANCE                = config["adaptation"]["network_mutation"]["keep_p_balance"].get<bool>();
 
-      //netowrk
+      //network
       N                             = config["network"]["n"].get<int>();
       K                             = config["network"]["k"].get<int>();
       P                             = config["network"]["p"].get<Real>();
       SELF_LOOPS                    = config["network"]["self_loops"].get<bool>();
       ONLY_DISTINCT_CONNECTIONS     = config["network"]["only_distinct_connections"].get<bool>();
-      //netowrk io
+      //network io
       OVERRIDE_OUTPUT_FUNCTIONS     = config["network"]["io"]["override_output_nodes"].get<bool>();
       P_OVERRIDE                    = config["network"]["io"]["override_outputs_p"].get<Real>();
       IO_NODE_OVERLAP               = config["network"]["io"]["allow_io_node_overlap"].get<bool>();
@@ -196,7 +207,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          NETWORK_INPUT_COUNT  += LIGHT_NODES;
       }
       
-      //netowrk io total nodes
+      //network io total nodes
       NETWORK_INPUT_COUNT += PROXIMITY_NODES;
       NETWORK_OUTPUT_COUNT += WHEELS_NODES;
 
@@ -262,12 +273,16 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t PREMATURE_EDIT_IF_STUCK = %d\n", PREMATURE_EDIT_IF_STUCK);
       printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
       printf("[DEBUG]\t STATES_FLIP_F = %.2f\n", STATES_FLIP_F);
+      if(USE_ENTROPY_AS_FITNESS) printf("[DEBUG]\t TARGET_ENTROPY = %.2f\n", TARGET_ENTROPY);
       #endif
    } //end configuration loading
 
    /* Network creation */
    bestBn = new Bn(N, K, P, SELF_LOOPS, ONLY_DISTINCT_CONNECTIONS);
    bestIO = new BnIO(NETWORK_INPUT_COUNT, NETWORK_OUTPUT_COUNT, bestBn, IO_NODE_OVERLAP, OVERRIDE_OUTPUT_FUNCTIONS, P_OVERRIDE);
+   if(USE_ENTROPY_AS_FITNESS) {
+      proximityVisitedStates = (long*)malloc(EPOCH_LENGTH * sizeof(long));
+   }
 
    /* Load given network schema */
    if(config["network"]["initial_schema"].is_object()) {
@@ -300,7 +315,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          }
       }
       #ifdef LOG_DEBUG 
-      printf("[DEBUG] [BOT %d] loaded initial netowrk schema\n", myId); 
+      printf("[DEBUG] [BOT %d] loaded initial network schema\n", myId); 
       #endif
    }
    /* Load given network state*/
@@ -310,7 +325,7 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          bestBn->SetNodeState(n, states[n].get<int>());
       }
       #ifdef LOG_DEBUG 
-      printf("[DEBUG] [BOT %d] loaded initial netowrk state\n", myId); 
+      printf("[DEBUG] [BOT %d] loaded initial network state\n", myId); 
       #endif
    }
 
@@ -360,6 +375,7 @@ void CFootBotBn::RunAndEvaluateNetwork() {
    const CCI_FootBotProximitySensor::TReadings& proximityReadings = m_pcProximity->GetReadings();
    Real maxProximityValue = 0;
    int proximityGroupSize = proximityReadings.size() / PROXIMITY_NODES;
+   long proximityCombination = 0;
    for(int i = 0; i < PROXIMITY_NODES; i++) {
       Real max = 0;
       for(int c = 0; c < proximityGroupSize; c++) {
@@ -368,6 +384,11 @@ void CFootBotBn::RunAndEvaluateNetwork() {
          maxProximityValue = maxProximityValue > value ? maxProximityValue : value;
       }
       testIO->PushInput(testBn, nextInputNode++, max > PROXIMITY_THRESHOLD);
+      if(max > PROXIMITY_THRESHOLD) proximityCombination = proximityCombination | (1L << i);
+   }
+
+   if(USE_ENTROPY_AS_FITNESS) {
+      proximityVisitedStates[currentStep] = proximityCombination;
    }
 
    bool isInCorrectHalf = stayUpper == isUpper();
@@ -475,7 +496,7 @@ void CFootBotBn::RunAndEvaluateNetwork() {
 
 /* Controller step */
 void CFootBotBn::ControlStep() {
-   bool prematureEdit = currentStep < EPOCH_LENGTH && PREMATURE_EDIT_IF_STUCK && 
+   bool prematureEdit = PREMATURE_EDIT_IF_STUCK && currentStep < EPOCH_LENGTH && 
       ((currentStep - lastStepFitnessChange) > (STUCK_TIME * TICKS_PER_SECOND));
 
    /* End of an epoch */
@@ -486,13 +507,37 @@ void CFootBotBn::ControlStep() {
       }
 
       //SELECTION
-      if(testNetworkFitness >= bestNetworkFitness && !prematureEdit) {
-         bestBn->CopyFrom(testBn);
-         bestIO->CopyFrom(testIO, bestBn);
-         bestNetworkFitness = testNetworkFitness;
-      } else { //rollback to previous best network
-         testBn->CopyFrom(bestBn);
-         testIO->CopyFrom(bestIO, bestBn);
+      if(USE_ENTROPY_AS_FITNESS) {
+         Real entropy = 0;
+         for(int i = 0; i < (1 << PROXIMITY_NODES); i++) {
+            Real count = 0.0;
+            for(int j = 0; j < EPOCH_LENGTH; j++) {
+               if(proximityVisitedStates[j] == i) count = count + 1.0;
+            }
+            if(count > 0) {
+               Real p = count / EPOCH_LENGTH;
+               entropy += (p * (log(p) / log(2)));
+            }
+         }
+         entropy = -entropy;
+         Real testNetworkEntropyDistance = (TARGET_ENTROPY - entropy) * (TARGET_ENTROPY - entropy);
+         if(testNetworkEntropyDistance <= bestNetworkEntropyDistance) {
+            bestBn->CopyFrom(testBn);
+            bestIO->CopyFrom(testIO, bestBn);
+            bestNetworkEntropyDistance = testNetworkEntropyDistance;
+         } else { //rollback to previous best network
+            testBn->CopyFrom(bestBn);
+            testIO->CopyFrom(bestIO, bestBn);
+         }
+      } else {
+         if(testNetworkFitness >= bestNetworkFitness && !prematureEdit) {
+            bestBn->CopyFrom(testBn);
+            bestIO->CopyFrom(testIO, bestBn);
+            bestNetworkFitness = testNetworkFitness;
+         } else { //rollback to previous best network
+            testBn->CopyFrom(bestBn);
+            testIO->CopyFrom(bestIO, bestBn);
+         }
       }
 
       if(RESET_STATES_EVERY_EPOCH) {
@@ -626,6 +671,9 @@ void CFootBotBn::PrintAnalytics(bool printBnSchema) {
 }
 
 CFootBotBn::~CFootBotBn() {
+   if(USE_ENTROPY_AS_FITNESS) {
+      delete proximityVisitedStates;
+   }
    delete bestBn;
    delete testBn;
    delete bestIO;

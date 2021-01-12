@@ -61,7 +61,10 @@ object TestController extends App {
   val orLens = lens(_.adaptation.network_io_mutation.output_rewire_probability) and lens(_.adaptation.network_io_mutation.max_output_rewires)
   val crLens = lens(_.adaptation.network_mutation.connection_rewire_probability) and lens(_.adaptation.network_mutation.max_connection_rewires)
   val rOverlapLens = lens(_.adaptation.network_io_mutation.allow_io_node_overlap)
+  val otherLens = lens(_.other)
   val tests = Seq(
+    Test("a69e78fc61b68fd8e4db01703afb8e095d00e7f299668ece971772be6f3bfa53", otherLens and irLens, (Map("target_entropy" -> "1.5"), (1.0, 8))),
+    Test("1261a116fe1be48827ec4eccaff1f80fcb27f12a456313db8b5ab13d7b405040", otherLens and irLens, (Map("target_entropy" -> "5"), (1.0, 8))),
     Test("2794c498f0a7575f4d5716bb389be455628b2197815692105b7c7730821f8e3d", crLens, (1.0, 20)),
     Test("9f49b7e2bab8d0ae35f034eabe05890af2ad2155f334db8d72ad1d2e50f32264", lens(_.adaptation.network_mutation.connection_rewire_probability), 1.0),
     Test("9f49b7e2bab8d0ae35f034eabe05890af2ad2155f334db8d72ad1d2e50f32264", lens(_.adaptation.network_mutation.function_bit_flips_probability), 1.0),

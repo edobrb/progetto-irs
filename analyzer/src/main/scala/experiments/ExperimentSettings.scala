@@ -30,6 +30,7 @@ object ExperimentSettings {
       "11" -> E11,
       "12" -> E12,
       "13" -> E13,
+      "14" -> E14,
     )(name)
   }
 }

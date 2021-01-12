@@ -55,7 +55,12 @@ void Bn::Step() {
     for (int n = 0; n < N; n++) {
         int truthTableColumn = 0;
         int* nodeConnections = connections[n];
-        for (int k = 0; k < K; k++) truthTableColumn += (1 << k) & (-oldStates[nodeConnections[k]]);
+        for (int k = 0; k < K; k++) {
+            int c = nodeConnections[k];
+            if(c != -1) {
+                truthTableColumn += (1 << k) & (-oldStates[c]);
+            }
+        }
         states[n] = functions[n][truthTableColumn];
     }
 }

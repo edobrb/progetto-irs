@@ -1,7 +1,6 @@
 package main
 
 import utils.ConfigLens._
-
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import model.Types.Fitness
@@ -12,7 +11,8 @@ import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import play.api.libs.json._
 import utils.ConfigLens.lens
 import utils.Parallel.Parallel
-import scala.util.Success
+
+import scala.util.{Random, Success}
 import model.config.Configuration.JsonFormats._
 
 object Robustness extends App {
@@ -25,7 +25,14 @@ object Robustness extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
-  def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness"
+  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = false
+
+  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.1
+
+  def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness/rs=${RANDOM_INITIAL_STATE(args)}-da=${DESTROYED_ARCH(args)}"
+
+  def RESULT_FILE(implicit args: Array[String]): String = s"${ROBUSTNESS_FOLDER(args)}/results.json"
+
 
   if (utils.Folder.create(ROBUSTNESS_FOLDER).exists(_.isFailure)) {
     println("Cannot create robustness folder")
@@ -33,16 +40,18 @@ object Robustness extends App {
   }
 
   val networkLens = lens(_.network.initial_schema)
+  val networkStateLens = lens(_.network.initial_state)
   val lengthLens = lens(_.simulation.experiment_length)
   val robotLens = lens(_.simulation.robot_count)
   val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
   val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
   val networkPerConfiguration = 100
-  val repetitions = 10
-  val robotCount = 10
-  val epochCount = 2
+  val repetitions = 2
+  val robotCount = 1
+  val epochCount = 10
 
   val configs = Settings.configurations.map(v => v.filename -> v).toMap
+
 
   if (Args.LOAD_OUTPUT) {
     println("Loading files...")
@@ -66,8 +75,27 @@ object Robustness extends App {
           case (_, network) => (0 until repetitions).map(i => (network, i))
         }
         work.zipWithIndex.parFlatmap(Args.PARALLELISM_DEGREE, {
-          case ((network, i), workIndex) => val newConfig = (ioLens and netLens).set((0, 0), (0, 0))(robotLens.set(robotCount)(lengthLens.set(config.adaptation.epoch_length * epochCount)(networkLens.set(Some(network))(config))))
-            val (output, time) = utils.Benchmark.time(Experiments.runSimulation(newConfig.setSeed(i), visualization = false).map(v => Loader.toStepInfo(v)).collect {
+          case ((network, i), workIndex) =>
+            val newConfig0 = if (DESTROYED_ARCH > 0) {
+              val n = config.network.n
+              val k = config.network.k
+              val archToDestroy = (n * k * DESTROYED_ARCH).toInt
+              val newNetwork = (0 until archToDestroy).map(_ => (Random.nextInt(n), Random.nextInt(k))).foldLeft(network)({
+                case (network, (node, connection)) => network.copy(connections = network.connections.updated(node, network.connections(node).updated(connection, -1)))
+              })
+              networkLens.set(Some(newNetwork))(config)
+            } else {
+              networkLens.set(Some(network))(config)
+            }
+            val newConfig1 = lengthLens.set(config.adaptation.epoch_length * epochCount)(newConfig0)
+            val newConfig2 = robotLens.set(robotCount)(newConfig1)
+            val newConfig3 = (ioLens and netLens).set((0, 0), (0, 0))(newConfig2)
+            val newConfig4 = if (RANDOM_INITIAL_STATE) {
+              newConfig3
+            } else {
+              networkStateLens.set(Some(network.states))(newConfig3)
+            }
+            val (output, time) = utils.Benchmark.time(Experiments.runSimulation(newConfig4.setSeed(i), visualization = false).map(v => Loader.toStepInfo(v)).collect {
               case Some(si) => si
             }.toSeq.groupBy(_.id).toSeq.map({
               case (_, steps) => (config, steps.maxBy(_.fitness).fitness)
@@ -86,12 +114,12 @@ object Robustness extends App {
     }
 
     val json = Json.toJson(results).toString()
-    utils.File.write(s"$ROBUSTNESS_FOLDER/results.json", json)
+    utils.File.write(RESULT_FILE, json)
   }
 
   if (Args.MAKE_CHARTS) {
     println("plotting charts...")
-    val jsonStr = utils.File.read(s"$ROBUSTNESS_FOLDER/results.json").get
+    val jsonStr = utils.File.read(RESULT_FILE).get
     val json = Json.parse(jsonStr)
     val results = Json.fromJson[Seq[Result]](json).get.sortBy(-_.bestFitness.sum)
 

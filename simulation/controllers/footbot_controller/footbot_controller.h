@@ -32,7 +32,8 @@ private:
 
    Real bestNetworkFitness, testNetworkFitness;
    long printStep, currentStep, currentEpoch, lastStepFitnessChange;
-
+   long* proximityVisitedStates;
+   Real bestNetworkEntropyDistance;
    Real tNextStateFlip;
    
    Bn* bestBn;

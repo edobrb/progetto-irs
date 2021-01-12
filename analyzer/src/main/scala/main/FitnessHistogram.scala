@@ -22,11 +22,13 @@ object FitnessHistogram extends App {
   }).collect({
     case Success(v) => v
   }).flatten
-    .filter(_._1.objective.half_region_variation.isDefined)
-    .filter(_._1.simulation.argos == "experiments/parametrized.argos")
+    //.filter(_._1.objective.half_region_variation.isDefined)
+    //.filter(_._1.simulation.argos == "experiments/parametrized.argos")
     .map(_._2)
 
-  val resolution: Double = 10;
+  println("Loaded " + robotsData.size)
+
+  val resolution: Double = 1
   val data = robotsData.map(v => Math.abs((v * resolution).toInt / resolution))
     .groupBy(v => v)
     .map(v => (v._1, v._2.size))
