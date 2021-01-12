@@ -26,9 +26,7 @@ object Entropy extends App {
 
   def ENTROPY_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_entropy"
 
-  def ENTROPY_FOLDER_DATA(implicit args: Array[String]): String = s"${ENTROPY_FOLDER(args)}/data"
-
-  if (utils.Folder.create(ENTROPY_FOLDER, ENTROPY_FOLDER_DATA).exists(_.isFailure)) {
+  if (utils.Folder.create(ENTROPY_FOLDER + "/png", ENTROPY_FOLDER + "/csv").exists(_.isFailure)) {
     println("Cannot create entropy folder")
     System.exit(-1)
   }
@@ -93,12 +91,13 @@ object Entropy extends App {
         val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
         val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
           Seq(("all", Some(new Color(255, 0, 0, 20)), series)),
-          _.setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE))
-        BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/$title.png", BitmapFormat.PNG)
+          _.setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
+          _.width(800).height(600))
+        BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
         //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.pdf", VectorGraphicsFormat.PDF)
         //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.svg", VectorGraphicsFormat.SVG)
         val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
-        utils.File.writeLines(s"$ENTROPY_FOLDER_DATA/$title.csv", data)
+        utils.File.writeLines(s"$ENTROPY_FOLDER/csv/$title.csv", data)
 
     }
     val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",

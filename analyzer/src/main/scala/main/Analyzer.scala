@@ -214,7 +214,7 @@ object Analyzer extends App {
           series = c => v.getVariation(c),
           chartName = (_, _) => s"${v.name}",
           chartDescription = (_, _) => s"(foreach ${v.name})",
-          legend = (c, _, _) => s"${v.desc(c)}")
+          legend = (c, _, _) => s"${v.legendName}: ${v.desc(c)}")
       })
 
       val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)

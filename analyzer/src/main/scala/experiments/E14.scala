@@ -51,6 +51,8 @@ object E14 extends ExperimentSettings {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
+      Variation(Seq(Map("target_entropy" -> "2.2"), Map("target_entropy" -> "6"), Map("target_entropy" -> "0.5")),
+        lens(_.other), "entropy", (v:Map[String, String]) => v("target_entropy"), showDivided = true),
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
       Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
         case ((2, 1), (0, 0)) => "rewire"
