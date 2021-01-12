@@ -36,43 +36,7 @@ object Loader extends App {
   }
 
   /** Map a whole experiment into a map of [robot id -> sequence of tests information] */
-  def extractTests(data: Iterator[StepInfo]): Map[RobotId, Seq[Epoch]] =
-    data.to(LazyList).groupBy(_.id).map {
-      case (robotId, robotSteps) =>
-        val (_, performedTests) = robotSteps.foldLeft((-1, Seq[Epoch]())) {
-          case ((oldStep, _), StepInfo(step, _, _, _, _, _)) if oldStep >= step => throw new Exception("Unordered steps")
-          case ((_, l :+ last), StepInfo(step, _, None, inputs, fitness, position)) =>
-            (step, l :+ last.add(inputs, fitness, position))
-          case ((_, tests), StepInfo(step, _, Some(bn), inputs, fitness, position)) =>
-            (step, tests :+ Epoch(bn, inputs, fitness, position))
-        }
-        (robotId, performedTests)
-    }
-
-  def extractTests2(data: Iterator[StepInfo], configuration: Configuration): Seq[RobotData] = {
-    data.foldLeft(Map[RobotId, (RobotData, Option[(BooleanNetwork, Seq[Boolean])])]())({
-      case (map, StepInfo(step, id, None, inputs, fitness, position)) if map.contains(id) =>
-        val (oldData, currentBn) = map(id)
-        val newFitnessValues = oldData.fitness_values.dropRight(1) :+ Math.max(oldData.fitness_values.last, fitness)
-        val data = oldData.copy(fitness_values = newFitnessValues /*, location = oldData.location :+ step.location*/)
-        val data2 = if (currentBn.isDefined && !currentBn.map(_._1).contains(data.best_network) && oldData.fitness_values.forall(_ < fitness)) {
-          val (schema, _) = currentBn.get
-          data.copy(best_network = schema)
-        } else {
-          data
-        }
-        map.updated(id, (data2, currentBn))
-      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) if map.contains(id) =>
-        val (oldData, _) = map(id)
-        val data = oldData.copy(fitness_values = oldData.fitness_values :+ fitness)
-        map.updated(id, (data, Some((bn, Nil))))
-      case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) =>
-        val data = RobotData(id, configuration, Seq(fitness), bn, Nil)
-        map.updated(id, (data, None))
-    }).values.map(_._1).toSeq
-  }
-
-  def extractTests3(data: Iterator[StepInfo], configuration: Configuration): Seq[RobotData] = {
+  def extractTests(data: Iterator[StepInfo], configuration: Configuration): Seq[RobotData] = {
     data.foldLeft(Map[RobotId, (RobotData, Boolean)]())({
       case (map, stepInfo) if stepInfo.boolean_network.isEmpty => map /** step within epoch **/
       case (map, StepInfo(step, id, Some(bn), inputs, fitness, position)) if map.contains(id) =>
@@ -99,14 +63,7 @@ object Loader extends App {
       val config: Configuration = Configuration.fromJson(content.next())
       val (robotsData: Iterable[RobotData], time: FiniteDuration) = Benchmark.time {
         val data = content.map(toStepInfo).collect { case Some(info) => info }
-        extractTests3(data, config)
-        /*val results: Map[RobotId, Seq[Epoch]] = tests.map { case (id, value) => (id, value.filter(_.states.size >= config.adaptation.epoch_length)) }
-        results.map {
-          case (robotId, epochs: Seq[Epoch]) =>
-            RobotData("", robotId, config, epochs.map(_.fitnessValues.last),
-              epochs.maxBy(_.fitnessValues.last).bn, epochs.maxBy(_.fitnessValues.last).bnStates.last,
-              /*epochs.flatMap(_.locations)*/)
-        }*/
+        extractTests(data, config)
       }
       utils.File.write(output_filename, Json.prettyPrint(Json.toJson(robotsData)))
       time

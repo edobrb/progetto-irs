@@ -51,10 +51,11 @@ object Entropy extends App {
             }.toSeq.groupBy(_.id)
 
             maxes.toSeq.map {
-              case (robotId, (config, (fitness, epoch), (_, printOfOneEpoch))) =>
+              case (robotId, (config, (_, epoch), (_, printOfOneEpoch))) =>
                 val bestEpochInputs = steps(robotId).drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
                 val inputsProbabilities = bestEpochInputs.groupBy(identity).map(v => v._2.size.toDouble / (printOfOneEpoch - 2))
                 val entropy = utils.Entropy.shannon(inputsProbabilities)
+                val fitness = steps(robotId).last.fitness
                 println((gzipFile.split('-').last, fitness, entropy, robotId))
                 Result(config, fitness, entropy, robotId)
             }
@@ -77,32 +78,27 @@ object Entropy extends App {
     val results = Json.fromJson[Seq[Result]](json).get
     println(results.size)
 
-    results.groupBy(v =>
-      v.configuration.copy(network = v.configuration.network.copy(p = 0), adaptation = Settings.selectedExperiment(args).defaultConfig.adaptation)
-        .setControllersSeed(None).setSimulationSeed(None)).foreach {
-      case (config, results) =>
-        val arena = (config.simulation.argos, config.objective.half_region_variation.isDefined) match {
-          case ("experiments/parametrized.argos", false) => "whole"
-          case ("experiments/parametrized.argos", true) => "half"
-          case ("experiments/parametrized-foraging.argos", false) => "foraging"
-          case ("experiments/parametrized-foraging2.argos", false) => "foraging2"
-        }
-        val title = s"arena=$arena"
-        val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
-        val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
-          Seq(("all", Some(new Color(255, 0, 0, 20)), series)),
-          _.setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
-          _.width(800).height(600))
-        BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
-        //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.pdf", VectorGraphicsFormat.PDF)
-        //VectorGraphicsEncoder.saveVectorGraphic(chart, s"$ENTROPY_FOLDER/$title.svg", VectorGraphicsFormat.SVG)
-        val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
-        utils.File.writeLines(s"$ENTROPY_FOLDER/csv/$title.csv", data)
+    val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)
+    variations.foreach(v => {
+      results.groupBy(r => v.getVariation(r.configuration)).foreach {
+        case (_, results:Seq[Result]) =>
+          val config = results.head.configuration
+          val title = s"${v.name}=${v.desc(config)}"
+          val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
+          val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
+            Seq(("all", Some(new Color(255, 0, 0, 20)), series)),
+            _.setXAxisMax(5.0).setYAxisMax(90).setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
+            _.width(800).height(600))
+          BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
+          val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
+          utils.File.writeLines(s"$ENTROPY_FOLDER/csv/$title.csv", data)
+      }
+    })
 
-    }
     val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",
       Seq(("all", Some(new Color(255, 0, 0, 5)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
-      _.setLegendVisible(false))
-    BitmapEncoder.saveBitmap(chart, s"${Analyzer.RESULT_FOLDER(args)}/entropy-scatterplot.png", BitmapFormat.PNG)
+      _.setLegendVisible(false),
+      _.width(800).height(600))
+    BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/all.png", BitmapFormat.PNG)
   }
 }

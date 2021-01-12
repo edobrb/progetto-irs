@@ -164,10 +164,10 @@ case class RunnerClient(socket: Socket) {
           case (true, false) =>
             (Some(loadRaw(output)), None, lines)
           case (false, true) =>
-            (None, Some(Loader.extractTests3(loadStepInfo(output), config)), lines)
+            (None, Some(Loader.extractTests(loadStepInfo(output), config)), lines)
           case (true, true) =>
             val (output1, output2) = output.copy(128)
-            val (raw, json) = utils.Parallel.run2(Some(loadRaw(output1)), Some(Loader.extractTests3(loadStepInfo(output2), config)))
+            val (raw, json) = utils.Parallel.run2(Some(loadRaw(output1)), Some(Loader.extractTests(loadStepInfo(output2), config)))
             (raw, json, lines)
         }
       }
