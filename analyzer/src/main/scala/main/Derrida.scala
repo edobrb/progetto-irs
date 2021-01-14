@@ -13,6 +13,7 @@ import utils.Parallel.Parallel
 
 import scala.util.{Failure, Success, Try}
 import model.config.Configuration.JsonFormats._
+import org.knowm.xchart.style.Styler.LegendPosition
 
 object Derrida extends App {
 
@@ -112,11 +113,18 @@ object Derrida extends App {
         val chart = utils.Charts.scatterPlot(title, "Derrida", "Fitness",
           series,
           s => {
-            s.setMarkerSize(8)
+            s.setChartTitleVisible(false)
+            s.setMarkerSize(4)
             s.setXAxisMax(2)
             s.setXAxisMin(0)
-            s.setYAxisMax(200)
+            s.setYAxisMax(400)
+            s.setChartBackgroundColor(Color.WHITE)
+            s.setLegendPosition(LegendPosition.InsideNE)
             s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
+          },
+          s => {
+            s.width(800)
+            s.height(600)
           })
         BitmapEncoder.saveBitmap(chart, s"$DERRIDA_FOLDER/$title.png", BitmapFormat.PNG)
     }

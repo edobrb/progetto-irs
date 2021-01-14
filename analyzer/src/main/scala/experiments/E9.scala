@@ -59,17 +59,17 @@ object E9 extends ExperimentSettings {
     val foragingArena2 = (("experiments/parametrized-foraging2.argos", Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
 
     Seq(
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
-      Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
-        case ((2, 1), (0, 0)) => "rewire"
-        case ((0, 0), (3, 8)) => "mutation"
-        case ((2, 1), (3, 8)) => "rewire&mutation"
+      Variation.apply2(Seq(0.1, 0.5 ,0.79), lens(_.network.p), "p", "p"),
+      Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "adattamento", {
+        case ((2, 1), (0, 0)) => "selezione"
+        case ((0, 0), (3, 8)) => "mutazione"
+        case ((2, 1), (3, 8)) => "ibrida"
       }),
-      Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "objective", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
-        case (("experiments/parametrized.argos", _), None) => "whole"
-        case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "half"
-        case (("experiments/parametrized-foraging.argos", _), None) => "foraging"
-        case (("experiments/parametrized-foraging2.argos", _), None) => "foraging2"
+      Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "arena", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
+        case (("experiments/parametrized.argos", _), None) => "I"
+        case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "II"
+        case (("experiments/parametrized-foraging.argos", _), None) => "III"
+        case (("experiments/parametrized-foraging2.argos", _), None) => "IV"
       }, showDivided = true),
     )
   }

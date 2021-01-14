@@ -10,6 +10,8 @@ import model.config.Configuration.JsonFormats._
 import org.knowm.xchart.{BitmapEncoder, VectorGraphicsEncoder}
 import org.knowm.xchart.BitmapEncoder.BitmapFormat
 import org.knowm.xchart.VectorGraphicsEncoder.VectorGraphicsFormat
+import org.knowm.xchart.style.Styler.LegendPosition
+import org.knowm.xchart.style.markers.{Circle, Marker}
 
 import java.awt.Color
 import scala.util.{Failure, Success}
@@ -75,29 +77,48 @@ object Entropy extends App {
     println(s"Plotting charts at $ENTROPY_FOLDER")
     val jsonStr = utils.File.read(s"$ENTROPY_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
-    val results = Json.fromJson[Seq[Result]](json).get
+    val results = Json.fromJson[Seq[Result]](json).get.filter(_.configuration.network.p != 0.5)
     println(results.size)
 
+    val alpha = 20
     val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)
     variations.foreach(v => {
       results.groupBy(r => v.getVariation(r.configuration)).foreach {
-        case (_, results:Seq[Result]) =>
+        case (_, results: Seq[Result]) =>
           val config = results.head.configuration
           val title = s"${v.name}=${v.desc(config)}"
           val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
-          val chart = utils.Charts.scatterPlot(title, "Entropy", "Fitness",
-            Seq(("all", Some(new Color(255, 0, 0, 20)), series)),
-            _.setXAxisMax(5.0).setYAxisMax(90).setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
+          val chart = utils.Charts.scatterPlot(title, "Entropia", "Fitness",
+            Seq(("all", Some(new Color(255, 0, 0, alpha)), series)),
+            _.setMarkerSize(4).setXAxisMax(7.0).setYAxisMax(90).setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
             _.width(800).height(600))
           BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
           val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
           utils.File.writeLines(s"$ENTROPY_FOLDER/csv/$title.csv", data)
       }
     })
+    Settings.selectedExperiment.configVariation.foreach(v => {
+      val series = results.groupBy(r => v.getVariation(r.configuration)).values
+        .map(r => (v.name + ": " + v.desc(r.head.configuration), r.map(v => (v.entropy, Math.max(0.0, v.fitness)))))
+        .zip(Seq(new Color(255, 0, 0, alpha), new Color(0, 255, 0, alpha), new Color(0, 0, 255, alpha)))
+        .map {
+          case ((name, series), color) => (name, Some(color), series)
+        }.toList.sortBy(_._1)
+      val title = s"${v.name}"
+      val chart = utils.Charts.scatterPlot(title, "Entropia", "Fitness", series,
+        s => {
+          s.setMarkerSize(4)
+          s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
+          s.setXAxisMax(7.0).setYAxisMax(90).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE)
+          s.setLegendPosition(LegendPosition.InsideNE)
+        },
+        _.width(800).height(600))
+      BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
+    })
 
-    val chart = utils.Charts.scatterPlot("All", "Entropy", "Fitness",
-      Seq(("all", Some(new Color(255, 0, 0, 5)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
-      _.setLegendVisible(false),
+    val chart = utils.Charts.scatterPlot("All", "Entropia", "Fitness",
+      Seq(("all", Some(new Color(255, 0, 0, alpha)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
+      _.setXAxisMax(7.0).setLegendVisible(false),
       _.width(800).height(600))
     BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/all.png", BitmapFormat.PNG)
   }

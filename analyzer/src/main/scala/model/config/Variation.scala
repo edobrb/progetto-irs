@@ -28,6 +28,10 @@ object Variation {
                   collapse: Boolean = false, showDivided: Boolean = false): Variation[K, V] =
     LensVariation(variations, lens, name, name, description, collapse, showDivided)
 
+  def apply2[K, V](variations: Seq[V], lens: Lens[K, V], name: String, legendName:String, description: V => String = (v: V) => v.toString,
+                  collapse: Boolean = false, showDivided: Boolean = false): Variation[K, V] =
+    LensVariation(variations, lens, name, legendName, description, collapse, showDivided)
+
   def lens2[K, V](variations: Seq[V], lens: Lens[K, V], name: String, legendName: String, description: V => String = (v: V) => v.toString,
                   collapse: Boolean = false, showDivided: Boolean = false): Variation[K, V] =
     LensVariation(variations, lens, name, legendName, description, collapse, showDivided)

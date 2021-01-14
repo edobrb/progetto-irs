@@ -95,7 +95,7 @@ object Analyzer extends App {
         v.setMarkerSize(0)
         v.setChartTitleVisible(false)
         v.setChartBackgroundColor(Color.white)
-      }, _.width(800).height(800))
+      }, _.width(800).height(600))
 
     def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
 
@@ -177,7 +177,7 @@ object Analyzer extends App {
               case (leg, j) =>
                 val maxL = legends.map(_ (j)).maxBy(_.length).length
                 leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
-            }.mkString(" ")
+            }.mkString("  ")
             (newLegend.trim, None, series)
         }
         val finalFitness = finalFitnessSeries(results).map {
@@ -189,7 +189,7 @@ object Analyzer extends App {
               case (leg, j) =>
                 val maxL = legends.map(_ (j)).maxBy(_.length).length
                 leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
-            }.mkString(" ")
+            }.mkString("  ")
             (newLegend.trim, series)
         }
         saveAveragedFitnessCharts(chartNameV, chartDescriptionV, averageFitness2)
@@ -225,7 +225,7 @@ object Analyzer extends App {
         chartDescription = (c, _) => variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
         legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse)
           .filter(v => !variations.map(_.name).contains(v.name)).map(v => {
-          if (v.legendName.nonEmpty) s"${v.legendName}=${v.desc(c)}" else v.desc(c)
+          if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(c)}" else v.desc(c)
         }).mkString(",")
       )
     }
