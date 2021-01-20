@@ -27,12 +27,13 @@ object Analyzer extends App {
 
   def CHARTS_DATA_FOLDER(implicit args: Array[String]): String = s"${CHARTS_FOLDER(args)}/csv"
 
-  val configs = Settings.configurations.map(v => v.filename -> v).toMap
+
 
   /** Load all data of the specified experiment. */
   def loadRobotsData(implicit args: Array[String]): Iterable[RobotData] = {
     implicit val srdCodec: JsonValueCodec[Seq[RobotData]] = JsonCodecMaker.make
 
+    val configs = Settings.configurations(args).map(v => v.filename -> v).toMap
     println("Loading files...")
     val result = Loader.OUTPUT_FILENAMES(args).parMap(Args.PARALLELISM_DEGREE(args), { filename =>
       utils.File.read(filename).map({ str =>
@@ -89,15 +90,36 @@ object Analyzer extends App {
     }
 
   def saveAveragedFitnessCharts(chartName: String, chartDescription: String, series: Seq[(String, Option[Color], Iterable[(Double, Double)])]): Unit = {
-    val chart = utils.Charts.linePlot(s"Average fitness curve $chartDescription", "Epoca", "Fitness media",
+    val chart = utils.Charts.linePlot(s"$chartDescription", "Epoca", "Fitness media",
       series, v => {
-        v.setLegendPosition(LegendPosition.OutsideS);
+        v.setLegendPosition(LegendPosition.InsideSE);
         v.setMarkerSize(0)
         v.setChartTitleVisible(false)
         v.setChartBackgroundColor(Color.white)
-      }, _.width(800).height(600))
+      }, _.width(600).height(500))
 
     def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
+
+    BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
+    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
+    println(s"saved ${chartFileName("png")}")
+    if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
+  }
+
+  def saveBoxPlot(chartName: String, chartDescription: String, series: Seq[(String, Iterable[Double])]): Unit = {
+    val chart = utils.Charts.boxplot(s"$chartDescription", "Adattamento", "Fitness massima",
+      series,
+      applyCustomStyle = v => {
+        v.setPlotContentSize(0.90)
+        v.setMarkerSize(5)
+        v.setXAxisLabelRotation(20)
+        v.setChartBackgroundColor(Color.white)
+        v.setChartTitleVisible(false)
+      },
+      applyCustomBuild = _.width(600).height(600))
+
+    def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
 
     BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
     VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
@@ -115,26 +137,6 @@ object Analyzer extends App {
       case (legend, _, _) => legend
     }).mkString(";")
     utils.File.writeLines(s"$CHARTS_DATA_FOLDER/$chartName-fitness-curve.csv", header +: rows)
-  }
-
-  def saveBoxPlot(chartName: String, chartDescription: String, series: Seq[(String, Iterable[Double])]): Unit = {
-    val chart = utils.Charts.boxplot(s"Final fitness of each robot $chartDescription", "Variante", "Fitness massima",
-      series,
-      applyCustomStyle = v => {
-        v.setPlotContentSize(0.95)
-        v.setMarkerSize(5)
-        v.setXAxisLabelRotation(8)
-        v.setChartBackgroundColor(Color.white).setChartTitleVisible(false)
-      },
-      applyCustomBuild = _.width(800).height(600))
-
-    def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
-
-    BitmapEncoder.saveBitmap(chart, chartFileName("png"), BitmapFormat.PNG)
-    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("pdf"), VectorGraphicsFormat.PDF)
-    VectorGraphicsEncoder.saveVectorGraphic(chart, chartFileName("svg"), VectorGraphicsFormat.SVG)
-    println(s"saved ${chartFileName("png")}")
-    if (Args.SHOW_CHARTS) new SwingWrapper(chart).displayChart
   }
 
   def saveBoxPlotData(chartName: String, series: Seq[(String, Iterable[Double])]) = {
@@ -189,7 +191,7 @@ object Analyzer extends App {
               case (leg, j) =>
                 val maxL = legends.map(_ (j)).maxBy(_.length).length
                 leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
-            }.mkString("  ")
+            }.mkString(",")
             (newLegend.trim, series)
         }
         saveAveragedFitnessCharts(chartNameV, chartDescriptionV, averageFitness2)
@@ -218,12 +220,14 @@ object Analyzer extends App {
       })
 
       val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)
+      val notCollapsed = Settings.selectedExperiment.configVariation.filter(v => !v.collapse)
+      val collapsed = Settings.selectedExperiment.configVariation.filter(v => v.collapse)
       makeCharts[Any, Any](experimentsResults,
         groups = c => variations.map(_.getVariation(c)),
-        series = c => c,
-        chartName = (c, _) => variations.map(v => s"${v.name}=${v.desc(c)}").mkString(","),
-        chartDescription = (c, _) => variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
-        legend = (c, _, _) => Settings.selectedExperiment.configVariation.filter(!_.collapse)
+        series = c => notCollapsed.map(_.getVariation(c)),
+        chartName = (c, _) => variations.map(v => s"${v.name}=${v.desc(c)}").mkString(",")+(if(collapsed.nonEmpty) "-collapsed="+collapsed.map(_.name).mkString(",") else ""),
+        chartDescription = (c, _) => variations.map(v => s"${v.legendName}: ${v.desc(c)}").mkString(","), //variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
+        legend = (c, _, _) => notCollapsed
           .filter(v => !variations.map(_.name).contains(v.name)).map(v => {
           if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(c)}" else v.desc(c)
         }).mkString(",")

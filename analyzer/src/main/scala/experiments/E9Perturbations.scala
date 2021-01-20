@@ -62,14 +62,14 @@ object E9Perturbations extends ExperimentSettings {
         case ((2, 1), (3, 8)) => "rewire-and-mutation"
       }),
 
-      Variation.normal[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100"), Some("1000")), {
+      Variation.normal2[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100"), Some("1000")), {
         case (v, config) => v match {
           case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
           case None => config
         }
-      }, _.other.get("states_flip_f"), "flips", {
+      }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
         case Some(value) => value.toDouble.toString
-        case None => "none"
+        case None => "0.0"
       }, showDivided = true),
 
       Variation.normal[Configuration, String](Seq("whole", "half", "foraging", "foraging2"), {

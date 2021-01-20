@@ -57,7 +57,7 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
   def statesMap(steps: Int, perturbation: BooleanNetwork => BooleanNetwork = identity): Map[BooleanNetwork, Int] = {
     (0 until steps).foldLeft((Map[BooleanNetwork, Int](this -> 1), this))({
       case ((map, bn), _) =>
-        val newBn = perturbation(bn).steps()
+        val newBn = perturbation(bn).step()
         val newMap = if (map.contains(newBn)) map.updated(newBn, map(newBn) + 1)
         else map + (newBn -> 1)
         (newMap, newBn)
@@ -95,7 +95,7 @@ case class BooleanNetwork(functions: IndexedSeq[IndexedSeq[Boolean]],
 
     @tailrec
     def compute(states: Map[BooleanNetwork, Seq[BooleanNetwork]]): Map[BooleanNetwork, Seq[BooleanNetwork]] =
-      if (limit.exists(_ < n)) {
+      if (limit.exists(_ < states.size)) {
         states
       } else {
         states.collectFirst {

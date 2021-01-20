@@ -60,12 +60,12 @@ object E9 extends ExperimentSettings {
 
     Seq(
       Variation.apply2(Seq(0.1, 0.5 ,0.79), lens(_.network.p), "p", "p"),
-      Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "adattamento", {
+      Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
         case ((2, 1), (0, 0)) => "selezione"
         case ((0, 0), (3, 8)) => "mutazione"
         case ((2, 1), (3, 8)) => "ibrida"
       }),
-      Variation(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "arena", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
+      Variation.apply2(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "arena", "Arena", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
         case (("experiments/parametrized.argos", _), None) => "I"
         case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "II"
         case (("experiments/parametrized-foraging.argos", _), None) => "III"

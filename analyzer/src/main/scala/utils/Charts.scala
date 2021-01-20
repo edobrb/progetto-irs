@@ -20,10 +20,10 @@ object Charts {
     applyCustomBuild(builder)
     val chart = builder.build()
     val styler = chart.getStyler
-    styler.setLegendFont(new Font(Font.MONOSPACED, Font.PLAIN, 18))
+    styler.setLegendFont(new Font(Font.MONOSPACED, Font.PLAIN, 22))
     styler.setAxisTitleFont(new Font(Font.SERIF, Font.PLAIN, 22))
     styler.setChartTitleFont(new Font(Font.SERIF, Font.PLAIN, 30))
-    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 16))
+    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 22))
     applyCustomStyle(styler)
     series.foreach {
       case (name, color, s) =>
@@ -62,7 +62,7 @@ object Charts {
     styler.setLegendFont(new Font(Font.MONOSPACED, Font.PLAIN, 28))
     styler.setAxisTitleFont(new Font(Font.SERIF, Font.PLAIN, 22))
     styler.setChartTitleFont(new Font(Font.SERIF, Font.PLAIN, 30))
-    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 12))
+    styler.setAxisTickLabelsFont(new Font(Font.SERIF, Font.PLAIN, 22))
     styler.setXAxisLabelRotation(8)
     applyCustomStyle(styler)
     series.foreach {

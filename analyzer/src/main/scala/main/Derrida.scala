@@ -98,8 +98,8 @@ object Derrida extends App {
     println("Plotting charts...")
     loaded.groupBy(v => v.configuration.copy(network = v.configuration.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
       case (config, data) =>
-        val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 255, 0), new Color(0, 0, 255))).map {
-          case ((p, data), color) => (s"p=$p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
+        val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 200, 0), new Color(0, 0, 255))).map {
+          case ((p, data), color) => (s"p: $p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
         val mutation = config.adaptation.network_mutation.max_connection_rewires > 0
         val rewire = config.adaptation.network_io_mutation.max_input_rewires > 0
@@ -110,23 +110,37 @@ object Derrida extends App {
           case ("experiments/parametrized-foraging2.argos", false) => "foraging2"
         }
         val title = s"arena=$arena-rewire=$rewire-mutation=$mutation"
-        val chart = utils.Charts.scatterPlot(title, "Derrida", "Fitness",
+
+        val title2 = (config.simulation.argos, config.objective.half_region_variation.isDefined) match {
+          case ("experiments/parametrized.argos", false) => "Arena I"
+          case ("experiments/parametrized.argos", true) => "Arena II"
+          case ("experiments/parametrized-foraging.argos", false) => "Arena III"
+          case ("experiments/parametrized-foraging2.argos", false) => "Arena IV"
+        }
+        val title3 = (rewire, mutation) match {
+          case (true, false) => " - selezione"
+          case (true, true) => " - ibrida"
+          case (false, true) => " - mutazione"
+        }
+        val chart = utils.Charts.scatterPlot(title2+title3, "Derrida", "Fitness",
           series,
           s => {
-            s.setChartTitleVisible(false)
+            //s.setChartTitleVisible(false)
             s.setMarkerSize(4)
             s.setXAxisMax(2)
             s.setXAxisMin(0)
-            s.setYAxisMax(400)
+            s.setYAxisMax(Math.min(400, (data.map(_.fitness).max.toInt / 100 + 1) * 100))
             s.setChartBackgroundColor(Color.WHITE)
             s.setLegendPosition(LegendPosition.InsideNE)
             s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
           },
           s => {
-            s.width(800)
-            s.height(600)
+            s.width(600)
+            s.height(400)
           })
-        BitmapEncoder.saveBitmap(chart, s"$DERRIDA_FOLDER/$title.png", BitmapFormat.PNG)
+        BitmapEncoder.saveBitmapWithDPI(chart, s"$DERRIDA_FOLDER/$title.png", BitmapFormat.PNG, 100)
+
+        println(s"plotted $title " + series.map(v => (v._1, v._3.map(_._1).sum / v._3.size)))
     }
   }
 }

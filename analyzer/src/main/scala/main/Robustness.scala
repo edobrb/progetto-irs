@@ -25,9 +25,9 @@ object Robustness extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
-  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = false
+  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = true
 
-  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.1
+  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.0
 
   def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness/rs=${RANDOM_INITIAL_STATE(args)}-da=${DESTROYED_ARCH(args)}"
 
@@ -45,8 +45,8 @@ object Robustness extends App {
   val robotLens = lens(_.simulation.robot_count)
   val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
   val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
-  val networkPerConfiguration = 100
-  val repetitions = 2
+  val networkPerConfiguration = 10
+  val repetitions = 10
   val robotCount = 1
   val epochCount = 10
 
@@ -55,12 +55,12 @@ object Robustness extends App {
 
   if (Args.LOAD_OUTPUT) {
     println("Loading files...")
-    val robotsData: Iterable[(Configuration, Seq[(Fitness, BooleanNetwork)])] = Loader.OUTPUT_FILENAMES.parMap(Args.PARALLELISM_DEGREE, { filename =>
+    val robotsData: Iterable[(Configuration, Seq[(Double, Fitness, BooleanNetwork)])] = Loader.OUTPUT_FILENAMES.parMap(Args.PARALLELISM_DEGREE, { filename =>
       RobotData.loadsFromFile(filename).map(robotsData => {
         println("Loaded " + filename)
         robotsData.map {
           case RobotData(robot_id, config, fitness_values, best_network, locations) =>
-            (configs(config.filename), (fitness_values.max, best_network))
+            (configs(config.filename), (fitness_values.sum, fitness_values.max, best_network))
         }
       })
     }).collect({
@@ -72,7 +72,7 @@ object Robustness extends App {
     val resultFitness: Map[Configuration, Seq[Fitness]] = robotsData.zipWithIndex.flatMap({
       case ((config, networks), configurationIndex) =>
         val work = networks.flatMap {
-          case (_, network) => (0 until repetitions).map(i => (network, i))
+          case (_, _, network) => (0 until repetitions).map(i => (network, i))
         }
         work.zipWithIndex.parFlatmap(Args.PARALLELISM_DEGREE, {
           case ((network, i), workIndex) =>
@@ -108,7 +108,7 @@ object Robustness extends App {
 
     val results: Seq[Result] = robotsData.toSeq.map {
       case (configuration, values) =>
-        val bestOldFitness: Seq[Fitness] = values.map(_._1)
+        val bestOldFitness: Seq[Fitness] = values.map(_._2)
         val robustnessFitness: Seq[Fitness] = resultFitness(configuration)
         Result(configuration, bestOldFitness, robustnessFitness)
     }
