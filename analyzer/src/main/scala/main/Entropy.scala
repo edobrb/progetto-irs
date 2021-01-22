@@ -77,7 +77,8 @@ object Entropy extends App {
     println(s"Plotting charts at $ENTROPY_FOLDER")
     val jsonStr = utils.File.read(s"$ENTROPY_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
-    val results = Json.fromJson[Seq[Result]](json).get.filter(_.configuration.network.p != 0.5)
+    val results = Json.fromJson[Seq[Result]](json).get
+      .filter(_.configuration.network.p != 0.5)
     println(results.size)
 
     val alpha = 20
@@ -100,7 +101,7 @@ object Entropy extends App {
     Settings.selectedExperiment.configVariation.foreach(v => {
       val series = results.groupBy(r => v.getVariation(r.configuration)).values
         .map(r => (v.name + ": " + v.desc(r.head.configuration), r.map(v => (v.entropy, Math.max(0.0, v.fitness)))))
-        .zip(Seq(new Color(255, 0, 0, alpha), new Color(0, 255, 0, alpha), new Color(0, 0, 255, alpha)))
+        .zip(Seq(new Color(255, 0, 0, alpha), new Color(0, 200, 0, alpha), new Color(0, 0, 255, alpha)))
         .map {
           case ((name, series), color) => (name, Some(color), series)
         }.toList.sortBy(_._1)

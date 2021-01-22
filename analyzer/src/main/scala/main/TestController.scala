@@ -63,6 +63,7 @@ object TestController extends App {
   val rOverlapLens = lens(_.adaptation.network_io_mutation.allow_io_node_overlap)
   val otherLens = lens(_.other)
   val tests = Seq(
+    Test("a2505fa36aa6c70a2b3cf3b33e868e7a795a57d3cd0b44cf208dec0630b8d010", otherLens and irLens, (Map("target_entropy" -> "1.7", "combined_fitness_entropy" -> "", "alpha" -> "3.0", "beta" -> "0.75"), (1.0, 8))),
     Test("a69e78fc61b68fd8e4db01703afb8e095d00e7f299668ece971772be6f3bfa53", otherLens and irLens, (Map("target_entropy" -> "1.5"), (1.0, 8))),
     Test("1261a116fe1be48827ec4eccaff1f80fcb27f12a456313db8b5ab13d7b405040", otherLens and irLens, (Map("target_entropy" -> "5"), (1.0, 8))),
     Test("2794c498f0a7575f4d5716bb389be455628b2197815692105b7c7730821f8e3d", crLens, (1.0, 20)),

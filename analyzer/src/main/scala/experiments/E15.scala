@@ -6,9 +6,9 @@ import utils.ConfigLens._
 
 /**
  * Investigate the effect of p, io rewires, network mutation and both
- * in full arena using entropy as fitness function.
+ * in full arena using also entropy as fitness function helper.
  */
-object E14 extends ExperimentSettings {
+object E15 extends ExperimentSettings {
 
   def defaultConfig: Configuration = Configuration(
     Simulation(
@@ -51,7 +51,7 @@ object E14 extends ExperimentSettings {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
     Seq(
-      Variation(Seq(Map("target_entropy" -> "6"), Map("target_entropy" -> "2.2"), Map("target_entropy" -> "0.5")),
+      Variation(Seq(Map("target_entropy" -> "1.7", "combined_fitness_entropy" -> "", "alpha" -> "3.0", "beta" -> "0.75")),
         lens(_.other), "H'", (v:Map[String, String]) => v("target_entropy"), showDivided = true),
       Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
       Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {

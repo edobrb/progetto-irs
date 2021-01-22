@@ -15,6 +15,8 @@ import utils.Parallel.Parallel
 import scala.util.{Random, Success}
 import model.config.Configuration.JsonFormats._
 
+import java.awt.Color
+
 object Robustness extends App {
 
   implicit val arguments: Array[String] = args
@@ -25,9 +27,9 @@ object Robustness extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
-  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = true
+  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = false
 
-  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.0
+  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.1
 
   def ROBUSTNESS_FOLDER(implicit args: Array[String]): String = s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness/rs=${RANDOM_INITIAL_STATE(args)}-da=${DESTROYED_ARCH(args)}"
 
@@ -121,7 +123,7 @@ object Robustness extends App {
     println("plotting charts...")
     val jsonStr = utils.File.read(RESULT_FILE).get
     val json = Json.parse(jsonStr)
-    val results = Json.fromJson[Seq[Result]](json).get.sortBy(-_.bestFitness.sum)
+    val results = Json.fromJson[Seq[Result]](json).get.filter(_.configuration.network.p != 0.5).sortBy(-_.bestFitness.sum)
 
     Settings.selectedExperiment.configVariation.filter(!_.collapse).foreach({ v =>
       results.groupBy(r => v.getVariation(r.configuration)).foreach {
@@ -130,14 +132,24 @@ object Robustness extends App {
 
           var spaces = 1
           val series: Iterable[(String, Iterable[Double])] = results.flatMap(result => {
-            val legend = Settings.selectedExperiment.configVariation.filter(_.name != v.name).map(v => s"${v.name}=${v.desc(result.configuration)}").mkString(",")
+            val legend = Settings.selectedExperiment.configVariation.filter(_.name != v.name).map(v =>
+              if(v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(result.configuration)}" else v.desc(result.configuration)).mkString(",")
             val source: (String, Iterable[Double]) = (legend, result.bestFitness)
             val dest: (String, Iterable[Double]) = ((0 until spaces).map(_ => " ").mkString, result.robustnessFitness)
             spaces = spaces + 1
             Seq[(String, Iterable[Double])](source, dest)
           })
 
-          val chart = utils.Charts.boxplot(s"(with ${v.name}=${v.desc(c)})", "variations", "fitness", series)
+          val chart = utils.Charts.boxplot(s"(with ${v.name}=${v.desc(c)})", "variations", "fitness", series,
+            applyCustomStyle = v => {
+            v.setPlotContentSize(0.95)
+            v.setMarkerSize(5)
+            v.setXAxisLabelRotation(20)
+            v.setXAxisTitleVisible(false)
+            v.setChartBackgroundColor(Color.white)
+            v.setChartTitleVisible(false)
+          },
+            applyCustomBuild = _.width(600).height(600))
           BitmapEncoder.saveBitmap(chart, s"$ROBUSTNESS_FOLDER/${v.name}=${v.desc(c)}.png", BitmapFormat.PNG)
       }
     })

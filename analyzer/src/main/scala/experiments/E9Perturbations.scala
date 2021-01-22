@@ -58,19 +58,9 @@ object E9Perturbations extends ExperimentSettings {
       Variation(Seq(0.1, 0.79), lens(_.network.p), "p"),
 
       Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
-        case ((2, 1), (0, 0)) => "rewire"
-        case ((2, 1), (3, 8)) => "rewire-and-mutation"
+        case ((2, 1), (0, 0)) => "selezione"
+        case ((2, 1), (3, 8)) => "ibrida"
       }),
-
-      Variation.normal2[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100"), Some("1000")), {
-        case (v, config) => v match {
-          case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
-          case None => config
-        }
-      }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
-        case Some(value) => value.toDouble.toString
-        case None => "0.0"
-      }, showDivided = true),
 
       Variation.normal[Configuration, String](Seq("whole", "half", "foraging", "foraging2"), {
         case ("whole", config) =>
@@ -87,9 +77,17 @@ object E9Perturbations extends ExperimentSettings {
         case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isDefined => "half"
         case config if config.simulation.argos == "experiments/parametrized-foraging.argos" => "foraging"
         case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "foraging2"
-      }, "objective", identity, showDivided = true),
+      }, "arena", identity, showDivided = true),
 
-
+      Variation.normal2[Configuration, Option[String]](Seq(/*None, Some("1"), Some("10"), Some("100"), Some("1000")*/Some("10")), {
+        case (v, config) => v match {
+          case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
+          case None => config
+        }
+      }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
+        case Some(value) => value.toDouble.toString
+        case None => "0.0"
+      }, showDivided = true),
     )
   }
 }

@@ -513,7 +513,7 @@ void CFootBotBn::ControlStep() {
    /* End of an epoch */
    if(currentStep >= EPOCH_LENGTH || prematureEdit) {
       Real entropy = 0;
-      if(USE_COMBINED_FITNESS_ENTROPY) { //pre compute testCombinedFitnessEntropy for PrintAnalytics(true)
+      if(USE_ENTROPY_AS_FITNESS) { //pre compute testCombinedFitnessEntropy for PrintAnalytics(true)
          for(int i = 0; i < (1 << PROXIMITY_NODES); i++) {
             Real count = 0.0;
             for(int j = 0; j < EPOCH_LENGTH; j++) {
