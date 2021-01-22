@@ -34,6 +34,8 @@ CFootBotBn::CFootBotBn() :
    currentEpoch(0),
    lastStepFitnessChange(0),
    tNextStateFlip(0),
+   bestCombinedFitnessEntropy(0),
+   testCombinedFitnessEntropy(0),
    bestNetworkEntropyDistance(std::numeric_limits<Real>::max()),
    m_pcLights(NULL) {}
 
@@ -108,8 +110,8 @@ Real STUCK_TIME = 2; //seconds
 Real STATES_FLIP_F = 0; // flip/sec
 
 //use entropy as fitness
-bool USE_ENTROPY_AS_FITNESS = false;
-Real TARGET_ENTROPY = 2.0;
+bool USE_ENTROPY_AS_FITNESS = false, USE_COMBINED_FITNESS_ENTROPY = false;
+Real TARGET_ENTROPY = 2.0, ALPHA = 1, BETA = 1;
 
 
 /* Controller initialization */
@@ -145,6 +147,11 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
          if(config["other"]["target_entropy"].is_string()) {
             TARGET_ENTROPY                = (Real)std::stod(config["other"]["target_entropy"].get<std::string>());
             USE_ENTROPY_AS_FITNESS        = true;
+         }
+         if(config["other"]["combined_fitness_entropy"].is_string()) {
+            ALPHA                         = (Real)std::stod(config["other"]["alpha"].get<std::string>());
+            BETA                          = (Real)std::stod(config["other"]["beta"].get<std::string>());
+            USE_COMBINED_FITNESS_ENTROPY  = USE_ENTROPY_AS_FITNESS;
          }
       }
 
@@ -274,6 +281,10 @@ void CFootBotBn::Init(TConfigurationNode& t_node) {
       printf("[DEBUG]\t STUCK_TIME = %.2f\n", STUCK_TIME);
       printf("[DEBUG]\t STATES_FLIP_F = %.2f\n", STATES_FLIP_F);
       if(USE_ENTROPY_AS_FITNESS) printf("[DEBUG]\t TARGET_ENTROPY = %.2f\n", TARGET_ENTROPY);
+      if(USE_COMBINED_FITNESS_ENTROPY) {
+         printf("[DEBUG]\t USE_COMBINED_FITNESS_ENTROPY ALPHA = %.2f\n", ALPHA);
+         printf("[DEBUG]\t USE_COMBINED_FITNESS_ENTROPY BETA = %.2f\n", BETA);
+      }
       #endif
    } //end configuration loading
 
@@ -501,14 +512,8 @@ void CFootBotBn::ControlStep() {
 
    /* End of an epoch */
    if(currentStep >= EPOCH_LENGTH || prematureEdit) {
-      if(!prematureEdit && PRINT_ANALYTICS) {
-         PrintAnalytics(false);
-         PrintAnalytics(true);
-      }
-
-      //SELECTION
-      if(USE_ENTROPY_AS_FITNESS) {
-         Real entropy = 0;
+      Real entropy = 0;
+      if(USE_COMBINED_FITNESS_ENTROPY) { //pre compute testCombinedFitnessEntropy for PrintAnalytics(true)
          for(int i = 0; i < (1 << PROXIMITY_NODES); i++) {
             Real count = 0.0;
             for(int j = 0; j < EPOCH_LENGTH; j++) {
@@ -520,14 +525,34 @@ void CFootBotBn::ControlStep() {
             }
          }
          entropy = -entropy;
-         Real testNetworkEntropyDistance = (TARGET_ENTROPY - entropy) * (TARGET_ENTROPY - entropy);
-         if(testNetworkEntropyDistance <= bestNetworkEntropyDistance) {
-            bestBn->CopyFrom(testBn);
-            bestIO->CopyFrom(testIO, bestBn);
-            bestNetworkEntropyDistance = testNetworkEntropyDistance;
-         } else { //rollback to previous best network
-            testBn->CopyFrom(bestBn);
-            testIO->CopyFrom(bestIO, bestBn);
+         testCombinedFitnessEntropy = testNetworkFitness * sigmoidTarget(entropy, TARGET_ENTROPY, ALPHA, BETA);
+      }
+      if(!prematureEdit && PRINT_ANALYTICS) {
+         PrintAnalytics(false);
+         PrintAnalytics(true);
+      }
+
+      //SELECTION
+      if(USE_ENTROPY_AS_FITNESS) {
+         if(USE_COMBINED_FITNESS_ENTROPY) { //use entropy and fitness
+            if(testCombinedFitnessEntropy >= bestCombinedFitnessEntropy) {
+               bestBn->CopyFrom(testBn);
+               bestIO->CopyFrom(testIO, bestBn);
+               bestCombinedFitnessEntropy = testCombinedFitnessEntropy;
+            } else { //rollback to previous best network
+               testBn->CopyFrom(bestBn);
+               testIO->CopyFrom(bestIO, bestBn);
+            }
+         } else { //use only entropy
+            Real testNetworkEntropyDistance = (TARGET_ENTROPY - entropy) * (TARGET_ENTROPY - entropy);
+            if(testNetworkEntropyDistance <= bestNetworkEntropyDistance) {
+               bestBn->CopyFrom(testBn);
+               bestIO->CopyFrom(testIO, bestBn);
+               bestNetworkEntropyDistance = testNetworkEntropyDistance;
+            } else { //rollback to previous best network
+               testBn->CopyFrom(bestBn);
+               testIO->CopyFrom(bestIO, bestBn);
+            }
          }
       } else {
          if(testNetworkFitness >= bestNetworkFitness && !prematureEdit) {
@@ -562,6 +587,7 @@ void CFootBotBn::ControlStep() {
       if(!prematureEdit) {
          currentStep = 0;
          testNetworkFitness = 0;
+         testCombinedFitnessEntropy = 0;
          hasGather = false;
          currentEpoch++;
          if(STATES_FLIP_F != 0) {
@@ -624,6 +650,9 @@ void CFootBotBn::PrintAnalytics(bool printBnSchema) {
       for(int n = 0; n < testIO->InputCount; n++) jInputs.push_back(testBn->GetOldNodeState(testIO->GetInputNodeIndex(n)));
       j["inputs"] = jInputs;
    } else {
+      if(USE_COMBINED_FITNESS_ENTROPY) {
+         j["entropy_fitness"] = round(testCombinedFitnessEntropy, 4);
+      }
       j["boolean_network"] = nullptr;
       nlohmann::json jFunctions = nlohmann::json::array();
       for(int n = 0; n < testBn->N; n++) {
