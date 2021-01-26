@@ -42,23 +42,36 @@ object E15 extends ExperimentSettings {
     Objective(
       Forwarding(max_wheel_speed = 25, wheels_nodes = 2),
       ObstacleAvoidance(proximity_threshold = 0.1, proximity_nodes = 8),
-      None),
-    other = Map("target_entropy" -> "2.2")
+      None)
   )
 
   /** Configuration variations */
   def configVariation: Seq[Variation[Configuration, _]] = {
     val ioLens = lens(_.adaptation.network_io_mutation.max_input_rewires) and lens(_.adaptation.network_io_mutation.max_output_rewires)
     val netLens = lens(_.adaptation.network_mutation.max_connection_rewires) and lens(_.adaptation.network_mutation.max_function_bit_flips)
+    val arenaLens = (lens(_.simulation.argos) and lens(_.other)) and lens(_.objective.half_region_variation)
+
+    val entropyGuide = Map("target_entropy" -> "1.7", "combined_fitness_entropy" -> "", "alpha" -> "3.0", "beta" -> "0.75")
+    val entropyGuideForaging = Map("target_entropy" -> "2.0", "combined_fitness_entropy" -> "", "alpha" -> "3.0", "beta" -> "0.5")
+    val wholeArena = (("experiments/parametrized.argos", entropyGuide), None)
+    val halfArena = (("experiments/parametrized.argos", entropyGuide),
+      Some(HalfRegionVariation(region_nodes = 1, reset_region_every_epoch = true, penalty_factor = -1)))
+    val foragingArena = (("experiments/parametrized-foraging.argos", entropyGuideForaging ++ Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
+    val foragingArena2 = (("experiments/parametrized-foraging2.argos", entropyGuideForaging ++ Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
+
     Seq(
-      Variation(Seq(Map("target_entropy" -> "1.7", "combined_fitness_entropy" -> "", "alpha" -> "3.0", "beta" -> "0.75")),
-        lens(_.other), "H'", (v:Map[String, String]) => v("target_entropy"), showDivided = true),
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p"),
+      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p", showDivided = true),
       Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
         case ((2, 1), (0, 0)) => "rewire"
         case ((0, 0), (3, 8)) => "mutation"
         case ((2, 1), (3, 8)) => "ibrida"
       }),
+      Variation.apply2(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "arena", "Arena", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {
+        case (("experiments/parametrized.argos", _), None) => "I"
+        case (("experiments/parametrized.argos", _), Some(HalfRegionVariation(_, _, _))) => "II"
+        case (("experiments/parametrized-foraging.argos", _), None) => "III"
+        case (("experiments/parametrized-foraging2.argos", _), None) => "IV"
+      }, showDivided = true),
     )
   }
 }
