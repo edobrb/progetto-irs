@@ -99,7 +99,13 @@ object Derrida extends App {
     loaded.groupBy(v => v.configuration.copy(network = v.configuration.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
       case (config, data) =>
         val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 200, 0), new Color(0, 0, 255))).map {
-          case ((p, data), color) => (s"p: $p", Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
+          case ((p, data), color) =>
+            val legend = p match {
+              case 0.1 => "ordinato"
+              case 0.5 => "caotico"
+              case 0.79 => "critico"
+            }
+            (legend, Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
         val mutation = config.adaptation.network_mutation.max_connection_rewires > 0
         val rewire = config.adaptation.network_io_mutation.max_input_rewires > 0
@@ -118,9 +124,9 @@ object Derrida extends App {
           case ("experiments/parametrized-foraging2.argos", false) => "Arena IV"
         }
         val title3 = (rewire, mutation) match {
-          case (true, false) => " - selezione"
+          case (true, false) => " - ripartizione"
           case (true, true) => " - ibrida"
-          case (false, true) => " - mutazione"
+          case (false, true) => " - alterazione"
         }
         val chart = utils.Charts.scatterPlot(title2+title3, "Derrida", "Fitness",
           series,
@@ -136,7 +142,7 @@ object Derrida extends App {
           },
           s => {
             s.width(600)
-            s.height(400)
+            s.height(500)
           })
         BitmapEncoder.saveBitmapWithDPI(chart, s"$DERRIDA_FOLDER/$title.png", BitmapFormat.PNG, 100)
 

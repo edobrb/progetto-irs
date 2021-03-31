@@ -57,12 +57,12 @@ object E9Perturbations extends ExperimentSettings {
     Seq(
       Variation(Seq(0.1, 0.79), lens(_.network.p), "p"),
 
-      Variation[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", {
-        case ((2, 1), (0, 0)) => "selezione"
+      Variation.apply2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
+        case ((2, 1), (0, 0)) => "ripartizione"
         case ((2, 1), (3, 8)) => "ibrida"
       }),
 
-      Variation.normal[Configuration, String](Seq("whole", "half", "foraging", "foraging2"), {
+      Variation.normal2[Configuration, String](Seq("whole", "half", "foraging", "foraging2"), {
         case ("whole", config) =>
           argosLens.set("experiments/parametrized.argos")(config)
         case ("half", config) =>
@@ -73,20 +73,20 @@ object E9Perturbations extends ExperimentSettings {
         case ("foraging2", config) =>
           argosLens.set("experiments/parametrized-foraging2.argos")(config).copy(other = foragingSettings ++ config.other)
       }, {
-        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isEmpty => "whole"
-        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isDefined => "half"
-        case config if config.simulation.argos == "experiments/parametrized-foraging.argos" => "foraging"
-        case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "foraging2"
-      }, "arena", identity, showDivided = true),
+        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isEmpty => "I"
+        case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isDefined => "II"
+        case config if config.simulation.argos == "experiments/parametrized-foraging.argos" => "III"
+        case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "IV"
+      }, "objective", "Arena", identity, showDivided = true),
 
-      Variation.normal2[Configuration, Option[String]](Seq(/*None, Some("1"), Some("10"), Some("100"), Some("1000")*/Some("10")), {
+      Variation.normal2[Configuration, Option[String]](Seq(/*None, Some("1"), Some("10"), Some("100"), Some("1000")*/Some("100")), {
         case (v, config) => v match {
           case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
           case None => config
         }
       }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
-        case Some(value) => value.toDouble.toString
-        case None => "0.0"
+        case Some(value) => value.toDouble.toInt.toString
+        case None => "0"
       }, showDivided = true),
     )
   }

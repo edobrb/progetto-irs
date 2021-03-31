@@ -14,6 +14,7 @@ import org.knowm.xchart.style.Styler.LegendPosition
 import org.knowm.xchart.style.markers.{Circle, Marker}
 
 import java.awt.Color
+import scala.math.BigDecimal.double2bigDecimal
 import scala.util.{Failure, Success}
 
 object Entropy extends App {
@@ -34,30 +35,20 @@ object Entropy extends App {
   }
 
   if (Args.LOAD_OUTPUT) {
-    val results: Seq[Result] = Loader.FILENAMES(args).parMap(Args.PARALLELISM_DEGREE, {
-      case (gzipFile, jsonFile) =>
+    val results: Seq[Result] = Loader.FILENAMES_CONFIG(args).parMap(Args.PARALLELISM_DEGREE, {
+      case (config, gzipFile, jsonFile) =>
         val tmpGzipFile = LoadBest.BEST_RAW_FOLDER + "/" + gzipFile.split('/').last
         RobotData.loadsFromFile(jsonFile).toOption.flatMap(robotsData => {
-
-          //id -> (config, (fitness,epoch),(toDrop,toTake))
-          val maxes = robotsData.map(data => {
-            val printOfOneEpoch = data.config.adaptation.epoch_length * data.config.simulation.ticks_per_seconds + 2
-            val (bestFitness, bestEpoch) = data.fitness_values.zipWithIndex.maxBy(_._1)
-            val toDrop = printOfOneEpoch * bestEpoch
-            (data.robot_id, (data.config, (bestFitness, bestEpoch), (toDrop, printOfOneEpoch)))
-          }).toMap
-
+          val printOfOneEpoch = config.adaptation.epoch_length * config.simulation.ticks_per_seconds + 2
           utils.File.readGzippedLinesAndMap(tmpGzipFile)(lines => {
-            val steps: Map[String, Seq[StepInfo]] = lines.map(l => Loader.toStepInfo(l)).collect {
+            lines.map(l => Loader.toStepInfo(l)).collect {
               case Some(v) => v
-            }.toSeq.groupBy(_.id)
-
-            maxes.toSeq.map {
-              case (robotId, (config, (_, epoch), (_, printOfOneEpoch))) =>
-                val bestEpochInputs = steps(robotId).drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
+            }.toSeq.groupBy(_.id).map {
+              case (robotId, steps) =>
+                val bestEpochInputs = steps.drop(1).dropRight(1).map(_.inputs.take(config.objective.obstacle_avoidance.proximity_nodes))
                 val inputsProbabilities = bestEpochInputs.groupBy(identity).map(v => v._2.size.toDouble / (printOfOneEpoch - 2))
                 val entropy = utils.Entropy.shannon(inputsProbabilities)
-                val fitness = steps(robotId).last.fitness
+                val fitness = steps.last.fitness
                 println((gzipFile.split('-').last, fitness, entropy, robotId))
                 Result(config, fitness, entropy, robotId)
             }
@@ -78,10 +69,10 @@ object Entropy extends App {
     val jsonStr = utils.File.read(s"$ENTROPY_FOLDER/results.json").get
     val json = Json.parse(jsonStr)
     val results = Json.fromJson[Seq[Result]](json).get
-      .filter(_.configuration.network.p != 0.5)
+      //.filter(_.configuration.network.p != 0.5)
     println(results.size)
 
-    val alpha = 20
+    val alpha = 10
     val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)
     variations.foreach(v => {
       results.groupBy(r => v.getVariation(r.configuration)).foreach {
@@ -91,7 +82,11 @@ object Entropy extends App {
           val series = results.map(v => (v.entropy, Math.max(0.0, v.fitness)))
           val chart = utils.Charts.scatterPlot(title, "Entropia", "Fitness",
             Seq(("all", Some(new Color(255, 0, 0, alpha)), series)),
-            _.setMarkerSize(4).setXAxisMax(7.0).setYAxisMax(90).setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE),
+            s => {
+              s.setMarkerSize(4)
+              //s.setXAxisMax(6.0).setYAxisMax(90)
+              s.setLegendVisible(false).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE)
+            },
             _.width(800).height(600))
           BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
           val data = "entropy;fitness" +: series.map(v => "%.3f;%.3f".format(v._1, v._2))
@@ -110,16 +105,23 @@ object Entropy extends App {
         s => {
           s.setMarkerSize(4)
           s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle(), new Circle()).toArray)
-          s.setXAxisMax(7.0).setYAxisMax(90).setChartTitleVisible(false).setChartBackgroundColor(Color.WHITE)
+          //s.setXAxisMax(6.0).setYAxisMax(90)
+          s.setChartTitleVisible(false).setChartBackgroundColor(Color.white)
           s.setLegendPosition(LegendPosition.InsideNE)
         },
         _.width(800).height(600))
       BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/$title.png", BitmapFormat.PNG)
     })
 
+    //val hSerie = ("h", Option.apply(new Color(200,200,200)), (0.0 to 8 by 0.0025).map(e => (e.toDouble, 90 * utils.Entropy.h(e.toDouble, 1.7, 3, 0.75))).toSeq)
     val chart = utils.Charts.scatterPlot("All", "Entropia", "Fitness",
       Seq(("all", Some(new Color(255, 0, 0, alpha)), results.map(v => (v.entropy, Math.max(0.0, v.fitness))))),
-      _.setXAxisMax(7.0).setLegendVisible(false),
+      s => {
+        s.setMarkerSize(4)
+        //s.setXAxisMax(6.0).setYAxisMax(90)
+        s.setChartTitleVisible(false).setChartBackgroundColor(Color.white).setLegendVisible(false)
+        s.setSeriesMarkers(Seq[Marker](new Circle(), new Circle()).toArray)
+      },
       _.width(800).height(600))
     BitmapEncoder.saveBitmap(chart, s"$ENTROPY_FOLDER/png/all.png", BitmapFormat.PNG)
   }

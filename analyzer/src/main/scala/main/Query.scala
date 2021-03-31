@@ -11,31 +11,34 @@ import play.api.libs.json._
 import utils.Parallel.{Parallel, ParallelIterator}
 
 import java.awt.Color
-import scala.util.Success
+import scala.util.{Failure, Success}
 import model.config.Configuration.JsonFormats._
 
 import java.text.DecimalFormat
 
 object Query extends App {
   implicit val arguments: Array[String] = args
-  implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
-  def robotsData: Iterator[(RobotData, Seq[StepInfo])] = Loader.FILENAMES.iterator.parMap(Args.PARALLELISM_DEGREE, {
-    case (gzipFile, jsonFile) =>
-      val tmpGzipFile = LoadBest.BEST_RAW_FOLDER + "/" + gzipFile.split('/').last
-      RobotData.loadsFromFile(jsonFile).flatMap(robotsData => {
-        utils.File.readGzippedLinesAndMap(tmpGzipFile)(lines => {
-          lines.map(l => Loader.toStepInfo(l)).collect {
-            case Some(v) => v
-          }.toIndexedSeq.groupBy(_.id)
-        }).map(bests => robotsData.map(robotData => (robotData, bests(robotData.robot_id))))
-      }) match {
-        case Success(value) => println(s"$jsonFile loaded."); Success(value)
-        case failure => println(s"$jsonFile load failed."); failure
-      }
-  }).collect {
-    case Success(value) => value
-  }.flatten
+
+  def robotsData(implicit args:Array[String]): Iterator[(RobotData, Seq[StepInfo])] = {
+    implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
+    Loader.FILENAMES(args).iterator.parMap(Args.PARALLELISM_DEGREE(args), {
+      case (gzipFile, jsonFile) =>
+        val tmpGzipFile = LoadBest.BEST_RAW_FOLDER(args) + "/" + gzipFile.split('/').last
+        RobotData.loadsFromFile(jsonFile).flatMap(robotsData => {
+          utils.File.readGzippedLinesAndMap(tmpGzipFile)(lines => {
+            lines.map(l => Loader.toStepInfo(l)).collect {
+              case Some(v) => v
+            }.toIndexedSeq.groupBy(_.id)
+          }).map(bests => robotsData.map(robotData => (robotData, bests(robotData.robot_id))))
+        }) match {
+          case Success(value) => println(s"$jsonFile loaded."); Success(value)
+          case Failure(exception) => println(s"$jsonFile load failed. (${exception.getMessage})"); Failure(exception)
+        }
+    }).collect {
+      case Success(value) => value
+    }.flatten
+  }
 
   case class StatesNumberResult(filename: String, statesCount: Int, fitness: Double)
 
@@ -104,7 +107,7 @@ object Query extends App {
 
 
     results
-      .filter(v => adaptationVariation.desc(configs(v.filename)) != "mutazione" && configs(v.filename).network.p != 0.5)
+      .filter(v => adaptationVariation.desc(configs(v.filename)) != "alterazione" /*&& configs(v.filename).network.p != 0.5*/)
       .groupBy(v => arenaVariation.desc(configs(v.filename))).foreach({
       case (arena, r) =>
         val series1 = r.groupBy({
@@ -116,7 +119,7 @@ object Query extends App {
         val chart = utils.Charts.boxplot("Arena " + arena, "Asd", "Numero di stati", series1, applyCustomStyle = v => {
           v.setPlotContentSize(0.90)
           v.setMarkerSize(5)
-          v.setXAxisLabelRotation(12)
+          v.setXAxisLabelRotation(15)
           v.setChartBackgroundColor(Color.white)
           v.setXAxisTitleVisible(false)
           v.setChartTitleVisible(true)

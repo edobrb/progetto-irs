@@ -60,10 +60,10 @@ object E15 extends ExperimentSettings {
     val foragingArena2 = (("experiments/parametrized-foraging2.argos", entropyGuideForaging ++ Map("variant" -> "foraging", "light_nodes" -> "8", "light_threshold" -> "0.1")), None)
 
     Seq(
-      Variation(Seq(0.1, 0.5, 0.79), lens(_.network.p), "p", showDivided = true),
+      Variation(Seq(0.1/*, 0.5*/, 0.79), lens(_.network.p), "p"),
       Variation.lens2[Configuration, ((Int, Int), (Int, Int))](Seq(((2, 1), (0, 0)), ((0, 0), (3, 8)), ((2, 1), (3, 8))), ioLens and netLens, "adaptation", "", {
-        case ((2, 1), (0, 0)) => "rewire"
-        case ((0, 0), (3, 8)) => "mutation"
+        case ((2, 1), (0, 0)) => "selezione"
+        case ((0, 0), (3, 8)) => "mutazione"
         case ((2, 1), (3, 8)) => "ibrida"
       }),
       Variation.apply2(Seq(wholeArena, halfArena, foragingArena, foragingArena2), arenaLens, "arena", "Arena", (v: ((String, Map[String, String]), Option[HalfRegionVariation])) => v match {

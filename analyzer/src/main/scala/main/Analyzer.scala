@@ -96,7 +96,7 @@ object Analyzer extends App {
         v.setMarkerSize(0)
         v.setChartTitleVisible(false)
         v.setChartBackgroundColor(Color.white)
-      }, _.width(600).height(400))
+      }, _.width(600).height(500))
 
     def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-fitness-curve.$format"
 
@@ -113,12 +113,12 @@ object Analyzer extends App {
       applyCustomStyle = v => {
         v.setPlotContentSize(0.90)
         v.setMarkerSize(5)
-        v.setXAxisLabelRotation(10)
+        v.setXAxisLabelRotation(0)
         v.setXAxisTitleVisible(false)
         v.setChartBackgroundColor(Color.white)
-        v.setChartTitleVisible(false)
+        v.setChartTitleVisible(true)
       },
-      applyCustomBuild = _.width(600).height(400))
+      applyCustomBuild = _.width(600).height(500))
 
     def chartFileName(format: String): String = s"$CHARTS_FOLDER/$format/$chartName-boxplot.$format"
 
@@ -191,7 +191,7 @@ object Analyzer extends App {
             val newLegend = legends(i).zipWithIndex.map {
               case (leg, j) =>
                 val maxL = legends.map(_ (j)).maxBy(_.length).length
-                leg + (0 until (maxL - leg.length)).map(_ => " ").mkString
+                leg /*+ (0 until (maxL - leg.length)).map(_ => " ").mkString*/
             }.mkString(",")
             (newLegend.trim, series)
         }
@@ -227,7 +227,7 @@ object Analyzer extends App {
         groups = c => variations.map(_.getVariation(c)),
         series = c => notCollapsed.map(_.getVariation(c)),
         chartName = (c, _) => variations.map(v => s"${v.name}=${v.desc(c)}").mkString(",")+(if(collapsed.nonEmpty) "-collapsed="+collapsed.map(_.name).mkString(",") else ""),
-        chartDescription = (c, _) => variations.map(v => s"${v.legendName}: ${v.desc(c)}").mkString(" - "), //variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
+        chartDescription = (c, _) => variations.map(v => s"${v.legendName} ${v.desc(c)}").mkString(" - "), //variations.map(v => s"(with ${v.name}=${v.desc(c)})").mkString(","),
         legend = (c, _, _) => notCollapsed
           .filter(v => !variations.map(_.name).contains(v.name)).map(v => {
           if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(c)}" else v.desc(c)
