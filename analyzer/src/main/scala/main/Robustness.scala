@@ -30,9 +30,9 @@ object Robustness extends App {
 
   implicit val siCodec: JsonValueCodec[StepInfo] = JsonCodecMaker.make
 
-  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = true
+  def RANDOM_INITIAL_STATE(implicit args: Array[String]): Boolean = false
 
-  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.0
+  def DESTROYED_ARCH(implicit args: Array[String]): Double = 0.1
 
   def ROBOT_COUNT(implicit args: Array[String]): Int = 2
 
@@ -141,6 +141,25 @@ object Robustness extends App {
       val r1 = results1.find(_.configuration == result.configuration).get
       result.copy(bestFitness = r1.robustnessFitness)
     })
+
+    //CSV save
+    def variationName(configuration: Configuration): String = {
+      val variations = Settings.selectedExperiment.configVariation
+      variations.map(v => {
+        if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(configuration)}" else v.desc(configuration)
+      }).mkString(",")
+    }
+    val resCsv = results2.groupBy(_.configuration.setControllersSeed(None).setSimulationSeed(None)).map {
+      case (configuration, value) =>
+        val columnName = variationName(configuration)
+        (columnName, value.flatMap(_.robustnessFitness).toIndexedSeq)
+    }.toIndexedSeq
+    val header = resCsv.map(_._1).mkString(";")
+    val rows = resCsv.foldLeft(Seq[String]()) {
+      case (Nil, (_, fitnesses)) => fitnesses.map(_.toString)
+      case (lines, (_, fitnesses)) => lines.zip(fitnesses.map(_.toString)).map(v => v._1 + ";" + v._2)
+    }
+    utils.File.writeLines(s"$ROBUSTNESS_FOLDER/results.csv", header +: rows)
 
     val formatter = new DecimalFormat("#.#")
     results.map (r => {

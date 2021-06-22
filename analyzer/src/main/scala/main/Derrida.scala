@@ -41,6 +41,7 @@ object Derrida extends App {
   if (Args.LOAD_OUTPUT) {
     val loaded = loadResults
     println("Loaded: " + loaded.size)
+
     val loadedFile = loaded.map(v => v.fromFile -> ()).toMap
     val results: Seq[Result] = loaded ++ Loader.FILENAMES(args).filter(v => !loadedFile.contains(v._1.split('/').last)).parMap(Args.PARALLELISM_DEGREE, {
       case (gzipFile, jsonFile) =>
@@ -93,7 +94,33 @@ object Derrida extends App {
 
 
   if (Args.MAKE_CHARTS) {
+    println("Loading data...")
     val loaded = loadResults
+
+    //CSV save
+    def variationName(configuration: Configuration): String = {
+      val variations = Settings.selectedExperiment.configVariation
+      variations.map(v => {
+        if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(configuration)}" else v.desc(configuration)
+      }).mkString(",")
+    }
+    val resCsv = loaded.groupBy(_.configuration.setControllersSeed(None).setSimulationSeed(None)).map {
+      case (configuration, value) =>
+        val columnName = variationName(configuration)
+        (columnName, value.map(_.derrida).toIndexedSeq, value.map(_.fitness).toIndexedSeq)
+    }.toIndexedSeq
+    val header1 = resCsv.map(_._1).mkString(";;")
+    val header2 = resCsv.flatMap(_ => Seq("derrida", "fitness")).mkString(";")
+    resCsv.indices.map(i => {
+      resCsv(i)
+    })
+    val rows = resCsv.foldLeft(Seq[String]()) {
+      case (Nil, (_, derridas, fitnesses)) => derridas.zip(fitnesses).map(v => v._1+";"+v._2)
+      case (lines, (_, derridas, fitnesses)) => lines.zip(derridas.zip(fitnesses).map(v => v._1+";"+v._2)).map(v => v._1 + ";" + v._2)
+    }
+    utils.File.writeLines(s"$DERRIDA_FOLDER/results.csv", Seq(header1, header2) ++ rows)
+
+
     println("Loaded: " + loaded.size)
     println("Plotting charts...")
     loaded.groupBy(v => v.configuration.copy(network = v.configuration.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
@@ -128,7 +155,7 @@ object Derrida extends App {
           case (true, true) => " - ibrida"
           case (false, true) => " - alterazione"
         }
-        val chart = utils.Charts.scatterPlot(title2+title3, "Derrida", "Fitness",
+        val chart = utils.Charts.scatterPlot(title2 + title3, "Derrida", "Fitness",
           series,
           s => {
             //s.setChartTitleVisible(false)

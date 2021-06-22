@@ -77,9 +77,9 @@ object E9Perturbations extends ExperimentSettings {
         case config if config.simulation.argos == "experiments/parametrized.argos" && config.objective.half_region_variation.isDefined => "II"
         case config if config.simulation.argos == "experiments/parametrized-foraging.argos" => "III"
         case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "IV"
-      }, "objective", "Arena", identity, showDivided = true),
+      }, "objective", "Arena", identity),
 
-      Variation.normal2[Configuration, Option[String]](Seq(/*None, Some("1"), Some("10"), Some("100"), Some("1000")*/Some("100")), {
+      Variation.normal2[Configuration, Option[String]](Seq(None, Some("1"), Some("10"), Some("100"), Some("1000")), {
         case (v, config) => v match {
           case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
           case None => config
@@ -87,7 +87,7 @@ object E9Perturbations extends ExperimentSettings {
       }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
         case Some(value) => value.toDouble.toInt.toString
         case None => "0"
-      }, showDivided = true),
+      }),
     )
   }
 }

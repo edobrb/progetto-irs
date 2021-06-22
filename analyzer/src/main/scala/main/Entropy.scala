@@ -72,6 +72,28 @@ object Entropy extends App {
       //.filter(_.configuration.network.p != 0.5)
     println(results.size)
 
+    def variationName(configuration: Configuration): String = {
+      val variations = Settings.selectedExperiment.configVariation
+      variations.map(v => {
+        if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(configuration)}" else v.desc(configuration)
+      }).mkString(",")
+    }
+    val resCsv = results.groupBy(_.configuration.setControllersSeed(None).setSimulationSeed(None)).map {
+      case (configuration, value) =>
+        val columnName = variationName(configuration)
+        (columnName, value.map(_.entropy).toIndexedSeq, value.map(_.fitness).toIndexedSeq)
+    }.toIndexedSeq
+    val header1 = resCsv.map(_._1).mkString(";;")
+    val header2 = resCsv.flatMap(_ => Seq("entropy", "fitness")).mkString(";")
+    resCsv.indices.map(i => {
+      resCsv(i)
+    })
+    val rows = resCsv.foldLeft(Seq[String]()) {
+      case (Nil, (_, derridas, fitnesses)) => derridas.zip(fitnesses).map(v => v._1+";"+v._2)
+      case (lines, (_, derridas, fitnesses)) => lines.zip(derridas.zip(fitnesses).map(v => v._1+";"+v._2)).map(v => v._1 + ";" + v._2)
+    }
+    utils.File.writeLines(s"$ENTROPY_FOLDER/results.csv", Seq(header1, header2) ++ rows)
+
     val alpha = 10
     val variations = Settings.selectedExperiment.configVariation.filter(v => !v.collapse && v.showDivided)
     variations.foreach(v => {
