@@ -1,0 +1,24 @@
+package main
+
+import experiments.ExperimentSettings
+import model.config.Configuration
+
+object Settings {
+
+  def selectedExperiment(implicit args: Array[String]): ExperimentSettings =
+    ExperimentSettings(Args.CONFIGURATION)
+
+  /** All configuration combinations */
+  def configurations(implicit args: Array[String]): Seq[Configuration] =
+    utils.Combiner(selectedExperiment.defaultConfig, selectedExperiment.configVariation.map(_.apply))
+      .distinct.filter(selectedExperiment.filter)
+
+  /** Filenames of experiments and the relative config */
+  def experiments(implicit args: Array[String]): Seq[(String, Configuration, Int)] = {
+    /** Configuration repetitions for statistical accuracy. */
+    val initialization = Args.CONFIG_INITIALIZATION(args)
+    configurations.flatMap {
+      config => Args.REPETITIONS.map(i => (config.filename + "-" + i, config.setSeed(i), i))
+    }
+  }
+}
