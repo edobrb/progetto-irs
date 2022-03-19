@@ -25,6 +25,7 @@ object ExperimentSettings {
       "8" -> E8,
       "9" -> E9,
       "9dual" -> E9Dual,
+      "9p_dual" -> E9PerturbationsDual,
       "9p" -> E9Perturbations,
       "9bis" -> E9Bis,
       "9one" -> E9One,

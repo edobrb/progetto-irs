@@ -129,8 +129,10 @@ object Derrida extends App {
           case ((p, data), color) =>
             val legend = p match {
               case 0.1 => "ordinato"
+              case 0.9 => "ordinato"
               case 0.5 => "caotico"
               case 0.79 => "critico"
+              case 0.21 => "critico"
             }
             (legend, Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
