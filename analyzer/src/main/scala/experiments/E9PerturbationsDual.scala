@@ -79,7 +79,7 @@ object E9PerturbationsDual extends ExperimentSettings {
         case config if config.simulation.argos == "experiments/parametrized-foraging2.argos" => "IV"
       }, "objective", "Arena", identity),
 
-      Variation.normal2[Configuration, Option[String]](Seq(None, Some("100")), {
+      Variation.normal2[Configuration, Option[String]](Seq(Some("100")), {
         case (v, config) => v match {
           case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
           case None => config
