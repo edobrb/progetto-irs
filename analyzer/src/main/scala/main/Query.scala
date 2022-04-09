@@ -185,7 +185,7 @@ object Query extends App {
       }).groupBy(_._2).foreach {
         case (adattamento, res) =>
           val resP = res.groupBy(_._1)
-          println(adattamento + " & " + resP("0.1").head._3 + " & " + resP("0.79").head._3)
+          println(adattamento + " & " + resP("0.1").head._3+ " & " + resP("0.21").head._3+ " & " + resP("0.5").head._3+ " & " + resP("0.79").head._3 + " & " + resP("0.9").head._3)
       }
       println("")
     }
@@ -225,6 +225,6 @@ object Query extends App {
   }
 
 
-  queryStatesNumber()
+  query1()
 
 }

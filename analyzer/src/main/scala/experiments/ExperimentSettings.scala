@@ -34,6 +34,7 @@ object ExperimentSettings {
       "13" -> E13,
       "14" -> E14,
       "15" -> E15,
+      "final" -> EFinal,
     )(name)
   }
 }
