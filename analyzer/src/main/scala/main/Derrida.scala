@@ -125,7 +125,7 @@ object Derrida extends App {
     println("Plotting charts...")
     loaded.groupBy(v => v.configuration.copy(network = v.configuration.network.copy(p = 0)).setControllersSeed(None).setSimulationSeed(None)).foreach {
       case (config, data) =>
-        val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 200, 0), new Color(0, 0, 255))).map {
+        val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 200, 0), new Color(0, 0, 255), new Color(252, 186, 3), new Color(177, 3, 252))).map {
           case ((p, data), color) =>
             val legend = p match {
               case 0.1 => "ordinato L"
@@ -134,7 +134,7 @@ object Derrida extends App {
               case 0.79 => "critico H"
               case 0.21 => "critico L"
             }
-            (legend, Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
+            (legend, Some(new Color(color.getRed, color.getGreen, color.getBlue, 255)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
         val mutation = config.adaptation.network_mutation.max_connection_rewires > 0
         val rewire = config.adaptation.network_io_mutation.max_input_rewires > 0
