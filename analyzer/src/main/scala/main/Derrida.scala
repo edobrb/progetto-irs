@@ -128,11 +128,11 @@ object Derrida extends App {
         val series = data.groupBy(_.configuration.network.p).zip(Seq(new Color(255, 0, 0), new Color(0, 200, 0), new Color(0, 0, 255))).map {
           case ((p, data), color) =>
             val legend = p match {
-              case 0.1 => "ordinato"
-              case 0.9 => "ordinato"
+              case 0.1 => "ordinato L"
+              case 0.9 => "ordinato H"
               case 0.5 => "caotico"
-              case 0.79 => "critico"
-              case 0.21 => "critico"
+              case 0.79 => "critico H"
+              case 0.21 => "critico L"
             }
             (legend, Some(new Color(color.getRed, color.getGreen, color.getBlue, 30)), data.map(v => (v.derrida, Math.max(0.0, v.fitness))))
         }
