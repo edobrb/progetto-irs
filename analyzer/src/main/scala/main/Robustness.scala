@@ -131,16 +131,16 @@ object Robustness extends App {
     println("plotting charts...")
     val jsonStr = utils.File.read(RESULT_FILE).get
     val json = Json.parse(jsonStr)
-    val results2 = Json.fromJson[Seq[Result]](json).get/*.filter(_.configuration.network.p != 0.5).*/.sortBy(-_.bestFitness.sum)
+    val results = Json.fromJson[Seq[Result]](json).get/*.filter(_.configuration.network.p != 0.5).*/.sortBy(-_.bestFitness.sum)
 
-    val jsonStr1 = utils.File.read(s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness/rs=false-da=0.0" + s"-rc=${ROBOT_COUNT(args)}-ec=${EPOCH_COUNT(args)}/results.json").get
+    /*val jsonStr1 = utils.File.read(s"${Analyzer.RESULT_FOLDER(args)}/${Args.CONFIGURATION(args)}_robustness/rs=false-da=0.0" + s"-rc=${ROBOT_COUNT(args)}-ec=${EPOCH_COUNT(args)}/results.json").get
     val json1 = Json.parse(jsonStr1)
     val results1 = Json.fromJson[Seq[Result]](json1).get/*.filter(_.configuration.network.p != 0.5).*/.sortBy(-_.bestFitness.sum)
 
     val results = results2 .map(result => {
       val r1 = results1.find(_.configuration == result.configuration).get
       result.copy(bestFitness = r1.robustnessFitness)
-    })
+    })*/
 
     //CSV save
     def variationName(configuration: Configuration): String = {
@@ -149,7 +149,7 @@ object Robustness extends App {
         if (v.legendName.nonEmpty) s"${v.legendName}: ${v.desc(configuration)}" else v.desc(configuration)
       }).mkString(",")
     }
-    val resCsv = results2.groupBy(_.configuration.setControllersSeed(None).setSimulationSeed(None)).map {
+    val resCsv = results.groupBy(_.configuration.setControllersSeed(None).setSimulationSeed(None)).map {
       case (configuration, value) =>
         val columnName = variationName(configuration)
         (columnName, value.flatMap(_.robustnessFitness).toIndexedSeq)

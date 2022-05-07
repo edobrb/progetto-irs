@@ -77,6 +77,15 @@ object EFinal extends ExperimentSettings {
         case (("experiments/parametrized-foraging.argos", _), None) => "III"
         case (("experiments/parametrized-foraging2.argos", _), None) => "IV"
       }),
+      Variation.normal2[Configuration, Option[String]](Seq(None, Some("100")), {
+        case (v, config) => v match {
+          case Some(value) => config.copy(other = config.other.updated("states_flip_f", value))
+          case None => config
+        }
+      }, _.other.get("states_flip_f"), "flips", "\uD835\uDF08", {
+        case Some(value) => value.toDouble.toInt.toString
+        case None => "0"
+      }),
     )
   }
 }
