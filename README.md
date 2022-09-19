@@ -1,4 +1,6 @@
-# Online adaptation in multi robot system
+# On the criticality of adaptive Boolean network robots
+
+TODO: traduction
 
 Questo progetto è il risultato del lavoro svolto per il corso di Sistemi Intelligenti e Robotici presente nel corso di laurea magistrale di Scienze e Ingegneria Informatica di Cesena.
 
